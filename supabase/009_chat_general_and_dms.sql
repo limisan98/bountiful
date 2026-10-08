@@ -5,10 +5,9 @@
 -- =========================================================
 
 -- Old channels become the one general chat; the reception-only chat goes away
+alter table public.messages drop constraint messages_channel_check;
 update public.messages set channel = 'general' where channel in ('all', 'custodian');
 delete from public.messages where channel = 'reception';
-
-alter table public.messages drop constraint messages_channel_check;
 alter table public.messages add constraint messages_channel_check
   check (channel = 'general' or channel ~ '^dm:[0-9a-f-]{36}:[0-9a-f-]{36}$');
 
