@@ -13,7 +13,7 @@ Shared tasks and teamwork for the temple crew. Minimal, rounded, and easy to use
 | `src/locales/` | Translations: English, German, Spanish, Portuguese, Dutch, Swedish |
 | `assets/app.css` | All colors, sizes and rounded corners |
 | `assets/icons.js` | The Tabler *filled* icons the app uses (MIT license) |
-| `assets/logo/` | The Bountiful logo (`logo-square.svg` is the untouched artwork; `logo.svg` / favicon have rounded corners) and the app icons made from it |
+| `assets/logo/` | The Bountiful logo in the palette colors (`logo-original.svg` is the first version; `logo-square.svg` is square; `logo.svg` / favicon have rounded corners) and the app icons made from it |
 | `assets/lexend.css` | The Lexend font (all weights, embedded so no outside server is contacted) |
 | `assets/vendor/` | Libraries (kept here so the site never depends on another server) |
 | `supabase/` | The database setup scripts, in the order they were run |
