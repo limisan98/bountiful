@@ -51,6 +51,8 @@ const real = {
   async savePushSubscription(endpoint, p256dh, auth, lang) { await rpc('save_push_subscription', { p_endpoint: endpoint, p_p256dh: p256dh, p_auth: auth, p_lang: lang }); },
   async dropPushSubscription(endpoint) { await rpc('drop_push_subscription', { p_endpoint: endpoint }); },
   async saveLanguage(lang) { ok(await sb.auth.updateUser({ data: { lang } })); },
+  async loadSettings() { return Object.fromEntries(ok(await sb.from('app_settings').select('*')).map((r) => [r.key, r.value])); },
+  async setRoomGoal(minutes) { await rpc('set_room_goal', { p_minutes: minutes }); },
   async loadRoles() { return ok(await sb.from('roles').select('*').order('sort')); },
   async updateRole(id, patch) { return ok(await sb.from('roles').update(patch).eq('id', id).select().single()); },
 

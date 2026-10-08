@@ -35,7 +35,7 @@ Data flow: `src/api.js` (all Supabase calls, plus `subscribe` for Realtime) → 
 | Flags for the language menu | `assets/flags.js` |
 | All CSS | `assets/app.css` (one file; sections are commented) |
 | PWA (install + notification display) | `sw.js`, `manifest.webmanifest` |
-| Database scripts, in the order they were run | `supabase/001…010_*.sql` (all applied) |
+| Database scripts, in the order they were run | `supabase/001…011_*.sql` (all applied) |
 
 Screens (`src/views/`): `home.js` (tiles), `calendar.js` (day/week of assignments), `tasks.js` (task library, supervisor edits), `assign.js` (plan a task for someone), `chat.js` (chat list + conversations; mentions; long-press copy/delete; task invitations), `person.js` (profile card + "Send message"), `invites.js` (invitation card/sheet), `rooms.js` (rooms to clean), `reports.js` (automatic reports), `meetings.js`, `team.js` (people, allowlist, roles), `profile.js`, `notifications.js`, `auth.js` (sign in / create account).
 
@@ -77,6 +77,10 @@ Works even with the app closed. Pieces:
 - Client: `enablePush()` / `disablePush()` in `src/notify.js` (called after login, when permission is granted in the notifications sheet, on language change; `disablePush` on sign-out). `sw.js` shows the push and skips it when an app window is visible (the app shows its own toast). When the phone is signed up, `show()` in notify.js does not repeat server-covered notifications while the app is in the background; types the server does NOT send (`done`, `started`, `delay`, `comment`, `joined`) are marked `localOnly` and still only work while the app is open/backgrounded. `reminder` and `daily` are not built at all.
 - Do NOT use the `mcp__Supabase__*` tools in some sessions: they are connected to other projects ("muna"/"tactica"). Bountiful is `kmlvdgtxafcdbsosrsqx`; use the dashboard in the browser pane.
 - Tested: triggers queue the HTTP calls (rolled-back transaction), the function accepts the secret and answers `{"sent":0}`. NOT yet tested with a real phone: on iPhone the app must be installed to the Home Screen first.
+
+## Timers and time goals
+- `tasks.goal_minutes` (set by the supervisor; empty = length of the task's time window) via `taskGoal(tk, a)` in `src/time.js`. Rooms have one shared goal in `app_settings.room_goal_minutes` (`roomGoalMin()` / `setRoomGoal()` in `src/data.js`, RPC `set_room_goal`). Supervisors edit all goals in the "Time goals" sheet (`TimeGoals` in `src/views/tasks.js`).
+- Pressing Start (task detail or room row) opens `TimerSheet` (`src/views/timer.js`): big running clock + ring vs the goal, steps to tick, Finish. The start time is saved in the database (`assignments.started_at`, `room_requests.started_at`), so the timer survives closing the app; a "doing" task shows a timer card to reopen it. Finishing a task prefills the minutes from the timer; rooms store `minutes_spent` automatically (`set_room_status`).
 
 ## Open ideas
 "Who is assigned to which task" overview for the supervisor (rooms already have it, planned tasks show names in the calendar only); push for the types not yet sent by the server (`done`, `started`, `delay`, `comment`, `joined`) and for `reminder`/`daily`; Team sheet could get a Message button; password reset; keep-alive so the free Supabase project is not paused; shifts screen ("coming soon"); UI to change the report time zone.

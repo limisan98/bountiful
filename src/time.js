@@ -15,6 +15,8 @@ export const hhmm = (s) => (s || '').slice(0, 5);
 export const toMin = (s) => { const [h, m] = hhmm(s).split(':').map(Number); return h * 60 + (m || 0); };
 export const fromMin = (n) => `${pad(Math.floor(n / 60))}:${pad(n % 60)}`;
 export const goalMin = (a) => toMin(a.end_time) - toMin(a.start_time);
+// The time goal of a task: the one the supervisor set, otherwise the length of the planned window
+export const taskGoal = (tk, a) => (tk && tk.goal_minutes) || (a ? goalMin(a) : tk ? toMin(tk.end_time) - toMin(tk.start_time) : 0);
 
 // 80 -> "1h 20m"
 export function dur(min) {

@@ -16,6 +16,7 @@ export const state = {
   digests: {},       // automatic reports (day/week/month/quarter), by id (supervisors only)
   invites: {},       // task invitations between custodians, by id
   meetings: {},      // meeting requests (mine, or addressed to me), by id
+  settings: {},      // app-wide settings (e.g. room_goal_minutes)
   rooms: {},         // rooms to clean (Reception -> supervisor -> custodian), by id
   messages: {},      // chat, by channel: 'general' or 'dm:<id>:<id>' -> { list, more, loaded }
   chatOpen: null,    // the conversation that is open in the chat screen (null = the list)

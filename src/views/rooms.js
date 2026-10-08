@@ -3,10 +3,11 @@ import { useStore, toast } from '../store.js';
 import { t, friendlyError } from '../i18n.js';
 import { Icon, Avatar, Field, Sheet, PersonLine, Empty, useSheetControl } from '../ui.js';
 import { isSupervisor, roleInfo, departmentOf } from '../roles.js';
-import { roomsOn, addRooms, editRoom, assignRooms, setRoomStatus, removeRoom, activePeople } from '../data.js';
+import { roomsOn, addRooms, editRoom, assignRooms, setRoomStatus, removeRoom, activePeople, roomGoalMin } from '../data.js';
 import { ROLE_ORDER } from '../config.js';
 import { DateField } from '../pickers.js';
-import { ymd, parseYmd, addDays, todayYmd, fmt } from '../time.js';
+import { ymd, parseYmd, addDays, todayYmd, fmt, dur } from '../time.js';
+import { TimerSheet, LiveClock } from './timer.js';
 
 // Rooms to clean. Reception lists them, the Custodian Supervisor chooses who cleans them,
 // and that custodian marks them done. Each person only sees what is theirs to do.
@@ -141,6 +142,8 @@ function RoomRow({ r, selectable, selected, onToggle }) {
   const [sure, setSure] = useState(false);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [timing, setTiming] = useState(false);
+  const goal = roomGoalMin();
   const canEdit = r.requested_by === me.id && r.status !== 'done';
   const canDelete = isSupervisor(me) || (r.requested_by === me.id && !r.assignee);
   const state = !r.assignee ? 'waiting' : r.status;
@@ -156,6 +159,9 @@ function RoomRow({ r, selectable, selected, onToggle }) {
     <span class="room-main">
       <b class="room-name">${r.room}</b>
       <span class=${'room-state ' + state}>${t('rooms.state.' + state, { name })}</span>
+      ${r.status === 'doing' && r.started_at ? html`<span class="room-time"><${Icon} name="hourglass" size=${13} /><${LiveClock} startedAt=${r.started_at} /> · ${t('timer.goal', { time: dur(goal) })}</span>` : null}
+      ${r.status === 'done' && r.minutes_spent != null ? html`<span class="room-time done"><${Icon} name="clock" size=${13} />${t('rooms.took', { time: dur(r.minutes_spent), goal: dur(goal) })}</span>` : null}
+      ${mine && r.status === 'todo' ? html`<span class="room-time"><${Icon} name="alarm" size=${13} />${t('timer.goal', { time: dur(goal) })}</span>` : null}
       ${r.note ? html`<span class="room-note">${r.note}</span>` : null}
     </span>`;
 
@@ -165,13 +171,16 @@ function RoomRow({ r, selectable, selected, onToggle }) {
           <span class=${'room-check' + (selected ? ' on' : '')}><${Icon} name="check" size=${16} /></span>${body}</button>`
       : html`<div class="room-pick static">${body}</div>`}
     <div class="room-actions">
-      ${mine && r.status === 'todo' ? html`<button class="btn small auto soft" disabled=${busy} onClick=${() => act(() => setRoomStatus(r.id, 'doing'))}><${Icon} name="hourglass" size=${16} />${t('rooms.start')}</button>` : null}
+      ${mine && r.status === 'todo' ? html`<button class="btn small auto soft" disabled=${busy} onClick=${() => act(async () => { await setRoomStatus(r.id, 'doing'); setTiming(true); })}><${Icon} name="hourglass" size=${16} />${t('rooms.start')}</button>` : null}
+      ${mine && r.status === 'doing' ? html`<button class="btn small auto soft" onClick=${() => setTiming(true)}><${Icon} name="hourglass" size=${16} />${t('timer.open')}</button>` : null}
       ${mine && r.status !== 'done' ? html`<button class="btn small auto" disabled=${busy} onClick=${() => act(() => setRoomStatus(r.id, 'done'))}><${Icon} name="circle-check" size=${16} />${t('rooms.finish')}</button>` : null}
       ${(mine || isSupervisor(me)) && r.status === 'done' ? html`<button class="btn small auto soft" disabled=${busy} onClick=${() => act(() => setRoomStatus(r.id, 'todo'))}>${t('rooms.reopen')}</button>` : null}
       ${canEdit ? html`<button class="pick" aria-label=${t('rooms.edit')} onClick=${() => setEditing(true)}><${Icon} name="pencil" size=${15} /></button>` : null}
       ${canDelete ? html`<button class=${'pick danger' + (sure ? ' sure' : '')} aria-label=${t('act.remove')} onClick=${del}><${Icon} name="trash" size=${15} />${sure ? t('team.removeSure') : ''}</button>` : null}
     </div>
     ${editing ? html`<${EditRoom} r=${r} onClose=${() => setEditing(false)} />` : null}
+    ${timing && mine && r.status === 'doing' ? html`<${TimerSheet} title=${r.room} icon="bed" color="#86E3CE" startedAt=${r.started_at} goal=${goal}
+      finishLabel=${t('rooms.finish')} onFinish=${() => { setTiming(false); act(() => setRoomStatus(r.id, 'done')); }} onClose=${() => setTiming(false)} />` : null}
   </div>`;
 }
 

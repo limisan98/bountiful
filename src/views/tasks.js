@@ -3,9 +3,9 @@ import { TimeField } from '../pickers.js';
 import { useStore, toast } from '../store.js';
 import { t, friendlyError } from '../i18n.js';
 import { Icon, TaskBadge, Segmented, Field, Sheet, IconPicker, ColorPicker, Empty, useSheetControl } from '../ui.js';
-import { saveTask, archiveTask, areaName, areaOf } from '../data.js';
+import { saveTask, archiveTask, areaName, areaOf, roomGoalMin, setRoomGoal } from '../data.js';
 import { TASK_ICONS, PALETTE } from '../config.js';
-import { hhmm, toMin, dur, weekdayNames, todayYmd, addDays, parseYmd, ymd } from '../time.js';
+import { hhmm, toMin, dur, taskGoal, weekdayNames, todayYmd, addDays, parseYmd, ymd } from '../time.js';
 import { colorStyle } from '../color.js';
 
 export function freqText(task) {
@@ -15,11 +15,12 @@ export function freqText(task) {
   return days.length ? days.map((d) => names[d - 1]).join(', ') : t('task.noDays');
 }
 export const windowText = (task) => `${hhmm(task.start_time)}–${hhmm(task.end_time)}`;
-export const goalText = (task) => dur(toMin(task.end_time) - toMin(task.start_time));
+export const goalText = (task) => dur(taskGoal(task));
 
 export function TasksView() {
   const s = useStore();
   const [editing, setEditing] = useState(null); // null | 'new' | task
+  const [goals, setGoals] = useState(false);
   const list = Object.values(s.tasks).filter((x) => !x.deleted).sort((a, b) => a.name.localeCompare(b.name));
   const groups = [...s.areas.map((a) => ({ key: a.id, area: a, items: list.filter((x) => x.area_id === a.id) })),
     { key: 'none', area: null, items: list.filter((x) => !x.area_id || !areaOf(x.area_id)) }].filter((g) => g.items.length);
@@ -29,6 +30,7 @@ export function TasksView() {
       <div><h2 class="page-title">${t('tasks.title')}</h2><p class="page-sub">${t('tasks.sub')}</p></div>
       <button class="fab pop" onClick=${() => setEditing('new')} aria-label=${t('tasks.new')}><${Icon} name="plus" size=${26} /></button>
     </div>
+    <button class="btn soft small auto goals-btn" onClick=${() => setGoals(true)}><${Icon} name="alarm" size=${18} />${t('goals.title')}</button>
     ${!list.length ? html`<${Empty} icon="list-check" text=${t('tasks.empty')} />` : null}
     ${groups.map((g) => html`<section key=${g.key} class="rise">
       <h3 class="section-title">${g.area ? html`<span class="title-ic" style=${colorStyle(g.area.color)}><${Icon} name=${g.area.icon} size=${16} /></span>${areaName(g.area)}` : t('tasks.noArea')}
@@ -45,6 +47,7 @@ export function TasksView() {
         </button>`)}
       </div>
     </section>`)}
+    ${goals ? html`<${TimeGoals} onClose=${() => setGoals(false)} />` : null}
     ${editing && html`<${TaskEditor} task=${editing === 'new' ? null : editing} onClose=${() => setEditing(null)} />`}
   </div>`;
 }
@@ -57,9 +60,10 @@ export function TaskEditor({ task, onClose, onSaved }) {
     name: task.name, description: task.description || '', icon: task.icon, color: task.color, area_id: task.area_id || null,
     start_time: hhmm(task.start_time), end_time: hhmm(task.end_time), frequency: task.frequency, weekdays: task.weekdays || [],
     steps: (task.steps || []).map((x) => ({ title: x.title || '', description: x.description || '' })),
+    goal: task.goal_minutes || '',
   } : {
     name: '', description: '', icon: 'sparkles', color: PALETTE[0], area_id: s.areas[0] ? s.areas[0].id : null,
-    start_time: '09:00', end_time: '10:00', frequency: 'daily', weekdays: [1, 2, 3, 4, 5], steps: [],
+    start_time: '09:00', end_time: '10:00', frequency: 'daily', weekdays: [1, 2, 3, 4, 5], steps: [], goal: '',
   });
   const [busy, setBusy] = useState(false);
   const [sure, setSure] = useState(false);
@@ -82,7 +86,7 @@ export function TaskEditor({ task, onClose, onSaved }) {
       const row = await saveTask({
         ...(task ? { id: task.id } : {}),
         name: f.name.trim(), description: f.description.trim(), icon: f.icon, color: f.color, area_id: f.area_id,
-        start_time: f.start_time, end_time: f.end_time, frequency: f.frequency,
+        start_time: f.start_time, end_time: f.end_time, goal_minutes: Number(f.goal) > 0 ? Math.min(1440, Math.round(Number(f.goal))) : null, frequency: f.frequency,
         weekdays: f.frequency === 'daily' ? [] : f.weekdays,
         steps: f.steps.map((x) => ({ title: x.title.trim(), description: x.description.trim() })).filter((x) => x.title),
       });
@@ -131,7 +135,17 @@ export function TaskEditor({ task, onClose, onSaved }) {
           <span class="muted">–</span>
           <${TimeField} value=${f.end_time} label=${t('task.to')} onChange=${(v) => up({ end_time: v })} />
         </div>
-        <span class=${'field-hint' + (goal <= 0 ? ' bad' : '')}>${goal > 0 ? t('task.goal', { time: dur(goal) }) : t('task.badWindow')}</span>
+        <span class=${'field-hint' + (goal <= 0 ? ' bad' : '')}>${goal > 0 ? t('task.windowLen', { time: dur(goal) }) : t('task.badWindow')}</span>
+      </div>
+
+      <div class="field"><span class="field-label">${t('task.goalLabel')}</span>
+        <div class="stepper">
+          <button type="button" class="mini big" aria-label="-5" onClick=${() => up({ goal: Math.max(0, (Number(f.goal) || Math.max(goal, 0)) - 5) || '' })}>−5</button>
+          <label class="stepper-val"><input type="number" inputmode="numeric" min="1" max="1440" value=${f.goal} placeholder=${goal > 0 ? String(goal) : ''}
+            onInput=${(e) => up({ goal: e.target.value === '' ? '' : Math.max(0, Math.min(1440, Number(e.target.value))) })} /><span>min</span></label>
+          <button type="button" class="mini big" aria-label="+5" onClick=${() => up({ goal: Math.min(1440, (Number(f.goal) || Math.max(goal, 0)) + 5) })}>+5</button>
+        </div>
+        <span class="field-hint">${t('task.goalHint')}</span>
       </div>
 
       <div class="field"><span class="field-label">${t('task.frequency')}</span>
@@ -166,5 +180,46 @@ export function TaskEditor({ task, onClose, onSaved }) {
       ${task ? html`<button type="button" class=${'btn danger' + (sure ? ' sure' : '')} onClick=${remove} disabled=${busy}>
         <${Icon} name="trash" size=${18} />${sure ? t('tasks.deleteSure') : t('tasks.delete')}</button>` : null}
     </form>
+  <//>`;
+}
+
+// ---- Supervisor: how long should each task take? (also: cleaning one room) ----
+function TimeGoals({ onClose }) {
+  const s = useStore();
+  const ctl = useSheetControl();
+  const list = Object.values(s.tasks).filter((x) => !x.deleted).sort((a, b) => a.name.localeCompare(b.name));
+  const [vals, setVals] = useState(() => ({ ...Object.fromEntries(list.map((x) => [x.id, taskGoal(x)])), rooms: roomGoalMin() }));
+  const [busy, setBusy] = useState(false);
+  const set1 = (id, v) => setVals((x) => ({ ...x, [id]: v === '' ? '' : Math.max(0, Math.min(1440, Number(v))) }));
+  const bump = (id, d) => set1(id, Math.max(1, (Number(vals[id]) || 0) + d));
+  const changed = list.filter((x) => Number(vals[x.id]) > 0 && Number(vals[x.id]) !== taskGoal(x));
+  const roomChanged = Number(vals.rooms) > 0 && Number(vals.rooms) !== roomGoalMin();
+  const n = changed.length + (roomChanged ? 1 : 0);
+
+  async function save() {
+    setBusy(true);
+    try {
+      for (const x of changed) await saveTask({ id: x.id, goal_minutes: Math.round(Number(vals[x.id])) });
+      if (roomChanged) await setRoomGoal(Math.min(600, Math.round(Number(vals.rooms))));
+      toast(t('goals.saved'));
+      ctl.close();
+    } catch (ex) { toast(friendlyError(ex), 'bad'); }
+    setBusy(false);
+  }
+  const stepper = (id) => html`<div class="stepper small">
+    <button type="button" class="mini big" aria-label="-5" onClick=${() => bump(id, -5)}>−5</button>
+    <label class="stepper-val"><input type="number" inputmode="numeric" min="1" max="1440" value=${vals[id]} onInput=${(e) => set1(id, e.target.value)} /><span>min</span></label>
+    <button type="button" class="mini big" aria-label="+5" onClick=${() => bump(id, 5)}>+5</button>
+  </div>`;
+
+  return html`<${Sheet} title=${t('goals.title')} onClose=${onClose} control=${ctl}>
+    <p class="muted small-text">${t('goals.sub')}</p>
+    <div class="list tight">
+      <div class="goal-row"><${TaskBadge} icon="bed" color="#86E3CE" size=${42} />
+        <span class="goal-main"><b>${t('goals.rooms')}</b><small>${t('goals.roomsHint')}</small></span>${stepper('rooms')}</div>
+      ${list.map((x) => html`<div class="goal-row" key=${x.id}><${TaskBadge} icon=${x.icon} color=${x.color} size=${42} />
+        <span class="goal-main"><b>${x.name}</b><small>${windowText(x)}</small></span>${stepper(x.id)}</div>`)}
+    </div>
+    <button class="btn" disabled=${busy || !n} onClick=${save}><${Icon} name="check" size=${20} />${n ? t('goals.saveN', { n }) : t('team.save')}</button>
   <//>`;
 }

@@ -47,6 +47,8 @@ const tasks = [
   mk('Next-day room list', 'clipboard-list', '#CCABD8', 'a2', '16:00', '17:00', 'daily', [], [['Check tomorrow’s arrivals'], ['Send the list to the custodians']]),
 ];
 
+tasks[0].goal_minutes = 180; // (the supervisor can set a goal; tasks without one use their time window)
+
 const assignments = [], reports = [];
 const crew = ['d2', 'd3', 'd4'];
 const comments = ['All good.', 'Ran out of the neutral cleaner — please reorder.', '', 'The back door was locked, had to find the key.', ''];
@@ -89,6 +91,7 @@ const messages = [
 const dmKey = (a, b) => 'dm:' + [a, b].sort().join(':');
 
 // rooms to clean: Reception lists them, the supervisor hands them to a custodian
+const settings = { room_goal_minutes: '30' };
 const rooms = [];
 const invites = [];
 // meeting requests (day, time, topic) from the team to the supervisor
@@ -196,6 +199,8 @@ const demoApi = {
   async saveNotifPrefs() {},
   async savePushSubscription() {},
   async dropPushSubscription() {},
+  async loadSettings() { return { ...settings }; },
+  async setRoomGoal(minutes) { settings.room_goal_minutes = String(minutes); },
   async loadRoles() { return clone(roles); },
   async updateRole(id, patch) { Object.assign(roles.find((r) => r.id === id), patch); return clone(roles.find((r) => r.id === id)); },
   async loadAreas() { return clone(areas); },
@@ -303,7 +308,10 @@ const demoApi = {
   },
   async setRoomStatus(id, status) {
     const r = rooms.find((x) => x.id === id);
-    Object.assign(r, { status, done_at: status === 'done' ? new Date().toISOString() : null });
+    const was = r.status;
+    Object.assign(r, { status, done_at: status === 'done' ? new Date().toISOString() : null,
+      started_at: status === 'todo' ? null : status === 'doing' && was !== 'doing' ? new Date().toISOString() : r.started_at,
+      minutes_spent: status === 'done' && was === 'doing' && r.started_at ? Math.max(0, Math.round((Date.now() - Date.parse(r.started_at)) / 60000)) : null });
     return clone(r);
   },
   async deleteRoom(id) { const i = rooms.findIndex((r) => r.id === id); if (i >= 0) rooms.splice(i, 1); },

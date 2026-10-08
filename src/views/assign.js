@@ -6,10 +6,11 @@ import { isSupervisor, roleInfo } from '../roles.js';
 import { colorStyle } from '../color.js';
 import { startAssignment, saveSteps, finishAssignment, reopenAssignment, removeAssignment, editAssignment, planAssignments,
   ensureMonth, areaOf, areaName, activePeople } from '../data.js';
-import { hhmm, toMin, dur, goalMin, fmt, parseYmd, ymd, addDays, isoWeekday, appliesOn, monthKey, todayYmd } from '../time.js';
+import { hhmm, toMin, fromMin, dur, goalMin, taskGoal, fmt, parseYmd, ymd, addDays, isoWeekday, appliesOn, monthKey, todayYmd } from '../time.js';
 import { DateField, TimeField } from '../pickers.js';
 import { TaskEditor, freqText } from './tasks.js';
 import { DEPARTMENTS, ROLE_ORDER } from '../config.js';
+import { TimerSheet, LiveClock } from './timer.js';
 
 const STATUS_ICON = { todo: 'clock', doing: 'hourglass', done: 'circle-check' };
 
@@ -53,6 +54,7 @@ function DetailBody({ id, onClose }) {
   const area = areaOf(tk.area_id);
   const steps = tk.steps || [];
   const [finishing, setFinishing] = useState(false);
+  const [running, setRunning] = useState(false);
   const [editing, setEditing] = useState(false);
   const [sure, setSure] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -72,6 +74,7 @@ function DetailBody({ id, onClose }) {
   const date = parseYmd(a.day);
   const statusTxt = t('status.' + a.status);
   const over = report && report.minutes_spent > report.goal_minutes;
+  const goal = taskGoal(tk, a);
 
   return html`<${Sheet} title=${tk.name} kicker=${fmt(date, { weekday: 'long', day: 'numeric', month: 'long' })} onClose=${onClose} control=${ctl}>
     <div class="detail-top" style=${colorStyle(tk.color)}>
@@ -80,9 +83,15 @@ function DetailBody({ id, onClose }) {
         <span class=${'chip status-chip ' + a.status}><${Icon} name=${STATUS_ICON[a.status]} size=${15} />${statusTxt}</span>
         ${area ? html`<span class="chip tint" style=${colorStyle(area.color)}><${Icon} name=${area.icon} size=${15} />${areaName(area)}</span>` : null}
         <span class="chip"><${Icon} name="clock" size=${15} />${hhmm(a.start_time)}–${hhmm(a.end_time)}</span>
-        <span class="chip"><${Icon} name="alarm" size=${15} />${t('task.goal', { time: dur(goalMin(a)) })}</span>
+        <span class="chip"><${Icon} name="alarm" size=${15} />${t('task.goal', { time: dur(goal) })}</span>
       </div>
     </div>
+
+    ${a.status === 'doing' ? html`<button type="button" class=${'timer-card' + (mine ? '' : ' ro')} onClick=${() => mine && setRunning(true)}>
+      <span class="timer-card-ic"><${Icon} name="hourglass" size=${22} /></span>
+      <span class="timer-card-main"><b>${t('timer.inProgress')}</b><small>${t('timer.goal', { time: dur(goal) })}</small></span>
+      <${LiveClock} startedAt=${a.started_at} />
+    </button>` : null}
 
     ${who ? html`<div class="card slim"><${PersonLine} profile=${who} size=${44} /></div>` : null}
 
@@ -112,9 +121,12 @@ function DetailBody({ id, onClose }) {
     ${a.status === 'done' && !canSee ? html`<p class="muted center small-text">${t('status.doneBy', { name: who ? who.display_name : '' })}</p>` : null}
 
     ${finishing && mine ? html`<${FinishPanel} a=${a} tk=${tk} report=${report} onDone=${() => setFinishing(false)} />` : null}
+    ${running && mine && a.status === 'doing' ? html`<${TimerSheet} title=${tk.name} icon=${tk.icon} color=${tk.color} startedAt=${a.started_at} goal=${goal}
+      steps=${steps} stepsDone=${a.steps_done} onStep=${toggleStep} finishLabel=${t('act.finish')}
+      onFinish=${() => { setRunning(false); setFinishing(true); }} onClose=${() => setRunning(false)} />` : null}
 
     ${mine && !finishing ? html`<div class="stack-form">
-      ${a.status === 'todo' ? html`<button class="btn" disabled=${busy} onClick=${() => run(() => startAssignment(id))}>
+      ${a.status === 'todo' ? html`<button class="btn" disabled=${busy} onClick=${() => run(async () => { await startAssignment(id); setRunning(true); })}>
         <${Icon} name="arrow-badge-right" size=${20} />${t('act.start')}</button>` : null}
       ${a.status !== 'done' ? html`<button class=${'btn' + (a.status === 'todo' ? ' soft' : '')} disabled=${busy} onClick=${() => setFinishing(true)}>
         <${Icon} name="circle-check" size=${20} />${t('act.finish')}</button>` : null}
@@ -138,7 +150,7 @@ function DetailBody({ id, onClose }) {
 
 // ---- "Finish": how long did it take? (and the kind "what made it longer?" question) ----
 function FinishPanel({ a, tk, report, onDone }) {
-  const goal = goalMin(a);
+  const goal = taskGoal(tk, a);
   const start = () => {
     if (report) return report.minutes_spent;
     if (a.started_at) { const m = Math.round((Date.now() - Date.parse(a.started_at)) / 60000); if (m >= 1) return Math.min(m, 1440); }
@@ -213,7 +225,10 @@ export function AssignSheet({ day, edit, onClose }) {
 
   const pickTask = (tk) => {
     setTaskId(tk.id);
-    if (!touched) { setStart(hhmm(tk.start_time)); setEnd(hhmm(tk.end_time)); }
+    if (!touched) {
+      setStart(hhmm(tk.start_time));
+      setEnd(tk.goal_minutes ? fromMin(Math.min(1439, toMin(tk.start_time) + tk.goal_minutes)) : hhmm(tk.end_time));
+    }
   };
   const togglePerson = (id) => {
     if (edit) { setPeople([id]); return; }

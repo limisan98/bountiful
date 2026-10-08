@@ -11,23 +11,24 @@ const months = new Set();
 
 export function resetData() {
   months.clear();
-  set({ roles: {}, areas: [], tasks: {}, assignments: {}, reports: {}, messages: {}, chatOpen: null, person: null, rooms: {}, digests: {}, invites: {}, meetings: {} });
+  set({ roles: {}, areas: [], tasks: {}, assignments: {}, reports: {}, messages: {}, chatOpen: null, person: null, rooms: {}, digests: {}, invites: {}, meetings: {}, settings: {} });
 }
 
 // ---- loading ----
 export async function loadCore() {
   const me = state.profile;
-  const [roles, areas, tasks, rooms, digests, invites, meetings, recent] = await Promise.all([
+  const [roles, areas, tasks, rooms, digests, invites, meetings, recent, settings] = await Promise.all([
     api.loadRoles(), api.loadAreas(), api.loadTasks(), api.loadRooms(ymd(addDays(new Date(), -30))),
     isSupervisor(me) ? api.loadDigests() : [],
     departmentOf(me) === 'custodian' ? api.loadInvites(addDays(new Date(), -60).toISOString()) : [],
     api.loadMeetings(ymd(addDays(new Date(), -30))),
     inCrew(me) ? api.loadRecentMessages(300) : [],
+    api.loadSettings().catch(() => ({})),
   ]);
   const messages = {};
   recent.forEach((m) => { (messages[m.channel] = messages[m.channel] || { list: [], more: true, loaded: false }).list.push(m); });
   Object.values(messages).forEach((c) => c.list.reverse());
-  set({ roles: byId(roles), areas, tasks: byId(tasks), rooms: byId(rooms), digests: byId(digests), invites: byId(invites), meetings: byId(meetings), messages, chatSeen: loadSeen(messages) });
+  set({ roles: byId(roles), areas, tasks: byId(tasks), rooms: byId(rooms), digests: byId(digests), invites: byId(invites), meetings: byId(meetings), settings, messages, chatSeen: loadSeen(messages) });
   const now = new Date();
   await Promise.all([monthKey(now), monthKey(addMonths(now, -1)), monthKey(addMonths(now, 1))].map(ensureMonth));
 }
@@ -102,6 +103,12 @@ export async function archiveTask(id, fromDay) {
   const assignments = { ...state.assignments };
   (gone || []).forEach((g) => delete assignments[g.id]);
   set({ tasks: { ...state.tasks, [id]: row }, assignments });
+}
+// How long cleaning one room should take (minutes). The supervisor can change it.
+export const roomGoalMin = () => Number(state.settings.room_goal_minutes) || 30;
+export async function setRoomGoal(minutes) {
+  await api.setRoomGoal(minutes);
+  set({ settings: { ...state.settings, room_goal_minutes: String(minutes) } });
 }
 export async function saveRole(id, patch) {
   const row = await api.updateRole(id, patch);
