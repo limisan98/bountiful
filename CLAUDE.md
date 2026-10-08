@@ -35,7 +35,7 @@ Data flow: `src/api.js` (all Supabase calls, plus `subscribe` for Realtime) → 
 | Flags for the language menu | `assets/flags.js` |
 | All CSS | `assets/app.css` (one file; sections are commented) |
 | PWA (install + notification display) | `sw.js`, `manifest.webmanifest` |
-| Database scripts, in the order they were run | `supabase/001…009_*.sql` |
+| Database scripts, in the order they were run | `supabase/001…009_*.sql` (010 is written but not applied) |
 
 Screens (`src/views/`): `home.js` (tiles), `calendar.js` (day/week of assignments), `tasks.js` (task library, supervisor edits), `assign.js` (plan a task for someone), `chat.js` (chat list + conversations; mentions; long-press copy/delete; task invitations), `person.js` (profile card + "Send message"), `invites.js` (invitation card/sheet), `rooms.js` (rooms to clean), `reports.js` (automatic reports), `meetings.js`, `team.js` (people, allowlist, roles), `profile.js`, `notifications.js`, `auth.js` (sign in / create account).
 
@@ -65,10 +65,16 @@ Row Level Security on every table, column-level grants, SECURITY DEFINER functio
 
 ## Gotchas learned the hard way
 - Mobile dock shows `NAV` items with `dock:true`; `desk:true` items only appear in the desktop sidebar. Chat hides the dock under 1024px.
-- Notifications only fire while the app is open or backgrounded; real push to a closed phone needs a server (VAPID + edge function) — **not built**, and the UI says so.
+- Notifications only fire while the app is open or backgrounded; real push to a closed phone is NOT live yet (see "Work in progress").
 - `.pop` animation uses `transform`: don't combine with translate. A `<label>` can re-trigger button clicks: popovers call `stopPropagation` + `preventDefault`.
 - `colorStyle()` sets `--ink`, so don't put it on containers holding buttons.
 - Clear `#app` before first render (`root.textContent=''`) or the boot logo squeezes layouts.
 
-## Not done yet / ideas
-Password reset, keep-alive so the free Supabase project is not paused, real push notifications, shifts screen ("coming soon"), a UI to change the report time zone.
+## Work in progress (session paused on 2026-10-08, ~22:20 Berlin) — READ THIS FIRST
+**Real phone push notifications (app closed) — partly written, NOT live yet.** Why: a user's @mention did not reach a colleague because in-app notifications only fire while the app is open/backgrounded.
+Plan (design decided):
+- `supabase/010_push_notifications.sql` is WRITTEN (committed) but **NOT applied** to Supabase. It creates `push_config` (private secret + VAPID keys), `push_subscriptions`, RPCs `save_push_subscription` / `drop_push_subscription`, helper `push_wants` (reads the user's saved choices in `auth.users.raw_user_meta_data.notif`), `push_send` (pg_net HTTP call to the edge function) and triggers for: chat messages (mention / DM / general), assignments, rooms (new, assigned, edited, done), meetings, task invitations, automatic reports. Needs `pg_net` (created by the script; if it fails, enable it in Dashboard → Database → Extensions). Untested.
+- STILL TO DO: (1) write `supabase/functions/push/index.ts` (Deno; `npm:web-push@3.6.7`; GET returns `{publicKey}` and creates the VAPID key pair on first use and stores it in `push_config`; POST `{secret, users, key, params, url, tag}` sends to those users' `push_subscriptions`, translating `key` with the six-language `notify.*` texts from `src/locales/*.js`, using `params.title`/`params.body` for `dm`/`chat`; deletes dead subscriptions on 404/410). Deploy it with **verify_jwt OFF** through the Supabase dashboard (Edge Functions → new function) — the Supabase MCP tools in some sessions are connected to a DIFFERENT account (projects "muna"/"tactica"): never touch those; project here is `kmlvdgtxafcdbsosrsqx`. (2) client: after notification permission is granted, `pushManager.subscribe({userVisibleOnly:true, applicationServerKey})` using the public key from the function, then call RPC `save_push_subscription(endpoint, p256dh, auth, lang)` at every app start; call `drop_push_subscription` on sign-out; add `saveSub/dropSub` to `src/api.js`. (3) `sw.js` push handler already exists; make it skip showing an OS notification when an app window is visible (the app shows its own toast). (4) update the notification sheet text (`notif.note` still says the service is not switched on) and this file. (5) test with two real accounts/phones; on iPhone the app must be installed to the Home Screen.
+- The user's in-app notification choices only reach the database when they toggle a switch (saved to user metadata); untouched switches use the defaults in `src/notify.js` `TYPES`.
+
+**Other open ideas:** "who is assigned to which task" overview for the supervisor (rooms already have it, planned tasks show names in the calendar only); Team sheet could get a Message button; password reset; keep-alive so the free Supabase project is not paused; shifts screen ("coming soon"); UI to change the report time zone. The database currently holds NO planned tasks (only 4 rooms) as of today.
