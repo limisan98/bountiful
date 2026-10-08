@@ -95,6 +95,28 @@ const real = {
   async sendMessage(channel, body) { return ok(await sb.from('messages').insert({ channel, body }).select().single()); },
   async deleteMessage(id) { ok(await sb.from('messages').delete().eq('id', id)); },
 
+  // ---- automatic reports (supervisors) ----
+  async loadDigests() {
+    return ok(await sb.from('custodian_reports').select('*').order('period_end', { ascending: false }).order('created_at', { ascending: false }).limit(150));
+  },
+
+  // ---- task invitations between custodians ----
+  async loadInvites(since) { return ok(await sb.from('task_invites').select('*').gte('created_at', since)); },
+  async inviteToTask(assignmentId, to, note) {
+    const { data, error } = await sb.rpc('invite_to_task', { p_assignment: assignmentId, p_to: to, p_note: note || '' });
+    if (error) throw error;
+    const [i, m] = await Promise.all([sb.from('task_invites').select('*').eq('id', data).single(), sb.from('messages').select('*').eq('invite_id', data).single()]);
+    return { invite: ok(i), message: ok(m) };
+  },
+  async answerInvite(id, accept) {
+    const { data, error } = await sb.rpc('answer_invite', { p_id: id, p_accept: accept });
+    if (error) throw error;
+    const i = ok(await sb.from('task_invites').select('*').eq('id', id).single());
+    const a = ok(await sb.from('assignments').select('*').eq('id', i.assignment_id).maybeSingle());
+    return { result: data, invite: i, assignment: a };
+  },
+  async cancelInvite(id) { await rpc('cancel_invite', { p_id: id }); return ok(await sb.from('task_invites').select('*').eq('id', id).single()); },
+
   // ---- rooms to clean ----
   async loadRooms(from) { return ok(await sb.from('room_requests').select('*').gte('day', from).order('created_at')); },
   async addRooms(rows) { return ok(await sb.from('room_requests').insert(rows).select()); },
@@ -105,7 +127,7 @@ const real = {
   // ---- live updates: `handler(table, eventType, newRow, oldRow)` ----
   subscribe(handler) {
     const ch = sb.channel('bountiful-live');
-    ['profiles', 'roles', 'areas', 'tasks', 'assignments', 'assignment_reports', 'messages', 'room_requests'].forEach((table) => {
+    ['profiles', 'roles', 'areas', 'tasks', 'assignments', 'assignment_reports', 'messages', 'room_requests', 'custodian_reports', 'task_invites'].forEach((table) => {
       ch.on('postgres_changes', { event: '*', schema: 'public', table }, (p) => handler(table, p.eventType, p.new, p.old));
     });
     ch.subscribe();

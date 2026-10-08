@@ -2,7 +2,7 @@
 import { api } from './api.js';
 import { state, set } from './store.js';
 import { addMonths, monthKey, lastOfMonth, toMin, ymd, addDays } from './time.js';
-import { departmentOf } from './roles.js';
+import { departmentOf, isSupervisor } from './roles.js';
 import { t } from './i18n.js';
 import { notifyLive } from './notify.js';
 
@@ -11,13 +11,18 @@ const months = new Set();
 
 export function resetData() {
   months.clear();
-  set({ roles: {}, areas: [], tasks: {}, assignments: {}, reports: {}, messages: {}, rooms: {} });
+  set({ roles: {}, areas: [], tasks: {}, assignments: {}, reports: {}, messages: {}, rooms: {}, digests: {}, invites: {} });
 }
 
 // ---- loading ----
 export async function loadCore() {
-  const [roles, areas, tasks, rooms] = await Promise.all([api.loadRoles(), api.loadAreas(), api.loadTasks(), api.loadRooms(ymd(addDays(new Date(), -7)))]);
-  set({ roles: byId(roles), areas, tasks: byId(tasks), rooms: byId(rooms) });
+  const me = state.profile;
+  const [roles, areas, tasks, rooms, digests, invites] = await Promise.all([
+    api.loadRoles(), api.loadAreas(), api.loadTasks(), api.loadRooms(ymd(addDays(new Date(), -7))),
+    isSupervisor(me) ? api.loadDigests() : [],
+    departmentOf(me) === 'custodian' ? api.loadInvites(addDays(new Date(), -60).toISOString()) : [],
+  ]);
+  set({ roles: byId(roles), areas, tasks: byId(tasks), rooms: byId(rooms), digests: byId(digests), invites: byId(invites) });
   const now = new Date();
   await Promise.all([monthKey(now), monthKey(addMonths(now, -1)), monthKey(addMonths(now, 1))].map(ensureMonth));
 }
@@ -120,6 +125,23 @@ function dropMessage(id) {
   set({ messages: next });
 }
 
+// ---- task invitations (custodian to custodian, shown in the chat) ----
+const putInvite = (i) => set({ invites: { ...state.invites, [i.id]: i } });
+export async function sendInvite(assignmentId, to, note) {
+  const { invite, message } = await api.inviteToTask(assignmentId, to, note);
+  putInvite(invite);
+  const cur = chat(message.channel);
+  set({ messages: { ...state.messages, [message.channel]: { ...cur, list: mergeMsgs(cur.list, [message]) } } });
+}
+export async function answerInvite(id, accept) {
+  const r = await api.answerInvite(id, accept);
+  putInvite(r.invite);
+  if (r.assignment) putAssignment(r.assignment);
+  return r.result;
+}
+export async function cancelInvite(id) { putInvite(await api.cancelInvite(id)); }
+export const inviteFor = (m) => (m.invite_id ? state.invites[m.invite_id] : null);
+
 // ---- rooms to clean ----
 function putRooms(rows) { set({ rooms: { ...state.rooms, ...byId([].concat(rows)) } }); }
 export async function addRooms(rows) { putRooms(await api.addRooms(rows)); }
@@ -158,6 +180,14 @@ export function startLive() {
       const reports = { ...state.reports };
       if (del) delete reports[id]; else reports[id] = row;
       set({ reports });
+    } else if (table === 'custodian_reports') {
+      const digests = { ...state.digests };
+      if (del) delete digests[id]; else digests[id] = row;
+      set({ digests });
+    } else if (table === 'task_invites') {
+      const invites = { ...state.invites };
+      if (del) delete invites[id]; else invites[id] = row;
+      set({ invites });
     } else if (table === 'room_requests') {
       const rooms = { ...state.rooms };
       if (del) delete rooms[id]; else rooms[id] = row;

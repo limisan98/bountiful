@@ -13,6 +13,7 @@ import { ChatView } from './views/chat.js';
 import { TeamView } from './views/team.js';
 import { TasksView } from './views/tasks.js';
 import { RoomsView } from './views/rooms.js';
+import { ReportsView } from './views/reports.js';
 import { ProfileSheet } from './views/profile.js';
 
 // ---------------------------------------------------------------- pages
@@ -23,6 +24,7 @@ const NAV = [
   { route: 'chat', icon: 'messages', label: 'nav.chat', dock: true },
   { route: 'team', icon: 'id', label: 'nav.team', dock: true },
   { route: 'tasks', icon: 'list-check', label: 'nav.tasks', dock: true, only: 'sup' },
+  { route: 'reports', icon: 'clipboard-data', label: 'nav.reports', only: 'sup', desk: true }, // in the desktop sidebar; on phones reachable from Home
   { route: 'shifts', icon: 'clock', label: 'nav.shifts' }, // coming soon: reachable from Home, not in the dock yet
 ];
 
@@ -47,8 +49,9 @@ function Shell() {
   const active = NAV.some((n) => n.route === route && allowed(n)) ? route : 'home';
   const hour = new Date().getHours();
   const greet = hour < 12 ? 'greet.morning' : hour < 18 ? 'greet.afternoon' : 'greet.evening';
-  const dock = NAV.filter((n) => n.dock && allowed(n));
-  const idx = dock.findIndex((n) => n.route === active);
+  const dock = NAV.filter((n) => (n.dock || n.desk) && allowed(n));
+  const phoneDock = dock.filter((n) => !n.desk);
+  const idx = phoneDock.findIndex((n) => n.route === active);
 
   let view;
   if (active === 'home') view = html`<${HomeView} />`;
@@ -56,12 +59,13 @@ function Shell() {
   else if (active === 'team') view = html`<${TeamView} />`;
   else if (active === 'tasks') view = html`<${TasksView} />`;
   else if (active === 'rooms') view = html`<${RoomsView} />`;
+  else if (active === 'reports') view = html`<${ReportsView} />`;
   else if (active === 'shifts') view = html`<${ShiftsSoon} />`;
 
-  const nav = html`<nav class="dock" aria-label="Main" style=${`--n:${dock.length};--i:${Math.max(idx, 0)}`}>
+  const nav = html`<nav class="dock" aria-label="Main" style=${`--n:${phoneDock.length};--i:${Math.max(idx, 0)}`}>
     <div class="dock-brand"><${LogoMark} size=${40} /><b>Bountiful</b></div>
     <span class=${'dock-ind' + (idx < 0 ? ' none' : '')}></span>
-    ${dock.map((n) => html`<a key=${n.route} href=${'#/' + n.route} class=${active === n.route ? 'on' : ''}
+    ${dock.map((n) => html`<a key=${n.route} href=${'#/' + n.route} class=${(active === n.route ? 'on' : '') + (n.desk ? ' desk-only' : '')}
       aria-label=${t(n.label)} aria-current=${active === n.route ? 'page' : undefined}><${Icon} name=${n.icon} size=${26} /><span class="dock-label">${t(n.label)}</span></a>`)}
   </nav>`;
   const profile = s.sheet === 'profile' ? html`<${ProfileSheet} onClose=${() => set({ sheet: null })} />` : null;
@@ -95,7 +99,7 @@ function Paused() {
   </div></div>`;
 }
 
-function Splash() { return html`<div class="boot"><div class="boot-logo"></div></div>`; }
+function Splash() { return html`<div class="boot"><img class="boot-logo" src="assets/logo/logo.svg" alt=""></div>`; }
 
 function DemoBanner() {
   const roles = [['custodian_supervisor', 'custodian_supervisor'], ['custodian', 'custodian'], ['receptionist', 'receptionist']];
@@ -147,7 +151,9 @@ async function boot() {
   initLang();
   // no pinch-zoom on iPhones either (the page itself is already built to fit every screen)
   document.addEventListener('gesturestart', (e) => e.preventDefault());
-  render(html`<${App} />`, document.getElementById('app'));
+  const root = document.getElementById('app');
+  root.textContent = ''; // remove the loading logo from index.html before the app draws itself
+  render(html`<${App} />`, root);
 
   const demoRole = new URLSearchParams(location.search).get('demo');
   if (demoRole) {

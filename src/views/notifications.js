@@ -21,6 +21,7 @@ export function NotificationsSheet({ onClose }) {
   const [st, setSt] = useState(status);
   const sup = isSupervisor(state.profile);
   const rec = departmentOf(state.profile) === 'reception';
+  const cust = departmentOf(state.profile) === 'custodian' && !sup;
   const areas = useStore().areas;
 
   async function allow() {
@@ -67,7 +68,7 @@ export function NotificationsSheet({ onClose }) {
     ${st === 'on' ? html`<button class="btn soft" onClick=${test}><${Icon} name="send" size=${18} />${t('notif.test')}</button>` : null}
 
     <div class="field"><span class="field-label">${t('notif.types')}</span>
-      <div class="list tight">${TYPES.filter((x) => !x.only).map(row)}</div>
+      <div class="list tight">${TYPES.filter((x) => !x.only || (x.only === 'custodian' && cust)).map(row)}</div>
     </div>
     ${sup ? html`<div class="field"><span class="field-label">${t('notif.supTitle')}</span>
       <div class="list tight">${TYPES.filter((x) => x.only === 'sup').map(row)}</div>

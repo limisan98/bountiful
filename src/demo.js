@@ -88,6 +88,7 @@ const messages = [
 
 // rooms to clean: Reception lists them, the supervisor hands them to a custodian
 const rooms = [];
+const invites = [];
 {
   const mkRoom = (day, room, extra = {}) => rooms.push({ id: uid(), day: ymd(addDays(now(), day)), room, note: '', status: 'todo', requested_by: 'd5', assignee: null, assigned_by: null, done_at: null, created_at: iso(day - 1, 16, 30), ...extra });
   mkRoom(0, '4', { assignee: 'd3', assigned_by: 'd1', status: 'done', done_at: iso(0, 11, 20) });
@@ -98,6 +99,59 @@ const rooms = [];
   mkRoom(1, '5', { requested_by: 'd6', note: 'Extra bed please' });
   mkRoom(1, '9', { requested_by: 'd6' });
 }
+// task invitations between custodians (they also appear as messages in the custodians' chat)
+{
+  const mkAsg = (taskIdx, off, who) => {
+    const tk = tasks[taskIdx], d = addDays(now(), off);
+    const a = { id: uid(), task_id: tk.id, assignee: who, day: ymd(d), start_time: tk.start_time, end_time: tk.end_time, note: '', status: 'todo', steps_done: [], started_at: null, completed_at: null, created_by: 'd1', created_at: iso(-3, 9) };
+    assignments.push(a); return a;
+  };
+  const mkInv = (a, from, to, status, note, hoursAgo) => {
+    const inv = { id: uid(), assignment_id: a.id, from_user: from, to_user: to, note, status, created_at: iso(0, 9 - hoursAgo), answered_at: status === 'pending' ? null : iso(0, 10) };
+    invites.push(inv);
+    messages.push({ id: uid(), channel: 'custodian', sender: from, body: note || tasks.find((x) => x.id === a.task_id).name, invite_id: inv.id, created_at: inv.created_at });
+    return inv;
+  };
+  mkInv(mkAsg(3, 2, 'd4'), 'd4', 'd2', 'pending', 'Dentist appointment that day, could you take this one?', 2);
+  const acc = mkAsg(4, 3, 'd4'); acc.assignee = 'd4'; mkInv(acc, 'd3', 'd4', 'accepted', '', 5);
+  mkInv(mkAsg(3, 3, 'd3'), 'd2', 'd3', 'declined', 'Could you swap with me?', 6);
+  mkInv(mkAsg(2, 4, 'd2'), 'd2', 'd4', 'pending', '', 1);
+}
+
+// automatic reports: the same numbers the database would write (see supabase/005_automatic_reports.sql)
+const digests = [];
+function summarize(pid, from, to, detail) {
+  const tkOf = (a) => tasks.find((x) => x.id === a.task_id);
+  const mine = assignments.filter((a) => a.assignee === pid && a.day >= from && a.day <= to);
+  const done = mine.filter((a) => a.status === 'done');
+  const rep = (a) => reports.find((r) => r.assignment_id === a.id) || {};
+  const byTask = {};
+  done.forEach((a) => { const n = tkOf(a).name; const b = (byTask[n] = byTask[n] || { task: n, count: 0, minutes: 0 }); b.count += 1; b.minutes += rep(a).minutes_spent || 0; });
+  return {
+    planned: mine.length, done: done.length, minutes: done.reduce((s, a) => s + (rep(a).minutes_spent || 0), 0),
+    over: done.filter((a) => rep(a).minutes_spent > rep(a).goal_minutes).length,
+    tasks: Object.values(byTask),
+    items: done.filter((a) => detail || rep(a).comment || rep(a).delay_reason)
+      .map((a) => ({ day: a.day, task: tkOf(a).name, minutes: rep(a).minutes_spent, goal: rep(a).goal_minutes, comment: rep(a).comment || '', delay: rep(a).delay_reason || '' })),
+    open: detail ? mine.filter((a) => a.status !== 'done').map((a) => ({ day: a.day, task: tkOf(a).name })) : [],
+    rooms: rooms.filter((r) => r.assignee === pid && r.status === 'done' && r.day >= from && r.day <= to).map((r) => ({ day: r.day, room: r.room })),
+  };
+}
+{
+  const put = (kind, from, to, pid, hours = 23) => {
+    const sm = summarize(pid, from, to, kind === 'day');
+    if (sm.planned || sm.rooms.length) digests.push({ id: uid(), kind, period_start: from, period_end: to, custodian: pid, summary: sm, created_at: iso(0, 0) });
+  };
+  ['d2', 'd3', 'd4'].forEach((pid) => {
+    [-1, -2, -3].forEach((o) => put('day', ymd(addDays(now(), o)), ymd(addDays(now(), o)), pid));
+    // (in the real app these close on Saturdays; the preview just ends them yesterday so there is something to read)
+    const end = ymd(addDays(now(), -1));
+    put('week', ymd(addDays(now(), -7)), end, pid);
+    put('month', ymd(addDays(now(), -28)), end, pid);
+    put('quarter', ymd(addDays(now(), -91)), end, pid);
+  });
+}
+
 let handler = null;
 let sentHello = false;
 const me = () => people.find((p) => p.id === state.profile.id);
@@ -170,6 +224,31 @@ const demoApi = {
     const i = reports.findIndex((r) => r.assignment_id === id); if (i >= 0) reports.splice(i, 1);
     return clone(fresh(id));
   },
+  async loadDigests() { return isSup() ? clone(digests.sort((a, b) => b.period_end.localeCompare(a.period_end))) : []; },
+  async loadInvites() { return clone(invites); },
+  async inviteToTask(assignmentId, to, note) {
+    const a = assignments.find((x) => x.id === assignmentId);
+    const inv = { id: uid(), assignment_id: assignmentId, from_user: state.profile.id, to_user: to, note, status: 'pending', created_at: new Date().toISOString(), answered_at: null };
+    invites.push(inv);
+    const message = { id: uid(), channel: 'custodian', sender: state.profile.id, body: note || tasks.find((x) => x.id === a.task_id).name, invite_id: inv.id, created_at: inv.created_at };
+    messages.push(message);
+    // the invited colleague answers after a moment, to show how live updates look
+    if (handler) setTimeout(() => {
+      if (inv.status !== 'pending') return;
+      Object.assign(inv, { status: 'accepted', answered_at: new Date().toISOString() }); a.assignee = to;
+      handler('task_invites', 'UPDATE', clone(inv), null); handler('assignments', 'UPDATE', clone(a), null);
+    }, 4000);
+    return clone({ invite: inv, message });
+  },
+  async answerInvite(id, accept) {
+    const inv = invites.find((i) => i.id === id), a = assignments.find((x) => x.id === inv.assignment_id);
+    let result = accept ? 'accepted' : 'declined';
+    if (accept && (a.assignee !== inv.from_user || a.status !== 'todo')) result = 'unavailable';
+    inv.status = result === 'unavailable' ? 'canceled' : result; inv.answered_at = new Date().toISOString();
+    if (result === 'accepted') a.assignee = inv.to_user;
+    return clone({ result, invite: inv, assignment: a });
+  },
+  async cancelInvite(id) { const inv = invites.find((i) => i.id === id); inv.status = 'canceled'; inv.answered_at = new Date().toISOString(); return clone(inv); },
   async loadRooms(from) {
     const mineOnly = !isSup() && dept() !== 'reception';
     return clone(rooms.filter((r) => r.day >= from && (!mineOnly || r.assignee === state.profile.id)));

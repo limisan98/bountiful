@@ -3,8 +3,9 @@ import { useStore, toast } from '../store.js';
 import { t, friendlyError } from '../i18n.js';
 import { Icon, Avatar, Segmented, RoleChip } from '../ui.js';
 import { roleInfo, isSupervisor } from '../roles.js';
-import { loadMessages, sendMessage, removeMessage, myChannels } from '../data.js';
+import { loadMessages, sendMessage, removeMessage, myChannels, inviteFor } from '../data.js';
 import { mentionable, mentionTrigger, matchPeople, splitMentions, mentionsMe } from '../mentions.js';
+import { InviteCard, InviteSheet, canInvite } from './invites.js';
 import { ymd, todayYmd, addDays, fmtTimeOfDay, fmt } from '../time.js';
 
 function dayLabel(iso) {
@@ -25,6 +26,7 @@ export function ChatView() {
   const [text, setText] = useState('');
   const [sel, setSel] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [inviting, setInviting] = useState(false);
   const [caret, setCaret] = useState(0);
   const [hi, setHi] = useState(0);
   const [closedAt, setClosedAt] = useState(-1);
@@ -150,12 +152,14 @@ export function ChatView() {
           <${RoleChip} role=${p.role} small />
         </button>`)}
       </div>` : null}
+      ${canInvite(me) && channel !== 'all' ? html`<button class="at-btn swap" type="button" aria-label=${t('invite.sheetTitle')} onPointerDown=${(e) => e.preventDefault()} onClick=${() => setInviting(true)}><${Icon} name="replace" size=${20} /></button>` : null}
       <button class="at-btn" type="button" aria-label=${t('chat.mention')} onPointerDown=${(e) => e.preventDefault()} onClick=${typeAt}>@</button>
       <textarea ref=${boxRef} rows="1" value=${text} maxlength="2000" placeholder=${t('chat.placeholder')} aria-label=${t('chat.placeholder')}
         onInput=${(e) => { setText(e.target.value); setCaret(e.target.selectionStart); setClosedAt(-1); grow(); }} onKeyDown=${onKey}
         onKeyUp=${track} onClick=${track} onSelect=${track}></textarea>
       <button class="send" type="submit" aria-label=${t('chat.send')} disabled=${!text.trim() || busy}><${Icon} name="send" size=${22} /></button>
     </form>
+    ${inviting ? html`<${InviteSheet} onClose=${() => setInviting(false)} />` : null}
   </div>`;
 }
 
@@ -171,7 +175,8 @@ function Bubble({ m, first, mine, canDelete, selected, onSelect }) {
   };
   const copy = async () => { try { await navigator.clipboard.writeText(m.body); toast(t('team.copied')); } catch (_) { /* ignore */ } };
 
-  const pinged = !mine && mentionsMe(m.body);
+  const inv = inviteFor(m);
+  const pinged = !mine && !inv && mentionsMe(m.body);
   return html`<div class=${'msg ' + (mine ? 'mine' : 'theirs') + (first ? ' first' : '') + (pinged ? ' pinged' : '')}>
     ${!mine ? html`<span class="msg-av">${first ? html`<${Avatar} profile=${who} name=${who ? '' : '?'} size=${38} />` : null}</span>` : null}
     <div class="msg-col">
@@ -179,11 +184,11 @@ function Bubble({ m, first, mine, canDelete, selected, onSelect }) {
         <b style=${`color:${r.ink}`}>${who ? who.display_name : t('chat.former')}</b>
         ${who ? html`<${RoleChip} role=${who.role} small />` : null}
       </div>` : null}
-      <button class="bubble" onClick=${onSelect} aria-expanded=${selected}>
+      ${inv ? html`<${InviteCard} inv=${inv} m=${m} mine=${mine} />` : html`<button class="bubble" onClick=${onSelect} aria-expanded=${selected}>
         <span class="bubble-text">${splitMentions(m.body).map((x) => x.who
           ? html`<span class=${'mention' + (x.who.id === s.profile.id ? ' me' : '')}>${x.text}</span>` : x.text)}</span>
         <time>${fmtTimeOfDay(m.created_at)}</time>
-      </button>
+      </button>`}
       ${selected ? html`<div class="msg-actions pop">
         <button class="pick" onClick=${copy}><${Icon} name="copy" size=${15} />${t('team.copy')}</button>
         ${canDelete ? html`<button class=${'pick danger' + (sure ? ' sure' : '')} onClick=${del}><${Icon} name="trash" size=${15} />${sure ? t('team.removeSure') : t('act.remove')}</button>` : null}

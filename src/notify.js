@@ -16,7 +16,9 @@ export const TYPES = [
   { key: 'assigned', icon: 'clipboard-list', def: true },
   { key: 'reminder', icon: 'alarm', def: true },
   { key: 'done', icon: 'circle-check', def: true, sections: true },
+  { key: 'invites', icon: 'replace', def: true, only: 'custodian' },
   { key: 'chat', icon: 'messages', def: false },
+  { key: 'reports', icon: 'clipboard-data', def: true, only: 'sup' },
   { key: 'rooms', icon: 'bed', def: true, only: 'sup' },
   { key: 'roomsDone', icon: 'bed', def: true, only: 'reception' },
   { key: 'started', icon: 'player-play', def: false, only: 'sup' },
@@ -72,6 +74,11 @@ export function notifyLive(table, type, row) {
       if (type === 'INSERT') show(t('notify.assigned'), `${tname} · ${when(row)}`, '#/home');
       else if (prev && (prev.day !== row.day || prev.start_time !== row.start_time || prev.end_time !== row.end_time)) show(t('notify.changed'), `${tname} · ${when(row)}`, '#/home');
     }
+    // a task handed over to me by a colleague (through an invitation I accepted) is not news
+    if (type === 'UPDATE' && prev && prev.assignee !== me.id && row.assignee === me.id && p.assigned
+        && !Object.values(state.invites).some((i) => i.assignment_id === row.id && i.to_user === me.id)) {
+      show(t('notify.assigned'), `${tname} · ${when(row)}`, '#/home');
+    }
     if (type === 'UPDATE' && prev && prev.status !== row.status && row.assignee !== me.id) {
       const name = nameOf(row.assignee);
       if (row.status === 'done' && p.done) {
@@ -80,6 +87,22 @@ export function notifyLive(table, type, row) {
           show(t('notify.done', { name }), [tname, areaName(areaOf(area))].filter(Boolean).join(' · '), '#/calendar');
         }
       } else if (row.status === 'doing' && sup && p.started) show(t('notify.started', { name }), tname, '#/calendar');
+    }
+    return;
+  }
+
+  if (table === 'custodian_reports') {
+    if (type === 'INSERT' && sup && p.reports) show(t('notify.report.' + row.kind, { name: nameOf(row.custodian) }), '', '#/reports', 'report-' + row.kind);
+    return;
+  }
+
+  if (table === 'task_invites') {
+    const prev = state.invites[row.id];
+    const tk = state.tasks[(state.assignments[row.assignment_id] || {}).task_id];
+    if (!p.invites) return;
+    if (type === 'INSERT' && row.to_user === me.id) show(t('notify.invite', { name: nameOf(row.from_user) }), tk ? tk.name : '', '#/chat', 'invite');
+    else if (type === 'UPDATE' && prev && prev.status === 'pending' && row.from_user === me.id && (row.status === 'accepted' || row.status === 'declined')) {
+      show(t('notify.invite.' + row.status, { name: nameOf(row.to_user) }), tk ? tk.name : '', '#/chat', 'invite-answer');
     }
     return;
   }
