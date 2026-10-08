@@ -49,6 +49,7 @@ export function AuthScreen() {
       <select aria-label="Language" value=${s.lang} onChange=${(e) => setLang(e.target.value)}>
         ${LANGS.map((l) => html`<option value=${l.code}>${l.name}</option>`)}
       </select>
+      <${Icon} name="caret-down" size=${14} class="select-caret" />
     </div>
 
     <div class="auth-card">
