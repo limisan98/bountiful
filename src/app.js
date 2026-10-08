@@ -4,24 +4,25 @@ import { state, set, useStore } from './store.js';
 import { initLang, setLang, t } from './i18n.js';
 import { Icon, Avatar, Toast, ComingSoon } from './ui.js';
 import { LogoMark } from './logo.js';
+import { isSupervisor, roleInfo } from './roles.js';
+import { loadCore, startLive, stopLive, resetData } from './data.js';
 import { AuthScreen } from './views/auth.js';
 import { HomeView } from './views/home.js';
-import { PeopleView } from './views/people.js';
+import { CalendarView } from './views/calendar.js';
+import { ChatView } from './views/chat.js';
+import { TeamView } from './views/team.js';
+import { TasksView } from './views/tasks.js';
 import { ProfileSheet } from './views/profile.js';
 
 // ---------------------------------------------------------------- pages
 const NAV = [
-  { route: 'home', icon: 'home', label: 'nav.home' },
-  { route: 'calendar', icon: 'calendar-event', label: 'nav.calendar' },
-  { route: 'chat', icon: 'messages', label: 'nav.chat' },
-  { route: 'shifts', icon: 'clock', label: 'nav.shifts' },
-  { route: 'people', icon: 'id', label: 'nav.people', only: 'supervisor' },
+  { route: 'home', icon: 'home', label: 'nav.home', dock: true },
+  { route: 'calendar', icon: 'calendar-event', label: 'nav.calendar', dock: true },
+  { route: 'chat', icon: 'messages', label: 'nav.chat', dock: true },
+  { route: 'team', icon: 'id', label: 'nav.team', dock: true },
+  { route: 'tasks', icon: 'list-check', label: 'nav.tasks', dock: true, only: 'sup' },
+  { route: 'shifts', icon: 'clock', label: 'nav.shifts' }, // coming soon: reachable from Home, not in the dock yet
 ];
-const SOON = {
-  calendar: { icon: 'calendar-event', color: '#6D4AFF' },
-  chat: { icon: 'messages', color: '#F2655B' },
-  shifts: { icon: 'clock', color: '#FFC83D' },
-};
 
 function currentRoute() {
   const r = location.hash.replace(/^#\/?/, '') || 'home';
@@ -31,6 +32,7 @@ function currentRoute() {
 function Shell() {
   const s = useStore();
   const me = s.profile;
+  const sup = isSupervisor(me);
   const [route, setRoute] = useState(currentRoute());
 
   useEffect(() => {
@@ -39,14 +41,23 @@ function Shell() {
     return () => removeEventListener('hashchange', onHash);
   }, []);
 
-  const active = route === 'people' && me.role !== 'supervisor' ? 'home' : route;
+  const allowed = (n) => !n.only || sup;
+  const active = NAV.some((n) => n.route === route && allowed(n)) ? route : 'home';
   const hour = new Date().getHours();
   const greet = hour < 12 ? 'greet.morning' : hour < 18 ? 'greet.afternoon' : 'greet.evening';
+  const dock = NAV.filter((n) => n.dock && allowed(n));
+  const idx = dock.findIndex((n) => n.route === active);
 
   let view;
   if (active === 'home') view = html`<${HomeView} />`;
-  else if (active === 'people') view = html`<${PeopleView} />`;
-  else view = html`<${ComingSoon} icon=${SOON[active].icon} color=${SOON[active].color} title=${t('nav.' + active)} />`;
+  else if (active === 'calendar') view = html`<${CalendarView} />`;
+  else if (active === 'team') view = html`<${TeamView} />`;
+  else if (active === 'tasks') view = html`<${TasksView} />`;
+  else if (active === 'shifts') view = html`<${ShiftsSoon} />`;
+
+  if (active === 'chat') {
+    return html`<div class="shell chat-shell"><${ChatView} />${s.sheet === 'profile' ? html`<${ProfileSheet} onClose=${() => set({ sheet: null })} />` : null}</div>`;
+  }
 
   return html`<div class="shell">
     <header class="topbar">
@@ -55,14 +66,19 @@ function Shell() {
         <${Avatar} profile=${me} size=${52} />
       </button>
     </header>
-    <main class="screen">${view}</main>
-    <nav class="dock" aria-label="Main">
-      ${NAV.filter((n) => !n.only || n.only === me.role).map((n) => html`<a key=${n.route} href=${'#/' + n.route}
-        class=${active === n.route ? 'on' : ''} aria-label=${t(n.label)} aria-current=${active === n.route ? 'page' : undefined}>
-        <${Icon} name=${n.icon} size=${26} /></a>`)}
+    <main class="screen" key=${active}>${view}</main>
+    <nav class="dock" aria-label="Main" style=${`--n:${dock.length};--i:${Math.max(idx, 0)}`}>
+      <span class=${'dock-ind' + (idx < 0 ? ' none' : '')}></span>
+      ${dock.map((n) => html`<a key=${n.route} href=${'#/' + n.route} class=${active === n.route ? 'on' : ''}
+        aria-label=${t(n.label)} aria-current=${active === n.route ? 'page' : undefined}><${Icon} name=${n.icon} size=${26} /></a>`)}
     </nav>
-    ${s.sheet === 'profile' && html`<${ProfileSheet} onClose=${() => set({ sheet: null })} />`}
+    ${s.sheet === 'profile' ? html`<${ProfileSheet} onClose=${() => set({ sheet: null })} />` : null}
   </div>`;
+}
+
+function ShiftsSoon() {
+  return html`<div class="stack"><a class="back-link" href="#/home"><${Icon} name="caret-left" size=${18} />${t('nav.home')}</a>
+    <${ComingSoon} icon="clock" color="#FFDD94" title=${t('nav.shifts')} /></div>`;
 }
 
 function Paused() {
@@ -75,9 +91,9 @@ function Paused() {
 function Splash() { return html`<div class="boot"><div class="boot-logo"></div></div>`; }
 
 function DemoBanner() {
-  const roles = [['supervisor', 'role.supervisor'], ['custodian', 'role.custodian'], ['receptionist', 'role.receptionist']];
+  const roles = [['custodian_supervisor', 'custodian_supervisor'], ['custodian', 'custodian'], ['reception_supervisor', 'reception_supervisor'], ['receptionist', 'receptionist']];
   return html`<div class="demo-banner"><span>${t('demo.banner')}</span>
-    ${roles.map(([r, k]) => html`<a href=${'?demo=' + r} class=${state.profile && state.profile.role === r ? 'on' : ''}>${t(k)}</a>`)}
+    ${roles.map(([r]) => html`<a href=${'?demo=' + r} class=${state.profile && state.profile.role === r ? 'on' : ''}>${roleInfo(r).name}</a>`)}
   </div>`;
 }
 
@@ -88,56 +104,32 @@ function App() {
   else if (!s.session) body = html`<${AuthScreen} />`;
   else if (s.profile.active === false) body = html`<${Paused} />`;
   else body = html`<${Shell} />`;
-  return html`${s.demo && html`<${DemoBanner} />`}${body}<${Toast} toast=${s.toast} />`;
+  return html`${s.demo ? html`<${DemoBanner} />` : null}${body}<${Toast} toast=${s.toast} />`;
 }
 
 // ---------------------------------------------------------------- login lifecycle
-let channel = null;
-
-function startRealtime() {
-  if (channel) return;
-  channel = sb.channel('bountiful-profiles')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, (p) => {
-      if (p.eventType === 'DELETE') {
-        const copy = { ...state.profiles };
-        delete copy[p.old.id];
-        set({ profiles: copy });
-        return;
-      }
-      const row = p.new;
-      if (!row || !row.id) return;
-      const patch = { profiles: { ...state.profiles, [row.id]: row } };
-      if (state.profile && state.profile.id === row.id) patch.profile = row;
-      set(patch);
-    })
-    .subscribe();
-}
-
-function stopRealtime() {
-  if (channel) { sb.removeChannel(channel); channel = null; }
-}
-
 async function applySession(session) {
   if (!session) {
-    stopRealtime();
+    stopLive();
+    resetData();
     set({ session: null, profile: null, profiles: {}, sheet: null });
     return;
   }
   try {
     const all = await api.loadProfiles();
     const map = Object.fromEntries(all.map((p) => [p.id, p]));
-    let me = map[session.user.id];
+    const me = map[session.user.id];
     if (!me) { await sb.auth.signOut(); return; }
 
-    // A brand-new account keeps the language chosen on the login screen
-    const isNew = me.created_at ? Date.now() - Date.parse(me.created_at) < 120000 : false;
-    if (isNew && me.language !== state.lang) {
-      try { me = await api.updateMyProfile({ language: state.lang }); map[me.id] = me; } catch (_) { /* ignore */ }
-    } else if (me.language && me.language !== state.lang) {
-      setLang(me.language);
-    }
+    // my language is kept with my login (so it follows me to every device)
+    const saved = session.user.user_metadata && session.user.user_metadata.lang;
+    if (saved && saved !== state.lang) setLang(saved);
+
     set({ session, profile: me, profiles: map });
-    startRealtime();
+    if (me.active !== false) {
+      await loadCore().catch((e) => console.error(e));
+      startLive();
+    }
   } catch (e) {
     console.error(e);
     set({ session: null, profile: null });
@@ -151,7 +143,7 @@ async function boot() {
   const demoRole = new URLSearchParams(location.search).get('demo');
   if (demoRole) {
     const { startDemo } = await import('./demo.js');
-    startDemo(demoRole);
+    await startDemo(demoRole);
     return;
   }
 

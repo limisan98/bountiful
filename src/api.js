@@ -4,40 +4,34 @@ import { state } from './store.js';
 // The connection to Supabase (the database). `supabase` comes from assets/vendor/supabase.js
 export const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+const ok = ({ data, error }) => { if (error) throw error; return data; };
+const rpc = async (name, args) => { const { error } = await sb.rpc(name, args); if (error) throw error; };
+
+// After a "safe door" (rpc) runs, read the task and its report back so the screen can update.
+async function fresh(id) {
+  const [a, r] = await Promise.all([
+    sb.from('assignments').select('*').eq('id', id).single(),
+    sb.from('assignment_reports').select('*').eq('assignment_id', id).maybeSingle(),
+  ]);
+  return { assignment: ok(a), report: ok(r) };
+}
+
 // Every call to the database goes through here, so there is one place to look.
+// (demo.js has a pretend copy of all of these, used by the ?demo= previews.)
 const real = {
-  async listAllowlist() {
-    const { data, error } = await sb.from('allowlist').select('*').order('created_at');
-    if (error) throw error;
-    return data;
-  },
-  async addPerson({ email, full_name, role }) {
-    const { error } = await sb.from('allowlist').insert({ email, full_name, role });
-    if (error) throw error;
-  },
-  async updateInvite(email, patch) {
-    const { error } = await sb.from('allowlist').update(patch).eq('email', email);
-    if (error) throw error;
-  },
-  async removeInvite(email) {
-    const { error } = await sb.from('allowlist').delete().eq('email', email).is('claimed_by', null);
-    if (error) throw error;
-  },
-  async adminUpdateMember(id, role, active) {
-    const { error } = await sb.rpc('admin_update_member', { p_id: id, p_role: role, p_active: active });
-    if (error) throw error;
-  },
-  async loadProfiles() {
-    const { data, error } = await sb.from('profiles').select('id,email,display_name,avatar_url,role,language,active');
-    if (error) throw error;
-    return data;
-  },
+  // ---- invitations (supervisors) ----
+  async listAllowlist() { return ok(await sb.from('allowlist').select('*').order('created_at')); },
+  async addPerson({ email, full_name, role }) { ok(await sb.from('allowlist').insert({ email, full_name, role })); },
+  async updateInvite(email, patch) { ok(await sb.from('allowlist').update(patch).eq('email', email)); },
+  async removeInvite(email) { ok(await sb.from('allowlist').delete().eq('email', email).is('claimed_by', null)); },
+  async adminUpdateMember(id, role, active) { await rpc('admin_update_member', { p_id: id, p_role: role, p_active: active }); },
+
+  // ---- people and roles ----
+  async loadProfiles() { return ok(await sb.from('profiles').select('id,display_name,avatar_url,role,active,created_at')); },
   async updateMyProfile(patch) {
-    const { data, error } = await sb.from('profiles').update(patch).eq('id', state.session.user.id).select().single();
-    if (error) throw error;
-    return data;
+    return ok(await sb.from('profiles').update(patch).eq('id', state.session.user.id)
+      .select('id,display_name,avatar_url,role,active,created_at').single());
   },
-  // Uploads the (already shrunk) photo and removes older ones. Returns the public web address.
   async uploadAvatar(blob) {
     const uid = state.session.user.id;
     const ext = blob.type === 'image/webp' ? 'webp' : 'jpg';
@@ -52,9 +46,62 @@ const real = {
     }
     return data.publicUrl;
   },
-  async changePassword(password) {
-    const { error } = await sb.auth.updateUser({ password });
-    if (error) throw error;
+  async changePassword(password) { ok(await sb.auth.updateUser({ password })); },
+  async saveLanguage(lang) { ok(await sb.auth.updateUser({ data: { lang } })); },
+  async loadRoles() { return ok(await sb.from('roles').select('*').order('sort')); },
+  async updateRole(id, patch) { return ok(await sb.from('roles').update(patch).eq('id', id).select().single()); },
+
+  // ---- areas and tasks ----
+  async loadAreas() { return ok(await sb.from('areas').select('*').order('sort')); },
+  async loadTasks() { return ok(await sb.from('tasks').select('*').order('created_at')); },
+  async saveTask(task) {
+    const { id, ...rest } = task;
+    if (id) return ok(await sb.from('tasks').update(rest).eq('id', id).select().single());
+    return ok(await sb.from('tasks').insert(rest).select().single());
+  },
+
+  // ---- assignments ----
+  async loadAssignments(from, to) { return ok(await sb.from('assignments').select('*').gte('day', from).lte('day', to).order('start_time')); },
+  async loadReports(from, to) {
+    const rows = ok(await sb.from('assignment_reports').select('*, assignments!inner(day)').gte('assignments.day', from).lte('assignments.day', to));
+    return rows.map(({ assignments, ...r }) => r);
+  },
+  async saveAssignments(rows) { return ok(await sb.from('assignments').insert(rows).select()); },
+  async updateAssignment(id, patch) { return ok(await sb.from('assignments').update(patch).eq('id', id).select().single()); },
+  async deleteAssignment(id) { ok(await sb.from('assignments').delete().eq('id', id)); },
+  async deleteFutureAssignments(taskId, fromDay) {
+    return ok(await sb.from('assignments').delete().eq('task_id', taskId).gte('day', fromDay).eq('status', 'todo').select('id'));
+  },
+  async startAssignment(id) { await rpc('start_assignment', { p_id: id }); return fresh(id); },
+  async setSteps(id, steps) { await rpc('set_assignment_steps', { p_id: id, p_steps: steps }); return fresh(id); },
+  async completeAssignment(id, minutes, comment, delay) {
+    await rpc('complete_assignment', { p_id: id, p_minutes: minutes, p_comment: comment, p_delay: delay });
+    return fresh(id);
+  },
+  async reopenAssignment(id) { await rpc('reopen_assignment', { p_id: id }); return fresh(id); },
+  async loadMyStats(since) {
+    const rows = ok(await sb.from('assignment_reports').select('minutes_spent, assignments!inner(day, assignee)')
+      .eq('assignments.assignee', state.session.user.id).gte('assignments.day', since));
+    return rows.map((r) => ({ day: r.assignments.day, minutes: r.minutes_spent }));
+  },
+
+  // ---- chat ----
+  async loadMessages(channel, before, limit = 60) {
+    let q = sb.from('messages').select('*').eq('channel', channel).order('created_at', { ascending: false }).limit(limit);
+    if (before) q = q.lt('created_at', before);
+    return ok(await q);
+  },
+  async sendMessage(channel, body) { return ok(await sb.from('messages').insert({ channel, body }).select().single()); },
+  async deleteMessage(id) { ok(await sb.from('messages').delete().eq('id', id)); },
+
+  // ---- live updates: `handler(table, eventType, newRow, oldRow)` ----
+  subscribe(handler) {
+    const ch = sb.channel('bountiful-live');
+    ['profiles', 'roles', 'areas', 'tasks', 'assignments', 'assignment_reports', 'messages'].forEach((table) => {
+      ch.on('postgres_changes', { event: '*', schema: 'public', table }, (p) => handler(table, p.eventType, p.new, p.old));
+    });
+    ch.subscribe();
+    return () => sb.removeChannel(ch);
   },
 };
 

@@ -1,8 +1,8 @@
 import { html, useState } from '../../assets/vendor/htm-preact.js';
 import { sb } from '../api.js';
 import { useStore } from '../store.js';
-import { t, LANGS, setLang, friendlyError } from '../i18n.js';
-import { Icon, Segmented, Field, PasswordInput } from '../ui.js';
+import { t, friendlyError } from '../i18n.js';
+import { Icon, Segmented, Field, PasswordInput, LangMenu } from '../ui.js';
 import { LogoMark } from '../logo.js';
 
 export function AuthScreen() {
@@ -28,7 +28,7 @@ export function AuthScreen() {
         const { data, error: err } = await sb.auth.signUp({
           email: cleanEmail,
           password,
-          options: { data: { invite_code: code.trim() } },
+          options: { data: { invite_code: code.trim(), lang: s.lang } },
         });
         if (err) throw err;
         if (!data.session) {
@@ -44,13 +44,7 @@ export function AuthScreen() {
   }
 
   return html`<div class="auth">
-    <div class="auth-lang">
-      <${Icon} name="world" size=${18} />
-      <select aria-label="Language" value=${s.lang} onChange=${(e) => setLang(e.target.value)}>
-        ${LANGS.map((l) => html`<option value=${l.code}>${l.name}</option>`)}
-      </select>
-      <${Icon} name="caret-down" size=${14} class="select-caret" />
-    </div>
+    <div class="auth-lang"><${LangMenu} /></div>
 
     <div class="auth-card">
       <div class="auth-brand">

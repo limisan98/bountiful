@@ -29,7 +29,7 @@ export function currentLocale() {
 }
 
 export function setLang(code) {
-  if (!DICTS[code]) return;
+  if (!DICTS[code] || code === state.lang) return;
   try { localStorage.setItem('bountiful.lang', code); } catch (_) { /* private mode */ }
   document.documentElement.lang = code;
   set({ lang: code });
@@ -52,6 +52,7 @@ export function friendlyError(e) {
   if (msg.includes('already registered') || msg.includes('already been registered')) return t('err.exists');
   if (msg.includes('password should be') || msg.includes('weak password')) return t('err.weak');
   if (msg.includes('rate limit') || msg.includes('too many')) return t('err.rate');
+  if (msg.includes('row-level security') || msg.includes('permission denied') || msg.includes('only a supervisor') || msg.includes('cannot change')) return t('err.perm');
   if (e && (e.code === '23505' || msg.includes('duplicate key'))) return t('err.duplicate');
   if (msg.includes('failed to fetch') || msg.includes('network')) return t('err.network');
   return t('err.generic');

@@ -7,7 +7,13 @@ export const state = {
   ready: false,      // finished checking if someone is signed in
   session: null,     // the login session
   profile: null,     // my profile row
-  profiles: {},      // everyone's profile, by id (names, photos, roles)
+  profiles: {},      // everyone's profile, by id (name, photo, role: nothing else)
+  roles: {},         // the four roles (name, icon, color), by id
+  areas: [],         // temple, guesthouse, ...
+  tasks: {},         // task library, by id
+  assignments: {},   // who does which task on which day, by id
+  reports: {},       // finished-task reports, by assignment id (private: mine, or everyone's for supervisors)
+  messages: {},      // chat: { all: {list, more}, custodian: {...}, reception: {...} }
   lang: 'en',
   toast: null,
   sheet: null,       // 'profile' when the profile panel is open
@@ -35,9 +41,10 @@ export function useStore() {
   return state;
 }
 
-let toastTimer;
+let toastTimer, toastTimer2;
 export function toast(msg, kind = 'ok') {
-  clearTimeout(toastTimer);
-  set({ toast: { msg, kind } });
-  toastTimer = setTimeout(() => set({ toast: null }), 2600);
+  clearTimeout(toastTimer); clearTimeout(toastTimer2);
+  set({ toast: { msg, kind, out: false } });
+  toastTimer = setTimeout(() => set({ toast: { msg, kind, out: true } }), 2500);
+  toastTimer2 = setTimeout(() => set({ toast: null }), 2800);
 }

@@ -1,9 +1,20 @@
-import { html, useState, useRef } from '../../assets/vendor/htm-preact.js';
+import { html, useState, useRef, useEffect } from '../../assets/vendor/htm-preact.js';
 import { api, sb } from '../api.js';
 import { state, set, useStore, toast } from '../store.js';
-import { t, LANGS, setLang, friendlyError } from '../i18n.js';
-import { Icon, Avatar, RoleChip, Segmented, Field, PasswordInput, Sheet } from '../ui.js';
+import { t, friendlyError } from '../i18n.js';
+import { Icon, Avatar, RoleChip, Segmented, Field, PasswordInput, Sheet, LangMenu, useSheetClose } from '../ui.js';
 import { squarePhoto } from '../image.js';
+import { addDays, startOfWeek, todayYmd, ymd, dur } from '../time.js';
+import { colorStyle } from '../color.js';
+
+// Where each period starts (today / this week / this quarter / this year)
+function periodStart(period) {
+  const now = new Date();
+  if (period === 'day') return todayYmd();
+  if (period === 'week') return ymd(startOfWeek(now));
+  if (period === 'quarter') return ymd(new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1));
+  return ymd(new Date(now.getFullYear(), 0, 1));
+}
 
 export function ProfileSheet({ onClose }) {
   const s = useStore();
@@ -12,9 +23,22 @@ export function ProfileSheet({ onClose }) {
   const [busy, setBusy] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [period, setPeriod] = useState('week');
+  const [rows, setRows] = useState(null);
   const [pwOpen, setPwOpen] = useState(false);
   const [pw, setPw] = useState('');
   const fileRef = useRef(null);
+  const email = s.session && s.session.user && s.session.user.email;
+
+  useEffect(() => {
+    let alive = true;
+    api.loadMyStats(`${new Date().getFullYear()}-01-01`).then((r) => alive && setRows(r)).catch(() => alive && setRows([]));
+    return () => { alive = false; };
+  }, []);
+
+  const mine = (rows || []).filter((r) => r.day >= periodStart(period));
+  const done = mine.length;
+  const minutes = mine.reduce((n, r) => n + r.minutes, 0);
+  const days = new Set(mine.map((r) => r.day)).size;
 
   const mergeMe = (row) => set({ profile: row, profiles: { ...state.profiles, [row.id]: row } });
 
@@ -43,11 +67,6 @@ export function ProfileSheet({ onClose }) {
     setPhotoBusy(false);
   }
 
-  async function chooseLang(code) {
-    setLang(code);
-    try { mergeMe(await api.updateMyProfile({ language: code })); } catch (_) { /* local choice still applies */ }
-  }
-
   async function changePassword(e) {
     e.preventDefault();
     if (pw.length < 8) { toast(t('err.weak'), 'bad'); return; }
@@ -55,12 +74,6 @@ export function ProfileSheet({ onClose }) {
     try { await api.changePassword(pw); setPw(''); setPwOpen(false); toast(t('profile.passwordDone')); }
     catch (ex) { toast(friendlyError(ex), 'bad'); }
     setBusy(false);
-  }
-
-  async function signOut() {
-    onClose();
-    if (state.demo) { location.href = location.pathname; return; }
-    await sb.auth.signOut();
   }
 
   return html`<${Sheet} title=${t('profile.title')} onClose=${onClose}>
@@ -71,24 +84,20 @@ export function ProfileSheet({ onClose }) {
       </button>
       <input ref=${fileRef} type="file" accept="image/*" hidden onChange=${pickPhoto} />
       <${RoleChip} role=${me.role} />
-      <p class="muted small-text">${photoBusy ? t('profile.photoWorking') : me.email}</p>
+      <p class="muted small-text">${photoBusy ? t('profile.photoWorking') : email}</p>
     </div>
 
-    <form class="inline-form" onSubmit=${saveName}>
+    <form class="stack-form" onSubmit=${saveName}>
       <${Field} label=${t('profile.name')} hint=${t('profile.nameVisible')}>
-        <span class="with-btn">
-          <input class="input" value=${name} maxlength="40" required onInput=${(e) => setName(e.target.value)} />
-          <button class="btn small" type="submit" disabled=${busy || name.trim() === me.display_name}>${t('profile.save')}</button>
-        </span>
+        <input class="input" value=${name} maxlength="40" required onInput=${(e) => setName(e.target.value)} />
       <//>
+      <button class="btn soft" type="submit" disabled=${busy || name.trim() === me.display_name || !name.trim()}>
+        <${Icon} name="check" size=${18} />${t('profile.save')}</button>
     </form>
 
     <div class="field">
       <span class="field-label">${t('profile.language')}</span>
-      <div class="lang-grid">
-        ${LANGS.map((l) => html`<button type="button" key=${l.code} class=${'lang' + (s.lang === l.code ? ' on' : '')}
-          onClick=${() => chooseLang(l.code)}>${l.name}</button>`)}
-      </div>
+      <${LangMenu} align="left" onPick=${(code) => { api.saveLanguage(code).catch(() => {}); }} />
     </div>
 
     <div class="field">
@@ -97,16 +106,16 @@ export function ProfileSheet({ onClose }) {
         { value: 'day', label: t('period.day') }, { value: 'week', label: t('period.week') },
         { value: 'quarter', label: t('period.quarter') }, { value: 'year', label: t('period.year') },
       ]} />
-      <div class="stats">
-        <div class="stat" style="--c:#6D4AFF"><${Icon} name="circle-check" size=${22} /><b>0</b><span>${t('stat.tasks')}</span></div>
-        <div class="stat" style="--c:#FF8A3D"><${Icon} name="clock" size=${22} /><b>0h</b><span>${t('stat.time')}</span></div>
-        <div class="stat" style="--c:#2EC4A6"><${Icon} name="bed" size=${22} /><b>0</b><span>${t('stat.rooms')}</span></div>
+      <div class=${'stats' + (rows === null ? ' loading' : '')}>
+        <div class="stat" style=${colorStyle('#86E3CE')}><${Icon} name="circle-check" size=${22} /><b>${done}</b><span>${t('stat.tasks')}</span></div>
+        <div class="stat" style=${colorStyle('#FFDD94')}><${Icon} name="clock" size=${22} /><b>${dur(minutes)}</b><span>${t('stat.time')}</span></div>
+        <div class="stat" style=${colorStyle('#CCABD8')}><${Icon} name="calendar-event" size=${22} /><b>${days}</b><span>${t('stat.days')}</span></div>
       </div>
       <p class="field-hint">${t('profile.activityNote')}</p>
     </div>
 
     ${pwOpen
-      ? html`<form class="stack-form" onSubmit=${changePassword}>
+      ? html`<form class="stack-form pop" onSubmit=${changePassword}>
           <${Field} label=${t('profile.newPassword')} hint=${t('auth.passwordHelp')}>
             <${PasswordInput} value=${pw} onInput=${(e) => setPw(e.target.value)} autocomplete="new-password" />
           <//>
@@ -117,6 +126,16 @@ export function ProfileSheet({ onClose }) {
         </form>`
       : html`<button class="btn soft" onClick=${() => setPwOpen(true)}><${Icon} name="lock" size=${18} />${t('profile.password')}</button>`}
 
-    <button class="btn ghost" onClick=${signOut}><${Icon} name="square-rounded-arrow-left" size=${20} />${t('profile.signout')}</button>
+    <${SignOut} onClose=${onClose} />
   <//>`;
+}
+
+function SignOut({ onClose }) {
+  const close = useSheetClose();
+  const go = async () => {
+    close();
+    if (state.demo) { location.href = location.pathname; return; }
+    await sb.auth.signOut();
+  };
+  return html`<button class="btn ghost" onClick=${go}><${Icon} name="square-rounded-arrow-left" size=${20} />${t('profile.signout')}</button>`;
 }
