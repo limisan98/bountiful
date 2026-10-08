@@ -14,16 +14,22 @@ export const state = {
   demo: false,
 };
 
+let version = 0; // goes up by one every time something changes
+
 export function set(patch) {
   Object.assign(state, patch);
+  version += 1;
   listeners.forEach((fn) => fn());
 }
 
 export function useStore() {
   const [, force] = useState(0);
+  const seen = version;
   useEffect(() => {
     const fn = () => force((n) => n + 1);
     listeners.add(fn);
+    // if something changed between drawing and starting to listen, catch up now
+    if (version !== seen) fn();
     return () => listeners.delete(fn);
   }, []);
   return state;
