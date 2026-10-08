@@ -2,8 +2,10 @@
 
 Shared tasks and teamwork for the temple crew. Minimal, rounded, and easy to use.
 
+**New to this project? Read [`CLAUDE.md`](CLAUDE.md): it explains how everything works and where each thing lives.**
+
 **Live site:** https://limisan98.github.io/bountiful/
-**Preview the design without logging in:** add `?demo=supervisor` (or `custodian`, `receptionist`) to the address.
+**Preview the design without logging in:** add `?demo=custodian_supervisor` (or `custodian`, `receptionist`) to the address.
 
 ## What is where
 | Folder / file | What it is |

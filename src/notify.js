@@ -125,6 +125,12 @@ export function notifyLive(table, type, row) {
     if (type === 'INSERT') {
       if (sup && p.rooms && row.requested_by !== me.id) show(t('notify.rooms', { name: nameOf(row.requested_by) }), room, '#/rooms', 'rooms-new');
     } else if (prev) {
+      if (sup && p.rooms && row.requested_by !== me.id && (prev.room !== row.room || prev.day !== row.day || (prev.note || '') !== (row.note || ''))) {
+        show(t('notify.roomsEdited', { name: nameOf(row.requested_by) }), room + (row.note ? ' · ' + row.note : ''), '#/rooms', 'rooms-edit-' + row.id);
+      }
+      if (row.assignee === me.id && prev.assignee === me.id && row.requested_by !== me.id && p.assigned && (prev.room !== row.room || prev.day !== row.day || (prev.note || '') !== (row.note || ''))) {
+        show(t('notify.roomEdited'), room + (row.note ? ' · ' + row.note : ''), '#/rooms', 'rooms-edit-' + row.id);
+      }
       if (row.assignee === me.id && prev.assignee !== me.id && p.assigned) show(t('notify.roomAssigned'), room, '#/rooms', 'rooms-assigned');
       if (row.status === 'done' && prev.status !== 'done' && row.requested_by === me.id && departmentOf(me) === 'reception' && p.roomsDone) {
         show(t('notify.roomDone', { name: nameOf(row.assignee) }), room, '#/rooms', 'rooms-done');

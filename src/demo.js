@@ -292,6 +292,11 @@ const demoApi = {
     rooms.filter((r) => ids.includes(r.id) && r.status !== 'done').forEach((r) => Object.assign(r, { assignee, assigned_by: assignee ? state.profile.id : null, status: 'todo', done_at: null }));
     return clone(rooms.filter((r) => ids.includes(r.id)));
   },
+  async editRoom(id, room, day, note) {
+    const r = rooms.find((x) => x.id === id);
+    Object.assign(r, { room: room.trim(), day, note: (note || '').trim() });
+    return clone(r);
+  },
   async setRoomStatus(id, status) {
     const r = rooms.find((x) => x.id === id);
     Object.assign(r, { status, done_at: status === 'done' ? new Date().toISOString() : null });

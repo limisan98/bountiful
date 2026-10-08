@@ -135,6 +135,7 @@ const real = {
   async addRooms(rows) { return ok(await sb.from('room_requests').insert(rows).select()); },
   async assignRooms(ids, assignee) { await rpc('assign_rooms', { p_ids: ids, p_assignee: assignee }); return ok(await sb.from('room_requests').select('*').in('id', ids)); },
   async setRoomStatus(id, status) { await rpc('set_room_status', { p_id: id, p_status: status }); return ok(await sb.from('room_requests').select('*').eq('id', id).single()); },
+  async editRoom(id, room, day, note) { await rpc('edit_room', { p_id: id, p_room: room, p_day: day, p_note: note }); return ok(await sb.from('room_requests').select('*').eq('id', id).single()); },
   async deleteRoom(id) { ok(await sb.from('room_requests').delete().eq('id', id)); },
 
   // ---- live updates: `handler(table, eventType, newRow, oldRow)` ----

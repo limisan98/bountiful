@@ -3,7 +3,7 @@ import { useStore, toast } from '../store.js';
 import { t, friendlyError } from '../i18n.js';
 import { Icon, Avatar, Field, Sheet, PersonLine, Empty, useSheetControl } from '../ui.js';
 import { isSupervisor, roleInfo, departmentOf } from '../roles.js';
-import { roomsOn, addRooms, assignRooms, setRoomStatus, removeRoom, activePeople } from '../data.js';
+import { roomsOn, addRooms, editRoom, assignRooms, setRoomStatus, removeRoom, activePeople } from '../data.js';
 import { ROLE_ORDER } from '../config.js';
 import { DateField } from '../pickers.js';
 import { ymd, parseYmd, addDays, todayYmd, fmt } from '../time.js';
@@ -54,6 +54,8 @@ export function RoomsView() {
       </div>
     </div>
 
+    ${rec ? html`<${MyRequests} day=${day} onPick=${(d) => { setDay(d); setSel([]); }} />` : null}
+
     ${!list.length ? html`<${Empty} icon="bed" text=${rec ? t('rooms.noneRec') : sup ? t('rooms.none') : t('rooms.noneCus')} />` : null}
 
     ${waiting.length ? html`<section class="rise">
@@ -80,6 +82,33 @@ export function RoomsView() {
   </div>`;
 }
 
+// Reception: everything you asked for stays here, day by day, with how far each room has got.
+function MyRequests({ day, onPick }) {
+  const s = useStore();
+  const mine = Object.values(s.rooms).filter((r) => r.requested_by === s.profile.id);
+  if (!mine.length) return null;
+  const today = todayYmd();
+  const byDay = {};
+  mine.forEach((r) => { (byDay[r.day] = byDay[r.day] || []).push(r); });
+  const days = Object.keys(byDay).sort((a, b) => (a >= today) === (b >= today) ? (a >= today ? a.localeCompare(b) : b.localeCompare(a)) : (a >= today ? -1 : 1));
+  const count = (rows, f) => rows.filter(f).length;
+  const chips = (rows) => [
+    ['waiting', count(rows, (r) => !r.assignee)],
+    ['todo', count(rows, (r) => r.assignee && r.status === 'todo')],
+    ['doing', count(rows, (r) => r.status === 'doing')],
+    ['done', count(rows, (r) => r.status === 'done')],
+  ].filter((c) => c[1]);
+  const dayName = (d) => d === today ? t('chat.today') : d === ymd(addDays(new Date(), 1)) ? t('rooms.tomorrow') : fmt(parseYmd(d), { weekday: 'short', day: 'numeric', month: 'short' });
+  return html`<section class="rise my-requests">
+    <h3 class="section-title">${t('rooms.mine')}<span class="count">${mine.length}</span></h3>
+    <p class="field-hint">${t('rooms.mineHint')}</p>
+    <div class="req-list">${days.map((d) => html`<button type="button" key=${d} class=${'req-day' + (d === day ? ' on' : '') + (d < today ? ' past' : '')} onClick=${() => onPick(d)}>
+      <span class="req-top"><b>${dayName(d)}</b><span class="muted">${t('rooms.count', { n: byDay[d].length })}</span></span>
+      <span class="req-chips">${chips(byDay[d]).map(([k, n]) => html`<span key=${k} class=${'req-chip ' + k}>${t('rooms.sum.' + k, { n })}</span>`)}</span>
+    </button>`)}</div>
+  </section>`;
+}
+
 function RoomRow({ r, selectable, selected, onToggle }) {
   const s = useStore();
   const me = s.profile;
@@ -88,6 +117,8 @@ function RoomRow({ r, selectable, selected, onToggle }) {
   const mine = r.assignee === me.id;
   const [sure, setSure] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const canEdit = r.requested_by === me.id && r.status !== 'done';
   const canDelete = isSupervisor(me) || (r.requested_by === me.id && !r.assignee);
   const state = !r.assignee ? 'waiting' : r.status;
 
@@ -114,9 +145,35 @@ function RoomRow({ r, selectable, selected, onToggle }) {
       ${mine && r.status === 'todo' ? html`<button class="btn small auto soft" disabled=${busy} onClick=${() => act(() => setRoomStatus(r.id, 'doing'))}><${Icon} name="hourglass" size=${16} />${t('rooms.start')}</button>` : null}
       ${mine && r.status !== 'done' ? html`<button class="btn small auto" disabled=${busy} onClick=${() => act(() => setRoomStatus(r.id, 'done'))}><${Icon} name="circle-check" size=${16} />${t('rooms.finish')}</button>` : null}
       ${(mine || isSupervisor(me)) && r.status === 'done' ? html`<button class="btn small auto soft" disabled=${busy} onClick=${() => act(() => setRoomStatus(r.id, 'todo'))}>${t('rooms.reopen')}</button>` : null}
+      ${canEdit ? html`<button class="pick" aria-label=${t('rooms.edit')} onClick=${() => setEditing(true)}><${Icon} name="pencil" size=${15} /></button>` : null}
       ${canDelete ? html`<button class=${'pick danger' + (sure ? ' sure' : '')} aria-label=${t('act.remove')} onClick=${del}><${Icon} name="trash" size=${15} />${sure ? t('team.removeSure') : ''}</button>` : null}
     </div>
+    ${editing ? html`<${EditRoom} r=${r} onClose=${() => setEditing(false)} />` : null}
   </div>`;
+}
+
+// ---- Reception: change a room you asked for ----
+function EditRoom({ r, onClose }) {
+  const ctl = useSheetControl();
+  const [room, setRoom] = useState(r.room);
+  const [date, setDate] = useState(r.day);
+  const [note, setNote] = useState(r.note || '');
+  const [busy, setBusy] = useState(false);
+  async function save(e) {
+    e.preventDefault();
+    if (!room.trim() || busy) return;
+    setBusy(true);
+    try { await editRoom(r.id, room.trim().slice(0, 40), date, note.trim()); toast(t('rooms.saved')); ctl.close(); }
+    catch (ex) { toast(friendlyError(ex), 'bad'); setBusy(false); }
+  }
+  return html`<${Sheet} title=${t('rooms.editTitle')} onClose=${onClose} control=${ctl}>
+    <form class="stack-form" onSubmit=${save}>
+      <${Field} label=${t('rooms.roomName')}><input class="input" type="text" maxlength="40" required value=${room} onInput=${(e) => setRoom(e.target.value)} /><//>
+      <${Field} label=${t('rooms.day')}><${DateField} value=${date} label=${t('rooms.day')} onChange=${setDate} /><//>
+      <${Field} label=${t('rooms.note')}><input class="input" type="text" maxlength="300" value=${note} onInput=${(e) => setNote(e.target.value)} /><//>
+      <button class="btn" type="submit" disabled=${!room.trim() || busy}><${Icon} name="check" size=${18} />${t('rooms.save')}</button>
+    </form>
+  <//>`;
 }
 
 // ---- Reception: list the rooms that need cleaning ----

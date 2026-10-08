@@ -18,7 +18,7 @@ export function resetData() {
 export async function loadCore() {
   const me = state.profile;
   const [roles, areas, tasks, rooms, digests, invites, meetings] = await Promise.all([
-    api.loadRoles(), api.loadAreas(), api.loadTasks(), api.loadRooms(ymd(addDays(new Date(), -7))),
+    api.loadRoles(), api.loadAreas(), api.loadTasks(), api.loadRooms(ymd(addDays(new Date(), -30))),
     isSupervisor(me) ? api.loadDigests() : [],
     departmentOf(me) === 'custodian' ? api.loadInvites(addDays(new Date(), -60).toISOString()) : [],
     api.loadMeetings(ymd(addDays(new Date(), -30))),
@@ -154,6 +154,7 @@ function putRooms(rows) { set({ rooms: { ...state.rooms, ...byId([].concat(rows)
 export async function addRooms(rows) { putRooms(await api.addRooms(rows)); }
 export async function assignRooms(ids, assignee) { putRooms(await api.assignRooms(ids, assignee)); }
 export async function setRoomStatus(id, status) { putRooms(await api.setRoomStatus(id, status)); }
+export async function editRoom(id, room, day, note) { putRooms(await api.editRoom(id, room, day, note)); }
 export async function removeRoom(id) {
   await api.deleteRoom(id);
   const rooms = { ...state.rooms }; delete rooms[id]; set({ rooms });
