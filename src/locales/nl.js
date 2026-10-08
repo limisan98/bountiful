@@ -297,4 +297,11 @@ export default {
   "rooms.saved": "Verzoek bijgewerkt. De leidinggevende wordt op de hoogte gebracht.",
   "notify.roomsEdited": "{name} heeft een kamerverzoek gewijzigd",
   "notify.roomEdited": "Een van je kamers is gewijzigd",
+  "rooms.allSup": "Kamers per dag",
+  "rooms.allSupHint": "Wie wat schoonmaakt. Tik op een dag om de kamers te zien.",
+  "rooms.mineCus": "Kamers voor jou",
+  "rooms.mineCusHint": "De kamers die aan jou zijn toegewezen, dag voor dag. Tik op een dag.",
+  "rooms.sumMe.todo": "{n} te doen",
+  "rooms.sumMe.doing": "{n} bezig",
+  "rooms.sumMe.done": "{n} klaar",
 };

@@ -15,7 +15,12 @@ export function RoomsView() {
   const me = s.profile;
   const sup = isSupervisor(me);
   const rec = departmentOf(me) === 'reception';
-  const [day, setDay] = useState(todayYmd());
+  const [day, setDay] = useState(() => {
+    // open on today, or on the nearest day that has rooms for you when today is empty
+    const days = Object.values(s.rooms).map((r) => r.day).sort();
+    const today = todayYmd();
+    return days.includes(today) ? today : days.find((d) => d > today) || today;
+  });
   const [sel, setSel] = useState([]);
   const [adding, setAdding] = useState(false);
   const [assigning, setAssigning] = useState(false);
@@ -54,7 +59,7 @@ export function RoomsView() {
       </div>
     </div>
 
-    ${rec ? html`<${MyRequests} day=${day} onPick=${(d) => { setDay(d); setSel([]); }} />` : null}
+    <${DayOverview} day=${day} onPick=${(d) => { setDay(d); setSel([]); }} />
 
     ${!list.length ? html`<${Empty} icon="bed" text=${rec ? t('rooms.noneRec') : sup ? t('rooms.none') : t('rooms.noneCus')} />` : null}
 
@@ -82,29 +87,47 @@ export function RoomsView() {
   </div>`;
 }
 
-// Reception: everything you asked for stays here, day by day, with how far each room has got.
-function MyRequests({ day, onPick }) {
+// A strip of day cards above the list: Reception sees what they asked for, a custodian sees the rooms given to them,
+// the supervisor sees every day with who is cleaning how many. Tap a card to open that day.
+function DayOverview({ day, onPick }) {
   const s = useStore();
-  const mine = Object.values(s.rooms).filter((r) => r.requested_by === s.profile.id);
-  if (!mine.length) return null;
+  const me = s.profile;
+  const sup = isSupervisor(me);
+  const rec = departmentOf(me) === 'reception';
   const today = todayYmd();
+  const weekAgo = ymd(addDays(new Date(), -7));
+  const mine = Object.values(s.rooms).filter((r) => (sup ? true : rec ? r.requested_by === me.id : r.assignee === me.id) && (rec || r.day >= weekAgo));
+  if (!mine.length) return null;
   const byDay = {};
   mine.forEach((r) => { (byDay[r.day] = byDay[r.day] || []).push(r); });
   const days = Object.keys(byDay).sort((a, b) => (a >= today) === (b >= today) ? (a >= today ? a.localeCompare(b) : b.localeCompare(a)) : (a >= today ? -1 : 1));
-  const count = (rows, f) => rows.filter(f).length;
-  const chips = (rows) => [
-    ['waiting', count(rows, (r) => !r.assignee)],
-    ['todo', count(rows, (r) => r.assignee && r.status === 'todo')],
-    ['doing', count(rows, (r) => r.status === 'doing')],
-    ['done', count(rows, (r) => r.status === 'done')],
-  ].filter((c) => c[1]);
+  const n = (rows, f) => rows.filter(f).length;
+  const chips = (rows) => {
+    if (sup) {
+      const per = {};
+      rows.filter((r) => r.assignee).forEach((r) => { per[r.assignee] = (per[r.assignee] || 0) + 1; });
+      const out = [];
+      if (n(rows, (r) => !r.assignee)) out.push(['waiting', t('rooms.sum.waiting', { n: n(rows, (r) => !r.assignee) })]);
+      Object.keys(per).forEach((id) => out.push(['person', `${s.profiles[id] ? s.profiles[id].display_name.split(' ')[0] : t('chat.former')} · ${per[id]}`]));
+      return out;
+    }
+    const L = rec ? 'sum' : 'sumMe';
+    return [
+      rec ? ['waiting', n(rows, (r) => !r.assignee)] : null,
+      ['todo', n(rows, (r) => r.assignee && r.status === 'todo')],
+      ['doing', n(rows, (r) => r.status === 'doing')],
+      ['done', n(rows, (r) => r.status === 'done')],
+    ].filter((c) => c && c[1]).map(([k, c]) => [k, t(`rooms.${L}.${k}`, { n: c })]);
+  };
   const dayName = (d) => d === today ? t('chat.today') : d === ymd(addDays(new Date(), 1)) ? t('rooms.tomorrow') : fmt(parseYmd(d), { weekday: 'short', day: 'numeric', month: 'short' });
+  const title = sup ? t('rooms.allSup') : rec ? t('rooms.mine') : t('rooms.mineCus');
+  const hint = sup ? t('rooms.allSupHint') : rec ? t('rooms.mineHint') : t('rooms.mineCusHint');
   return html`<section class="rise my-requests">
-    <h3 class="section-title">${t('rooms.mine')}<span class="count">${mine.length}</span></h3>
-    <p class="field-hint">${t('rooms.mineHint')}</p>
+    <h3 class="section-title">${title}<span class="count">${mine.length}</span></h3>
+    <p class="field-hint">${hint}</p>
     <div class="req-list">${days.map((d) => html`<button type="button" key=${d} class=${'req-day' + (d === day ? ' on' : '') + (d < today ? ' past' : '')} onClick=${() => onPick(d)}>
       <span class="req-top"><b>${dayName(d)}</b><span class="muted">${t('rooms.count', { n: byDay[d].length })}</span></span>
-      <span class="req-chips">${chips(byDay[d]).map(([k, n]) => html`<span key=${k} class=${'req-chip ' + k}>${t('rooms.sum.' + k, { n })}</span>`)}</span>
+      <span class="req-chips">${chips(byDay[d]).map(([k, label]) => html`<span key=${label} class=${'req-chip ' + k}>${label}</span>`)}</span>
     </button>`)}</div>
   </section>`;
 }

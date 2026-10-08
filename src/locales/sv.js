@@ -297,4 +297,11 @@ export default {
   "rooms.saved": "Förfrågan uppdaterad. Chefen får veta.",
   "notify.roomsEdited": "{name} ändrade en rumsförfrågan",
   "notify.roomEdited": "Ett av dina rum ändrades",
+  "rooms.allSup": "Rum per dag",
+  "rooms.allSupHint": "Vem som städar vad. Tryck på en dag för att se rummen.",
+  "rooms.mineCus": "Rum till dig",
+  "rooms.mineCusHint": "Rummen du har fått, dag för dag. Tryck på en dag för att se dem.",
+  "rooms.sumMe.todo": "{n} att göra",
+  "rooms.sumMe.doing": "{n} pågår",
+  "rooms.sumMe.done": "{n} klara",
 };

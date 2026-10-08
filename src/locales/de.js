@@ -297,4 +297,11 @@ export default {
   "rooms.saved": "Anfrage aktualisiert. Die Leitung wird informiert.",
   "notify.roomsEdited": "{name} hat eine Zimmeranfrage geändert",
   "notify.roomEdited": "Eines deiner Zimmer wurde geändert",
+  "rooms.allSup": "Zimmer nach Tag",
+  "rooms.allSupHint": "Wer was reinigt. Tippe auf einen Tag, um die Zimmer zu sehen.",
+  "rooms.mineCus": "Zimmer für dich",
+  "rooms.mineCusHint": "Die Zimmer, die dir zugeteilt wurden, Tag für Tag. Tippe auf einen Tag.",
+  "rooms.sumMe.todo": "{n} offen",
+  "rooms.sumMe.doing": "{n} in Arbeit",
+  "rooms.sumMe.done": "{n} erledigt",
 };

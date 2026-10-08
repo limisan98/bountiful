@@ -297,4 +297,11 @@ export default {
   "rooms.saved": "Request updated. The supervisor is told.",
   "notify.roomsEdited": "{name} changed a room request",
   "notify.roomEdited": "A room of yours was changed",
+  "rooms.allSup": "Rooms by day",
+  "rooms.allSupHint": "Who is cleaning what. Tap a day to see the rooms.",
+  "rooms.mineCus": "Rooms for you",
+  "rooms.mineCusHint": "The rooms given to you, day by day. Tap a day to see them.",
+  "rooms.sumMe.todo": "{n} to do",
+  "rooms.sumMe.doing": "{n} in progress",
+  "rooms.sumMe.done": "{n} done",
 };

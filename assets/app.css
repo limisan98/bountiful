@@ -776,3 +776,5 @@ a, img, svg { -webkit-touch-callout: none; -webkit-user-drag: none; }
 .req-chip.todo { background: #FFF1CF; color: #8A6A1E; }
 .req-chip.doing { background: #E7F0D3; color: #4F6B1E; }
 .req-chip.done { background: #D6F5EC; color: #1F7A66; }
+
+.req-chip.person { background: var(--brand-soft); color: var(--brand-ink); }

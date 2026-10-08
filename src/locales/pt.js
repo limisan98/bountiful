@@ -297,4 +297,11 @@ export default {
   "rooms.saved": "Pedido atualizado. O supervisor é avisado.",
   "notify.roomsEdited": "{name} alterou um pedido de quarto",
   "notify.roomEdited": "Um dos seus quartos foi alterado",
+  "rooms.allSup": "Quartos por dia",
+  "rooms.allSupHint": "Quem limpa o quê. Toque num dia para ver os quartos.",
+  "rooms.mineCus": "Quartos para si",
+  "rooms.mineCusHint": "Os quartos que lhe foram atribuídos, dia a dia. Toque num dia para os ver.",
+  "rooms.sumMe.todo": "{n} por fazer",
+  "rooms.sumMe.doing": "{n} em curso",
+  "rooms.sumMe.done": "{n} feitos",
 };
