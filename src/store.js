@@ -17,7 +17,10 @@ export const state = {
   invites: {},       // task invitations between custodians, by id
   meetings: {},      // meeting requests (mine, or addressed to me), by id
   rooms: {},         // rooms to clean (Reception -> supervisor -> custodian), by id
-  messages: {},      // chat: { all: {list, more}, custodian: {...}, reception: {...} }
+  messages: {},      // chat, by channel: 'general' or 'dm:<id>:<id>' -> { list, more, loaded }
+  chatOpen: null,    // the conversation that is open in the chat screen (null = the list)
+  chatSeen: {},      // channel -> time I last looked (for the unread counters; kept on this device)
+  person: null,      // id of the person whose profile card is open
   lang: 'en',
   toast: null,
   sheet: null,       // 'profile' when the profile panel is open

@@ -68,7 +68,7 @@ export function NotificationsSheet({ onClose }) {
     ${st === 'on' ? html`<button class="btn soft" onClick=${test}><${Icon} name="send" size=${18} />${t('notif.test')}</button>` : null}
 
     <div class="field"><span class="field-label">${t('notif.types')}</span>
-      <div class="list tight">${TYPES.filter((x) => !x.only || (x.only === 'custodian' && cust) || (x.only === 'staff' && !sup)).map(row)}</div>
+      <div class="list tight">${TYPES.filter((x) => !x.only || (x.only === 'custodian' && cust) || (x.only === 'staff' && !sup) || (x.only === 'crew' && departmentOf(state.profile) === 'custodian')).map(row)}</div>
     </div>
     ${sup ? html`<div class="field"><span class="field-label">${t('notif.supTitle')}</span>
       <div class="list tight">${TYPES.filter((x) => x.only === 'sup').map(row)}</div>

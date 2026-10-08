@@ -8,11 +8,12 @@ const strip = (s) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerC
 const isWordChar = (c) => !!c && /[\p{L}\p{N}_]/u.test(c);
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-// Who can be mentioned in a channel (everyone who can read it, except me)
+// Who can be mentioned: the custodian team in the general chat (nobody in a private chat)
 export function mentionable(channel) {
   const me = state.profile;
+  if (channel !== 'general') return [];
   return activePeople()
-    .filter((p) => (!me || p.id !== me.id) && (channel === 'all' || departmentOf(p) === channel))
+    .filter((p) => (!me || p.id !== me.id) && departmentOf(p) === 'custodian')
     .sort((a, b) => a.display_name.localeCompare(b.display_name));
 }
 

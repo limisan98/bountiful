@@ -4,7 +4,7 @@ import { t, currentLocale } from '../i18n.js';
 import { Icon, RoleChip, Avatar, Empty, TaskBadge } from '../ui.js';
 import { isSupervisor } from '../roles.js';
 import { colorStyle } from '../color.js';
-import { assignmentsOn } from '../data.js';
+import { assignmentsOn, inCrew } from '../data.js';
 import { todayYmd, addDays, ymd, parseYmd, dur, goalMin, fmt } from '../time.js';
 import { AssignmentRow, AssignmentSheet } from './assign.js';
 
@@ -13,7 +13,7 @@ const TILES = [
   { route: 'rooms', icon: 'bed', color: '#FFDD94', title: 'nav.rooms', sub: 'tile.rooms' },
   { route: 'reports', icon: 'clipboard-data', color: '#86E3CE', title: 'nav.reports', sub: 'tile.reports', only: 'sup' },
   { route: 'meetings', icon: 'calendar-month', color: '#FA897B', title: 'nav.meetings', sub: 'tile.meetings' },
-  { route: 'chat', icon: 'messages', color: '#CCABD8', title: 'nav.chat', sub: 'tile.chat' },
+  { route: 'chat', icon: 'messages', color: '#CCABD8', title: 'nav.chat', sub: 'tile.chat', only: 'crew' },
   { route: 'team', icon: 'id', color: '#FA897B', title: 'nav.team', sub: 'tile.team' },
   { route: 'tasks', icon: 'list-check', color: '#D0E6A5', title: 'nav.tasks', sub: 'tile.tasks', only: 'sup' },
   { route: 'shifts', icon: 'clock', color: '#FFDD94', title: 'nav.shifts', sub: 'tile.shifts', soon: true },
@@ -42,7 +42,7 @@ export function HomeView() {
     .map((r) => ({ r, a: s.assignments[r.assignment_id] })).filter((x) => x.a && x.a.day >= since && s.tasks[x.a.task_id])
     .sort((x, y) => y.r.completed_at.localeCompare(x.r.completed_at)).slice(0, 6) : [];
 
-  const tiles = TILES.filter((x) => !x.only || sup);
+  const tiles = TILES.filter((x) => !x.only || (x.only === 'crew' ? inCrew(me) : sup));
 
   return html`<div class="stack home">
     <section class="hero rise">

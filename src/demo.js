@@ -76,15 +76,17 @@ for (let off = -4; off <= 4; off++) {
 }
 
 const messages = [
-  { id: uid(), channel: 'all', sender: 'd1', body: 'Good morning everyone! Reminder: the stake choir visits the temple at 14:00 today.', created_at: iso(-1, 8, 40) },
-  { id: uid(), channel: 'all', sender: 'd5', body: 'Thank you Anna! Two arrivals tonight in the guesthouse — rooms 4 and 7.', created_at: iso(-1, 8, 52) },
-  { id: uid(), channel: 'all', sender: 'd5', body: 'I will send the cleaning list as soon as they confirm.', created_at: iso(-1, 8, 53) },
-  { id: uid(), channel: 'all', sender: 'd2', body: 'Perfect, we will have everything ready. 🌿', created_at: iso(0, 7, 5) },
-  { id: uid(), channel: 'all', sender: 'd3', body: 'The temple floors are done — it smells so fresh in there!', created_at: iso(0, 9, 31) },
-  { id: uid(), channel: 'custodian', sender: 'd1', body: 'Custodians: we are low on neutral cleaner. Please note it in your comments when you use the last bottle.', created_at: iso(-1, 16, 10) },
-  { id: uid(), channel: 'custodian', sender: 'd4', body: 'Will do!', created_at: iso(-1, 16, 14) },
-  { id: uid(), channel: 'reception', sender: 'd5', body: 'Reception: welcome pack stock is fine until Friday.', created_at: iso(-1, 15, 0) },
+  { id: uid(), channel: 'general', sender: 'd1', body: 'Good morning everyone! Reminder: the stake choir visits the temple at 14:00 today.', created_at: iso(-1, 8, 40) },
+  { id: uid(), channel: 'general', sender: 'd4', body: 'Thank you Anna! I will start with the chapel.', created_at: iso(-1, 8, 52) },
+  { id: uid(), channel: 'general', sender: 'd1', body: 'Custodians: we are low on neutral cleaner. Please note it in your comments when you use the last bottle.', created_at: iso(-1, 16, 10) },
+  { id: uid(), channel: 'general', sender: 'd4', body: 'Will do!', created_at: iso(-1, 16, 14) },
+  { id: uid(), channel: 'general', sender: 'd2', body: 'Perfect, we will have everything ready. 🌿', created_at: iso(0, 7, 5) },
+  { id: uid(), channel: 'general', sender: 'd3', body: 'The temple floors are done — it smells so fresh in there!', created_at: iso(0, 9, 31) },
+  { id: uid(), channel: 'dm:d1:d2', sender: 'd1', body: 'Jonas, could you take the early shift on Friday?', created_at: iso(-1, 17, 5) },
+  { id: uid(), channel: 'dm:d1:d2', sender: 'd2', body: 'Sure, no problem!', created_at: iso(-1, 17, 9) },
+  { id: uid(), channel: 'dm:d2:d3', sender: 'd3', body: 'Do you have the key for the supply room?', created_at: iso(0, 8, 20) },
 ];
+const dmKey = (a, b) => 'dm:' + [a, b].sort().join(':');
 
 // rooms to clean: Reception lists them, the supervisor hands them to a custodian
 const rooms = [];
@@ -119,7 +121,7 @@ const meetings = [];
   const mkInv = (a, from, to, status, note, hoursAgo) => {
     const inv = { id: uid(), assignment_id: a.id, from_user: from, to_user: to, note, status, created_at: iso(0, 9 - hoursAgo), answered_at: status === 'pending' ? null : iso(0, 10) };
     invites.push(inv);
-    messages.push({ id: uid(), channel: 'custodian', sender: from, body: note || tasks.find((x) => x.id === a.task_id).name, invite_id: inv.id, created_at: inv.created_at });
+    messages.push({ id: uid(), channel: 'general', sender: from, body: note || tasks.find((x) => x.id === a.task_id).name, invite_id: inv.id, created_at: inv.created_at });
     return inv;
   };
   mkInv(mkAsg(3, 2, 'd4'), 'd4', 'd2', 'pending', 'Dentist appointment that day, could you take this one?', 2);
@@ -261,7 +263,7 @@ const demoApi = {
     const a = assignments.find((x) => x.id === assignmentId);
     const inv = { id: uid(), assignment_id: assignmentId, from_user: state.profile.id, to_user: to, note, status: 'pending', created_at: new Date().toISOString(), answered_at: null };
     invites.push(inv);
-    const message = { id: uid(), channel: 'custodian', sender: state.profile.id, body: note || tasks.find((x) => x.id === a.task_id).name, invite_id: inv.id, created_at: inv.created_at };
+    const message = { id: uid(), channel: 'general', sender: state.profile.id, body: note || tasks.find((x) => x.id === a.task_id).name, invite_id: inv.id, created_at: inv.created_at };
     messages.push(message);
     // the invited colleague answers after a moment, to show how live updates look
     if (handler) setTimeout(() => {
@@ -311,6 +313,12 @@ const demoApi = {
     return clone(messages.filter((m) => m.channel === channel && (!before || m.created_at < before))
       .sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, limit));
   },
+  async loadRecentMessages() {
+    if (!(state.profile && ['custodian_supervisor', 'custodian'].includes(state.profile.role))) return [];
+    const me = state.profile.id;
+    return clone(messages.filter((m) => m.channel === 'general' || m.channel.split(':').includes(me))
+      .sort((a, b) => b.created_at.localeCompare(a.created_at)));
+  },
   async sendMessage(channel, body) {
     const row = { id: uid(), channel, sender: state.profile.id, body, created_at: new Date().toISOString() };
     messages.push(row);
@@ -318,7 +326,8 @@ const demoApi = {
     if (!sentHello && handler) {
       sentHello = true;
       setTimeout(() => {
-        const reply = { id: uid(), channel, sender: state.profile.id === 'd2' ? 'd3' : 'd2', body: 'Got it, thank you! 🙌', created_at: new Date().toISOString() };
+        const other = channel.startsWith('dm:') ? channel.slice(3).split(':').find((x) => x !== state.profile.id) : (state.profile.id === 'd2' ? 'd3' : 'd2');
+        const reply = { id: uid(), channel, sender: other, body: 'Got it, thank you! 🙌', created_at: new Date().toISOString() };
         messages.push(reply); handler('messages', 'INSERT', reply, null);
       }, 2200);
     }

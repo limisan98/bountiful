@@ -92,6 +92,7 @@ const real = {
     if (before) q = q.lt('created_at', before);
     return ok(await q);
   },
+  async loadRecentMessages(limit = 300) { return ok(await sb.from('messages').select('*').order('created_at', { ascending: false }).limit(limit)); },
   async sendMessage(channel, body) { return ok(await sb.from('messages').insert({ channel, body }).select().single()); },
   async deleteMessage(id) { ok(await sb.from('messages').delete().eq('id', id)); },
 

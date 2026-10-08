@@ -5,7 +5,7 @@ import { initLang, setLang, t } from './i18n.js';
 import { Icon, Avatar, Toast, ComingSoon } from './ui.js';
 import { LogoMark } from './logo.js';
 import { isSupervisor, roleInfo } from './roles.js';
-import { loadCore, startLive, stopLive, resetData } from './data.js';
+import { loadCore, startLive, stopLive, resetData, inCrew } from './data.js';
 import { AuthScreen } from './views/auth.js';
 import { HomeView } from './views/home.js';
 import { CalendarView } from './views/calendar.js';
@@ -16,13 +16,14 @@ import { RoomsView } from './views/rooms.js';
 import { ReportsView } from './views/reports.js';
 import { MeetingsView } from './views/meetings.js';
 import { ProfileSheet } from './views/profile.js';
+import { PersonSheet } from './views/person.js';
 
 // ---------------------------------------------------------------- pages
 const NAV = [
   { route: 'home', icon: 'home', label: 'nav.home', dock: true },
   { route: 'calendar', icon: 'calendar-event', label: 'nav.calendar', dock: true },
   { route: 'rooms', icon: 'bed', label: 'nav.rooms', dock: true },
-  { route: 'chat', icon: 'messages', label: 'nav.chat', dock: true },
+  { route: 'chat', icon: 'messages', label: 'nav.chat', dock: true, only: 'crew' }, // the custodian team only
   { route: 'team', icon: 'id', label: 'nav.team', dock: true },
   { route: 'tasks', icon: 'list-check', label: 'nav.tasks', dock: true, only: 'sup' },
   { route: 'meetings', icon: 'calendar-month', label: 'nav.meetings', desk: true }, // in the desktop sidebar; on phones reachable from Home
@@ -47,7 +48,7 @@ function Shell() {
     return () => removeEventListener('hashchange', onHash);
   }, []);
 
-  const allowed = (n) => !n.only || sup;
+  const allowed = (n) => !n.only || (n.only === 'crew' ? inCrew(me) : sup);
   const active = NAV.some((n) => n.route === route && allowed(n)) ? route : 'home';
   const hour = new Date().getHours();
   const greet = hour < 12 ? 'greet.morning' : hour < 18 ? 'greet.afternoon' : 'greet.evening';
@@ -71,7 +72,7 @@ function Shell() {
     ${dock.map((n) => html`<a key=${n.route} href=${'#/' + n.route} class=${(active === n.route ? 'on' : '') + (n.desk ? ' desk-only' : '')}
       aria-label=${t(n.label)} aria-current=${active === n.route ? 'page' : undefined}><${Icon} name=${n.icon} size=${26} /><span class="dock-label">${t(n.label)}</span></a>`)}
   </nav>`;
-  const profile = s.sheet === 'profile' ? html`<${ProfileSheet} onClose=${() => set({ sheet: null })} />` : null;
+  const profile = html`${s.sheet === 'profile' ? html`<${ProfileSheet} onClose=${() => set({ sheet: null })} />` : null}${s.person ? html`<${PersonSheet} id=${s.person} onClose=${() => set({ person: null })} />` : null}`;
 
   if (active === 'chat') {
     return html`<div class="shell chat-shell"><${ChatView} />${nav}${profile}</div>`;
@@ -101,6 +102,14 @@ function Paused() {
     <button class="btn soft" onClick=${() => sb.auth.signOut()}>${t('profile.signout')}</button>
   </div></div>`;
 }
+
+// Tap anybody's picture (or name in the chat) to see their profile card. Pictures inside buttons keep doing what their button does.
+addEventListener('click', (e) => {
+  const el = e.target && e.target.closest && e.target.closest('[data-pid]');
+  if (!el || el.closest('button, a, label, input, textarea, [role=button], .profile-top')) return;
+  if (!state.profile || !state.profiles[el.dataset.pid]) return;
+  set({ person: el.dataset.pid });
+});
 
 function Splash() { return html`<div class="boot"><img class="boot-logo" src="assets/logo/logo.svg" alt=""></div>`; }
 

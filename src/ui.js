@@ -32,7 +32,8 @@ export function Avatar({ profile, name, role, url, size = 48, ring = true }) {
   const r = roleInfo(role || (profile && profile.role));
   const photo = url !== undefined ? url : profile && profile.avatar_url;
   const label = name || (profile && profile.display_name) || '';
-  return html`<span class=${'avatar' + (ring ? ' ring' : '')} style=${`--s:${size}px;--ring:${r.color};--soft:${r.soft};--ink:${r.ink}`}>
+  // data-pid: tapping a person's picture anywhere opens their profile card (see app.js)
+  return html`<span class=${'avatar' + (ring ? ' ring' : '')} data-pid=${profile && profile.id ? profile.id : undefined} style=${`--s:${size}px;--ring:${r.color};--soft:${r.soft};--ink:${r.ink}`}>
     ${photo ? html`<img src=${photo} alt="" loading="lazy" />` : html`<span class="initials">${initials(label)}</span>`}
   </span>`;
 }

@@ -11,19 +11,23 @@ const months = new Set();
 
 export function resetData() {
   months.clear();
-  set({ roles: {}, areas: [], tasks: {}, assignments: {}, reports: {}, messages: {}, rooms: {}, digests: {}, invites: {}, meetings: {} });
+  set({ roles: {}, areas: [], tasks: {}, assignments: {}, reports: {}, messages: {}, chatOpen: null, person: null, rooms: {}, digests: {}, invites: {}, meetings: {} });
 }
 
 // ---- loading ----
 export async function loadCore() {
   const me = state.profile;
-  const [roles, areas, tasks, rooms, digests, invites, meetings] = await Promise.all([
+  const [roles, areas, tasks, rooms, digests, invites, meetings, recent] = await Promise.all([
     api.loadRoles(), api.loadAreas(), api.loadTasks(), api.loadRooms(ymd(addDays(new Date(), -30))),
     isSupervisor(me) ? api.loadDigests() : [],
     departmentOf(me) === 'custodian' ? api.loadInvites(addDays(new Date(), -60).toISOString()) : [],
     api.loadMeetings(ymd(addDays(new Date(), -30))),
+    inCrew(me) ? api.loadRecentMessages(300) : [],
   ]);
-  set({ roles: byId(roles), areas, tasks: byId(tasks), rooms: byId(rooms), digests: byId(digests), invites: byId(invites), meetings: byId(meetings) });
+  const messages = {};
+  recent.forEach((m) => { (messages[m.channel] = messages[m.channel] || { list: [], more: true, loaded: false }).list.push(m); });
+  Object.values(messages).forEach((c) => c.list.reverse());
+  set({ roles: byId(roles), areas, tasks: byId(tasks), rooms: byId(rooms), digests: byId(digests), invites: byId(invites), meetings: byId(meetings), messages, chatSeen: loadSeen(messages) });
   const now = new Date();
   await Promise.all([monthKey(now), monthKey(addMonths(now, -1)), monthKey(addMonths(now, 1))].map(ensureMonth));
 }
@@ -50,7 +54,13 @@ export const roomsOn = (day) => Object.values(state.rooms)
 export const areaOf = (id) => state.areas.find((a) => a.id === id);
 export const areaName = (a) => (a ? a.name || t('area.' + a.key) : '');
 export const activePeople = () => Object.values(state.profiles).filter((p) => p.active !== false);
-export const myChannels = () => ['all', departmentOf(state.profile) || 'custodian'];
+export const inCrew = (p) => !!p && departmentOf(p) === 'custodian'; // the custodian team (supervisor included): the only people in the chat
+export const dmChannel = (a, b) => 'dm:' + [a, b].sort().join(':');
+export const dmPartner = (channel) => channel.slice(3).split(':').find((x) => x !== (state.profile && state.profile.id));
+export function openDm(personId) {
+  set({ person: null, chatOpen: dmChannel(state.profile.id, personId) });
+  location.hash = '#/chat';
+}
 
 function putAssignment(a) { set({ assignments: { ...state.assignments, [a.id]: a } }); }
 function dropAssignment(id) {
@@ -105,6 +115,35 @@ const mergeMsgs = (old, more) => {
   more.forEach((x) => m.set(x.id, x));
   return [...m.values()].sort((a, b) => a.created_at.localeCompare(b.created_at));
 };
+// "Unread" counters: kept on this device only. A conversation I have never opened counts as read at first start.
+const SEEN = 'bountiful.chatSeen';
+function loadSeen(messages) {
+  let seen = {};
+  try { seen = JSON.parse(localStorage.getItem(SEEN) || '{}') || {}; } catch (_) { /* ignore */ }
+  const now = new Date().toISOString();
+  Object.keys(messages).forEach((c) => { if (!seen[c]) seen[c] = now; });
+  return seen;
+}
+export function markSeen(channel) {
+  const seen = { ...state.chatSeen, [channel]: new Date().toISOString() };
+  set({ chatSeen: seen });
+  try { localStorage.setItem(SEEN, JSON.stringify(seen)); } catch (_) { /* ignore */ }
+}
+export const unreadOf = (channel) => {
+  const c = state.messages[channel];
+  const me = state.profile && state.profile.id;
+  const seen = state.chatSeen[channel] || '';
+  return c ? c.list.filter((m) => m.sender !== me && m.created_at > seen).length : 0;
+};
+// The chat list: the general chat first, then the DMs, newest first
+export function conversations() {
+  const dms = Object.keys(state.messages).filter((c) => c.startsWith('dm:') && state.messages[c].list.length)
+    .map((c) => ({ channel: c, last: state.messages[c].list[state.messages[c].list.length - 1] }))
+    .sort((a, b) => b.last.created_at.localeCompare(a.last.created_at));
+  const g = state.messages.general;
+  return [{ channel: 'general', last: g && g.list.length ? g.list[g.list.length - 1] : null }, ...dms];
+}
+
 export async function loadMessages(channel, older = false) {
   const cur = chat(channel);
   const before = older && cur.list.length ? cur.list[0].created_at : null;
@@ -206,8 +245,8 @@ export function startLive() {
       set({ rooms });
     } else if (table === 'messages') {
       if (del) { dropMessage(id); return; }
-      const cur = state.messages[row.channel];
-      if (cur) set({ messages: { ...state.messages, [row.channel]: { ...cur, list: mergeMsgs(cur.list, [row]) } } });
+      const cur = chat(row.channel);
+      set({ messages: { ...state.messages, [row.channel]: { ...cur, list: mergeMsgs(cur.list, [row]) } } });
     }
   });
 }

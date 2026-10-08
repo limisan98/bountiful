@@ -12,12 +12,13 @@ export const KEY = 'bountiful.notif';
 
 // All kinds of notification. "only: sup" ones are offered to supervisors only.
 export const TYPES = [
-  { key: 'mention', icon: 'message-2', def: true },
+  { key: 'mention', icon: 'message-2', def: true, only: 'crew' },
+  { key: 'dm', icon: 'message', def: true, only: 'crew' },
   { key: 'assigned', icon: 'clipboard-list', def: true },
   { key: 'reminder', icon: 'alarm', def: true },
   { key: 'done', icon: 'circle-check', def: true, sections: true },
   { key: 'invites', icon: 'replace', def: true, only: 'custodian' },
-  { key: 'chat', icon: 'messages', def: false },
+  { key: 'chat', icon: 'messages', def: false, only: 'crew' },
   { key: 'reports', icon: 'clipboard-data', def: true, only: 'sup' },
   { key: 'rooms', icon: 'bed', def: true, only: 'sup' },
   { key: 'roomsDone', icon: 'bed', def: true, only: 'reception' },
@@ -40,7 +41,6 @@ export function loadPrefs() {
 
 function show(title, body, url, tag) {
   if (document.visibilityState === 'visible') {
-    if (url === '#/chat' && location.hash.startsWith('#/chat')) return; // already looking at it
     toast(body ? `${title}: ${body}` : title);
     return;
   }
@@ -63,7 +63,11 @@ export function notifyLive(table, type, row) {
   if (table === 'messages') {
     if (type !== 'INSERT' || row.sender === me.id) return;
     const name = nameOf(row.sender);
-    if (p.mention && mentionsMe(row.body)) show(t('notify.mention', { name }), row.body, '#/chat');
+    const dm = row.channel.startsWith('dm:');
+    const viewing = location.hash.startsWith('#/chat') && state.chatOpen === row.channel; // already reading it
+    if (viewing) return;
+    if (dm) { if (p.dm) show(name, row.body, '#/chat', 'dm-' + row.channel); }
+    else if (p.mention && mentionsMe(row.body)) show(t('notify.mention', { name }), row.body, '#/chat');
     else if (p.chat) show(name, row.body, '#/chat');
     return;
   }
