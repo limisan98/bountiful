@@ -21,6 +21,8 @@ export const TYPES = [
   { key: 'reports', icon: 'clipboard-data', def: true, only: 'sup' },
   { key: 'rooms', icon: 'bed', def: true, only: 'sup' },
   { key: 'roomsDone', icon: 'bed', def: true, only: 'reception' },
+  { key: 'meetingNew', icon: 'calendar-event', def: true, only: 'sup' },
+  { key: 'meetingAnswer', icon: 'calendar-event', def: true, only: 'staff' },
   { key: 'started', icon: 'player-play', def: false, only: 'sup' },
   { key: 'delay', icon: 'clock', def: true, only: 'sup' },
   { key: 'comment', icon: 'message-report', def: true, only: 'sup' },
@@ -87,6 +89,16 @@ export function notifyLive(table, type, row) {
           show(t('notify.done', { name }), [tname, areaName(areaOf(area))].filter(Boolean).join(' · '), '#/calendar');
         }
       } else if (row.status === 'doing' && sup && p.started) show(t('notify.started', { name }), tname, '#/calendar');
+    }
+    return;
+  }
+
+  if (table === 'meeting_requests') {
+    const prev = state.meetings[row.id];
+    const text = `${fmt(parseYmd(row.day), { weekday: 'short', day: 'numeric', month: 'short' })}, ${hhmm(row.start_time)} · ${row.topic}`;
+    if (type === 'INSERT' && row.supervisor === me.id && p.meetingNew) show(t('notify.meetingNew', { name: nameOf(row.requester) }), text, '#/meetings', 'meeting-new');
+    else if (type === 'UPDATE' && prev && prev.status === 'pending' && row.requester === me.id && p.meetingAnswer && (row.status === 'accepted' || row.status === 'declined')) {
+      show(t('notify.meeting.' + row.status, { name: nameOf(row.supervisor) }), text, '#/meetings', 'meeting-answer');
     }
     return;
   }

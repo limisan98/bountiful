@@ -7,6 +7,7 @@ import { colorStyle } from '../color.js';
 import { startAssignment, saveSteps, finishAssignment, reopenAssignment, removeAssignment, editAssignment, planAssignments,
   ensureMonth, areaOf, areaName, activePeople } from '../data.js';
 import { hhmm, toMin, dur, goalMin, fmt, parseYmd, ymd, addDays, isoWeekday, appliesOn, monthKey, todayYmd } from '../time.js';
+import { DateField, TimeField } from '../pickers.js';
 import { TaskEditor, freqText } from './tasks.js';
 import { DEPARTMENTS, ROLE_ORDER } from '../config.js';
 
@@ -281,12 +282,12 @@ export function AssignSheet({ day, edit, onClose }) {
       </div>
 
       <div class="grid2">
-        <${Field} label=${t('assign.date')}><input class="input" type="date" value=${date} required onInput=${(e) => setDate(e.target.value)} /><//>
+        <${Field} label=${t('assign.date')}><${DateField} value=${date} label=${t('assign.date')} onChange=${setDate} /><//>
         <div class="field"><span class="field-label">${t('task.window')}</span>
           <div class="time-row">
-            <input class="input" type="time" value=${start} required aria-label=${t('task.from')} onInput=${(e) => { setTouched(true); setStart(e.target.value); }} />
+            <${TimeField} value=${start} label=${t('task.from')} onChange=${(v) => { setTouched(true); setStart(v); }} />
             <span class="muted">–</span>
-            <input class="input" type="time" value=${end} required aria-label=${t('task.to')} onInput=${(e) => { setTouched(true); setEnd(e.target.value); }} />
+            <${TimeField} value=${end} label=${t('task.to')} onChange=${(v) => { setTouched(true); setEnd(v); }} />
           </div></div>
       </div>
 

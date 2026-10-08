@@ -14,6 +14,7 @@ import { TeamView } from './views/team.js';
 import { TasksView } from './views/tasks.js';
 import { RoomsView } from './views/rooms.js';
 import { ReportsView } from './views/reports.js';
+import { MeetingsView } from './views/meetings.js';
 import { ProfileSheet } from './views/profile.js';
 
 // ---------------------------------------------------------------- pages
@@ -24,6 +25,7 @@ const NAV = [
   { route: 'chat', icon: 'messages', label: 'nav.chat', dock: true },
   { route: 'team', icon: 'id', label: 'nav.team', dock: true },
   { route: 'tasks', icon: 'list-check', label: 'nav.tasks', dock: true, only: 'sup' },
+  { route: 'meetings', icon: 'calendar-month', label: 'nav.meetings', desk: true }, // in the desktop sidebar; on phones reachable from Home
   { route: 'reports', icon: 'clipboard-data', label: 'nav.reports', only: 'sup', desk: true }, // in the desktop sidebar; on phones reachable from Home
   { route: 'shifts', icon: 'clock', label: 'nav.shifts' }, // coming soon: reachable from Home, not in the dock yet
 ];
@@ -60,6 +62,7 @@ function Shell() {
   else if (active === 'tasks') view = html`<${TasksView} />`;
   else if (active === 'rooms') view = html`<${RoomsView} />`;
   else if (active === 'reports') view = html`<${ReportsView} />`;
+  else if (active === 'meetings') view = html`<${MeetingsView} />`;
   else if (active === 'shifts') view = html`<${ShiftsSoon} />`;
 
   const nav = html`<nav class="dock" aria-label="Main" style=${`--n:${phoneDock.length};--i:${Math.max(idx, 0)}`}>

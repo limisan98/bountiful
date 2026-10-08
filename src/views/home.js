@@ -12,6 +12,7 @@ const TILES = [
   { route: 'calendar', icon: 'calendar-event', color: '#86E3CE', title: 'nav.calendar', sub: 'tile.calendar' },
   { route: 'rooms', icon: 'bed', color: '#FFDD94', title: 'nav.rooms', sub: 'tile.rooms' },
   { route: 'reports', icon: 'clipboard-data', color: '#86E3CE', title: 'nav.reports', sub: 'tile.reports', only: 'sup' },
+  { route: 'meetings', icon: 'calendar-month', color: '#FA897B', title: 'nav.meetings', sub: 'tile.meetings' },
   { route: 'chat', icon: 'messages', color: '#CCABD8', title: 'nav.chat', sub: 'tile.chat' },
   { route: 'team', icon: 'id', color: '#FA897B', title: 'nav.team', sub: 'tile.team' },
   { route: 'tasks', icon: 'list-check', color: '#D0E6A5', title: 'nav.tasks', sub: 'tile.tasks', only: 'sup' },

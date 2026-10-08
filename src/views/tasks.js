@@ -1,4 +1,5 @@
 import { html, useState } from '../../assets/vendor/htm-preact.js';
+import { TimeField } from '../pickers.js';
 import { useStore, toast } from '../store.js';
 import { t, friendlyError } from '../i18n.js';
 import { Icon, TaskBadge, Segmented, Field, Sheet, IconPicker, ColorPicker, Empty, useSheetControl } from '../ui.js';
@@ -126,9 +127,9 @@ export function TaskEditor({ task, onClose, onSaved }) {
 
       <div class="field"><span class="field-label">${t('task.window')}</span>
         <div class="time-row">
-          <input class="input" type="time" value=${f.start_time} required onInput=${(e) => up({ start_time: e.target.value })} aria-label=${t('task.from')} />
+          <${TimeField} value=${f.start_time} label=${t('task.from')} onChange=${(v) => up({ start_time: v })} />
           <span class="muted">–</span>
-          <input class="input" type="time" value=${f.end_time} required onInput=${(e) => up({ end_time: e.target.value })} aria-label=${t('task.to')} />
+          <${TimeField} value=${f.end_time} label=${t('task.to')} onChange=${(v) => up({ end_time: v })} />
         </div>
         <span class=${'field-hint' + (goal <= 0 ? ' bad' : '')}>${goal > 0 ? t('task.goal', { time: dur(goal) }) : t('task.badWindow')}</span>
       </div>

@@ -15,6 +15,7 @@ export const state = {
   reports: {},       // finished-task reports, by assignment id (private: mine, or everyone's for supervisors)
   digests: {},       // automatic reports (day/week/month/quarter), by id (supervisors only)
   invites: {},       // task invitations between custodians, by id
+  meetings: {},      // meeting requests (mine, or addressed to me), by id
   rooms: {},         // rooms to clean (Reception -> supervisor -> custodian), by id
   messages: {},      // chat: { all: {list, more}, custodian: {...}, reception: {...} }
   lang: 'en',

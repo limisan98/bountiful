@@ -117,6 +117,19 @@ const real = {
   },
   async cancelInvite(id) { await rpc('cancel_invite', { p_id: id }); return ok(await sb.from('task_invites').select('*').eq('id', id).single()); },
 
+  // ---- meeting requests ----
+  async loadMeetings(since) { return ok(await sb.from('meeting_requests').select('*').gte('day', since).order('day').order('start_time')); },
+  async requestMeeting(supervisor, day, time, topic) {
+    const { data, error } = await sb.rpc('request_meeting', { p_supervisor: supervisor, p_day: day, p_time: time, p_topic: topic });
+    if (error) throw error;
+    return ok(await sb.from('meeting_requests').select('*').eq('id', data).single());
+  },
+  async answerMeeting(id, accept, reply) {
+    await rpc('answer_meeting', { p_id: id, p_accept: accept, p_reply: reply || '' });
+    return ok(await sb.from('meeting_requests').select('*').eq('id', id).single());
+  },
+  async cancelMeeting(id) { await rpc('cancel_meeting', { p_id: id }); return ok(await sb.from('meeting_requests').select('*').eq('id', id).single()); },
+
   // ---- rooms to clean ----
   async loadRooms(from) { return ok(await sb.from('room_requests').select('*').gte('day', from).order('created_at')); },
   async addRooms(rows) { return ok(await sb.from('room_requests').insert(rows).select()); },
@@ -127,7 +140,7 @@ const real = {
   // ---- live updates: `handler(table, eventType, newRow, oldRow)` ----
   subscribe(handler) {
     const ch = sb.channel('bountiful-live');
-    ['profiles', 'roles', 'areas', 'tasks', 'assignments', 'assignment_reports', 'messages', 'room_requests', 'custodian_reports', 'task_invites'].forEach((table) => {
+    ['profiles', 'roles', 'areas', 'tasks', 'assignments', 'assignment_reports', 'messages', 'room_requests', 'custodian_reports', 'task_invites', 'meeting_requests'].forEach((table) => {
       ch.on('postgres_changes', { event: '*', schema: 'public', table }, (p) => handler(table, p.eventType, p.new, p.old));
     });
     ch.subscribe();

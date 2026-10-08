@@ -5,6 +5,7 @@ import { Icon, Avatar, Field, Sheet, PersonLine, Empty, useSheetControl } from '
 import { isSupervisor, roleInfo, departmentOf } from '../roles.js';
 import { roomsOn, addRooms, assignRooms, setRoomStatus, removeRoom, activePeople } from '../data.js';
 import { ROLE_ORDER } from '../config.js';
+import { DateField } from '../pickers.js';
 import { ymd, parseYmd, addDays, todayYmd, fmt } from '../time.js';
 
 // Rooms to clean. Reception lists them, the Custodian Supervisor chooses who cleans them,
@@ -141,7 +142,7 @@ function AddRooms({ day, onDay, onClose }) {
   }
   return html`<${Sheet} title=${t('rooms.addTitle')} onClose=${onClose} control=${ctl}>
     <form class="stack-form" onSubmit=${save}>
-      <${Field} label=${t('rooms.day')}><input class="input" type="date" value=${date} required onInput=${(e) => setDate(e.target.value)} /><//>
+      <${Field} label=${t('rooms.day')}><${DateField} value=${date} label=${t('rooms.day')} onChange=${setDate} /><//>
       <${Field} label=${t('rooms.list')} hint=${t('rooms.listHint')}>
         <textarea class="input area" rows="2" maxlength="400" required value=${text} placeholder="4, 7, 12" onInput=${(e) => setText(e.target.value)}></textarea>
       <//>

@@ -22,6 +22,9 @@ Shared tasks and teamwork for the temple crew. Minimal, rounded, and easy to use
 Custodian Supervisor, Custodian, Receptionist. Reception lists rooms to clean; the Custodian Supervisor gives each room to a custodian;
 the custodian marks it done. Custodians can invite each other (in the custodians' chat) to take over a task; only the invited person can accept or decline, and the sender can cancel.
 
+## Meetings
+Everyone who is not a supervisor can ask the supervisor for a meeting (day, time, topic) from the Meetings screen. The supervisor accepts, or declines with an optional reason; the requester can cancel. Only the two people involved can see a request (`supabase/007_meeting_requests.sql`).
+
 ## Automatic reports
 The database writes them by itself (`supabase/005_automatic_reports.sql`, run by `pg_cron` every 10 minutes):
 daily at 23:30, weekly on Saturday at 23:30 (Sunday to Saturday), monthly on the last Saturday of the month, quarterly on the last Saturday of March, June, September and December.

@@ -89,6 +89,16 @@ const messages = [
 // rooms to clean: Reception lists them, the supervisor hands them to a custodian
 const rooms = [];
 const invites = [];
+// meeting requests (day, time, topic) from the team to the supervisor
+const meetings = [];
+{
+  const mk = (who, off, time, topic, status = 'pending', reply = '') => meetings.push({ id: uid(), requester: who, supervisor: 'd1', day: ymd(addDays(now(), off)), start_time: time + ':00', topic, status, reply, created_at: iso(-1, 14), answered_at: status === 'pending' ? null : iso(0, 8) });
+  mk('d2', 1, '10:00', 'Schedule for the temple open house week');
+  mk('d3', 2, '14:30', 'Question about my hours next month');
+  mk('d5', 1, '10:00', 'Rooms for the weekend group', 'pending');
+  mk('d4', 3, '09:00', 'Cleaning supplies running low', 'accepted');
+  mk('d6', -2, '11:00', 'Guest feedback', 'declined', 'Let’s talk at the next staff meeting.');
+}
 {
   const mkRoom = (day, room, extra = {}) => rooms.push({ id: uid(), day: ymd(addDays(now(), day)), room, note: '', status: 'todo', requested_by: 'd5', assignee: null, assigned_by: null, done_at: null, created_at: iso(day - 1, 16, 30), ...extra });
   mkRoom(0, '4', { assignee: 'd3', assigned_by: 'd1', status: 'done', done_at: iso(0, 11, 20) });
@@ -225,6 +235,27 @@ const demoApi = {
     return clone(fresh(id));
   },
   async loadDigests() { return isSup() ? clone(digests.sort((a, b) => b.period_end.localeCompare(a.period_end))) : []; },
+  async loadMeetings(since) {
+    const me = state.profile.id;
+    return clone(meetings.filter((m) => m.day >= since && (m.requester === me || m.supervisor === me)));
+  },
+  async requestMeeting(supervisor, day, time, topic) {
+    const m = { id: uid(), requester: state.profile.id, supervisor, day, start_time: time.length === 5 ? time + ':00' : time, topic, status: 'pending', reply: '', created_at: new Date().toISOString(), answered_at: null };
+    meetings.push(m);
+    // the supervisor answers after a moment, to show how live updates look
+    if (handler) setTimeout(() => {
+      if (m.status !== 'pending') return;
+      Object.assign(m, { status: 'accepted', answered_at: new Date().toISOString() });
+      handler('meeting_requests', 'UPDATE', clone(m), null);
+    }, 5000);
+    return clone(m);
+  },
+  async answerMeeting(id, accept, reply) {
+    const m = meetings.find((x) => x.id === id);
+    Object.assign(m, { status: accept ? 'accepted' : 'declined', reply: reply || '', answered_at: new Date().toISOString() });
+    return clone(m);
+  },
+  async cancelMeeting(id) { const m = meetings.find((x) => x.id === id); m.status = 'canceled'; m.answered_at = new Date().toISOString(); return clone(m); },
   async loadInvites() { return clone(invites); },
   async inviteToTask(assignmentId, to, note) {
     const a = assignments.find((x) => x.id === assignmentId);

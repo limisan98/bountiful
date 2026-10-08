@@ -11,18 +11,19 @@ const months = new Set();
 
 export function resetData() {
   months.clear();
-  set({ roles: {}, areas: [], tasks: {}, assignments: {}, reports: {}, messages: {}, rooms: {}, digests: {}, invites: {} });
+  set({ roles: {}, areas: [], tasks: {}, assignments: {}, reports: {}, messages: {}, rooms: {}, digests: {}, invites: {}, meetings: {} });
 }
 
 // ---- loading ----
 export async function loadCore() {
   const me = state.profile;
-  const [roles, areas, tasks, rooms, digests, invites] = await Promise.all([
+  const [roles, areas, tasks, rooms, digests, invites, meetings] = await Promise.all([
     api.loadRoles(), api.loadAreas(), api.loadTasks(), api.loadRooms(ymd(addDays(new Date(), -7))),
     isSupervisor(me) ? api.loadDigests() : [],
     departmentOf(me) === 'custodian' ? api.loadInvites(addDays(new Date(), -60).toISOString()) : [],
+    api.loadMeetings(ymd(addDays(new Date(), -30))),
   ]);
-  set({ roles: byId(roles), areas, tasks: byId(tasks), rooms: byId(rooms), digests: byId(digests), invites: byId(invites) });
+  set({ roles: byId(roles), areas, tasks: byId(tasks), rooms: byId(rooms), digests: byId(digests), invites: byId(invites), meetings: byId(meetings) });
   const now = new Date();
   await Promise.all([monthKey(now), monthKey(addMonths(now, -1)), monthKey(addMonths(now, 1))].map(ensureMonth));
 }
@@ -142,6 +143,12 @@ export async function answerInvite(id, accept) {
 export async function cancelInvite(id) { putInvite(await api.cancelInvite(id)); }
 export const inviteFor = (m) => (m.invite_id ? state.invites[m.invite_id] : null);
 
+// ---- meeting requests ----
+const putMeeting = (m) => set({ meetings: { ...state.meetings, [m.id]: m } });
+export async function requestMeeting(supervisor, day, time, topic) { putMeeting(await api.requestMeeting(supervisor, day, time, topic)); }
+export async function answerMeeting(id, accept, reply) { putMeeting(await api.answerMeeting(id, accept, reply)); }
+export async function cancelMeeting(id) { putMeeting(await api.cancelMeeting(id)); }
+
 // ---- rooms to clean ----
 function putRooms(rows) { set({ rooms: { ...state.rooms, ...byId([].concat(rows)) } }); }
 export async function addRooms(rows) { putRooms(await api.addRooms(rows)); }
@@ -184,6 +191,10 @@ export function startLive() {
       const digests = { ...state.digests };
       if (del) delete digests[id]; else digests[id] = row;
       set({ digests });
+    } else if (table === 'meeting_requests') {
+      const meetings = { ...state.meetings };
+      if (del) delete meetings[id]; else meetings[id] = row;
+      set({ meetings });
     } else if (table === 'task_invites') {
       const invites = { ...state.invites };
       if (del) delete invites[id]; else invites[id] = row;
