@@ -1,5 +1,6 @@
 import { html, useEffect, useState, useRef, createContext, useContext } from '../assets/vendor/htm-preact.js';
 import { ICONS } from '../assets/icons.js';
+import { iconUrl, isOutline, loadCatalog, searchIcons, OUTLINE } from './iconlib.js';
 import { FLAGS } from '../assets/flags.js';
 import { PALETTE } from './config.js';
 import { roleInfo } from './roles.js';
@@ -9,9 +10,15 @@ import { useStore } from './store.js';
 
 // ---- Icon: draws one of the Tabler "filled" icons by name ----
 export function Icon({ name, size = 24, class: cls = '' }) {
-  const inner = ICONS[name] || ICONS['circle-check'];
+  const inner = ICONS[name];
+  // not bundled: draw it from the Tabler library (outline icons, or filled ones that are not in the bundle)
+  if (!inner && /^[a-z0-9-]+$/.test(name || '')) {
+    const u = `url("${iconUrl(name)}")`;
+    return html`<span class=${'ic ic-mask ' + cls} aria-hidden="true"
+      style=${`width:${size}px;height:${size}px;-webkit-mask-image:${u};mask-image:${u}`}></span>`;
+  }
   return html`<svg class=${'ic ' + cls} width=${size} height=${size} viewBox="0 0 24 24"
-    fill="currentColor" aria-hidden="true" dangerouslySetInnerHTML=${{ __html: inner }}></svg>`;
+    fill="currentColor" aria-hidden="true" dangerouslySetInnerHTML=${{ __html: inner || ICONS['circle-check'] }}></svg>`;
 }
 
 // ---- Avatar: profile photo, or initials; the ring has the color of the person's role ----
@@ -170,9 +177,35 @@ export function ColorPicker({ value, onChange }) {
 }
 
 export function IconPicker({ value, onChange, icons, color }) {
-  return html`<div class="icon-grid" role="radiogroup" style=${colorStyle(color)}>
-    ${icons.map((n) => html`<button type="button" key=${n} role="radio" aria-checked=${n === value} aria-label=${n}
-      class=${'icon-opt' + (n === value ? ' on' : '')} onClick=${() => onChange(n)}><${Icon} name=${n} size=${22} /></button>`)}
+  const [q, setQ] = useState('');
+  const [style, setStyle] = useState(isOutline(value || '') ? 'outline' : 'filled');
+  const [cat, setCat] = useState(null); // null = loading, 'error', or the list
+  const [more, setMore] = useState(1);
+  const query = q.trim();
+  useEffect(() => {
+    if (!query || cat) return;
+    let live = true;
+    loadCatalog().then((c) => live && setCat(c)).catch(() => live && setCat('error'));
+    return () => { live = false; };
+  }, [query, cat]);
+  const found = query && Array.isArray(cat) ? searchIcons(cat, query, style) : [];
+  const shown = query ? found.slice(0, 72 * more) : (value && !icons.includes(value) ? [value, ...icons] : icons);
+
+  return html`<div class="icon-picker">
+    <div class="icon-search"><${Icon} name="search" size=${18} />
+      <input type="search" class="input slim" placeholder=${t('icons.search')} aria-label=${t('icons.search')} value=${q} autocomplete="off" spellcheck="false"
+        onKeyDown=${(e) => { if (e.key === 'Enter') e.preventDefault(); }} onInput=${(e) => { setQ(e.target.value); setMore(1); }} /></div>
+    ${query ? html`<${Segmented} value=${style} onChange=${(v) => { setStyle(v); setMore(1); }}
+      options=${[{ value: 'filled', label: t('icons.filled') }, { value: 'outline', label: t('icons.outline') }]} />` : null}
+    ${query && !cat ? html`<p class="field-hint">${t('common.loading')}</p>` : null}
+    ${query && cat === 'error' ? html`<p class="field-hint">${t('icons.error')}</p>` : null}
+    ${query && Array.isArray(cat) && !found.length ? html`<p class="field-hint">${t('icons.none')}</p>` : null}
+    ${query && found.length ? html`<p class="field-hint">${t('icons.hint')}</p>` : null}
+    <div class=${'icon-grid' + (query ? ' tall' : '')} role="radiogroup" style=${colorStyle(color)}>
+      ${shown.map((n) => html`<button type="button" key=${n} role="radio" aria-checked=${n === value} aria-label=${n.replace(OUTLINE, '')} title=${n.replace(OUTLINE, '')}
+        class=${'icon-opt' + (n === value ? ' on' : '')} onClick=${() => onChange(n)}><${Icon} name=${n} size=${22} /></button>`)}
+      ${query && found.length > shown.length ? html`<button type="button" class="icon-more" onClick=${() => setMore(more + 1)}>${t('icons.more')}</button>` : null}
+    </div>
   </div>`;
 }
 

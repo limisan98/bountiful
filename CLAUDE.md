@@ -30,7 +30,8 @@ Data flow: `src/api.js` (all Supabase calls, plus `subscribe` for Realtime) → 
 | Colors from a hex (`colorVars/colorStyle`; careful: `colorStyle` sets `--ink`) | `src/color.js` |
 | Avatar image cropping | `src/image.js` |
 | Logo component | `src/logo.js`; files in `assets/logo/` |
-| Icons (Tabler filled SVG paths) | `assets/icons.js` — only names that exist there work; add new ones by copying the filled SVG from Tabler |
+| Icons (Tabler filled SVG paths, bundled) | `assets/icons.js` — the curated set drawn inline |
+| Full Tabler library (filled + outline, ~5,000) for the icon picker search | `src/iconlib.js`: loaded lazily from the jsDelivr CDN (version pinned). Outline icons are stored in the DB as `outline--name` (DB only allows a-z0-9-). `Icon` in `src/ui.js` draws non-bundled names as CSS masks from the CDN |
 | Flags for the language menu | `assets/flags.js` |
 | All CSS | `assets/app.css` (one file; sections are commented) |
 | PWA (install + notification display) | `sw.js`, `manifest.webmanifest` |

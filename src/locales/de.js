@@ -304,4 +304,11 @@ export default {
   "rooms.sumMe.todo": "{n} offen",
   "rooms.sumMe.doing": "{n} in Arbeit",
   "rooms.sumMe.done": "{n} erledigt",
+  "icons.search": "Alle Symbole suchen (auf Englisch), z. B. broom",
+  "icons.filled": "Gefüllt",
+  "icons.outline": "Umriss",
+  "icons.hint": "Suchbegriffe auf Englisch.",
+  "icons.none": "Keine Symbole gefunden. Versuche ein anderes Wort.",
+  "icons.error": "Die Symbolbibliothek konnte nicht geladen werden. Prüfe deine Verbindung.",
+  "icons.more": "Mehr anzeigen",
 };

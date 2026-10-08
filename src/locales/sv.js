@@ -304,4 +304,11 @@ export default {
   "rooms.sumMe.todo": "{n} att göra",
   "rooms.sumMe.doing": "{n} pågår",
   "rooms.sumMe.done": "{n} klara",
+  "icons.search": "Sök bland alla ikoner (på engelska), t.ex. broom",
+  "icons.filled": "Fyllda",
+  "icons.outline": "Konturer",
+  "icons.hint": "Sökorden är på engelska.",
+  "icons.none": "Inga ikoner hittades. Prova ett annat ord.",
+  "icons.error": "Ikonbiblioteket kunde inte laddas. Kontrollera anslutningen.",
+  "icons.more": "Visa fler",
 };

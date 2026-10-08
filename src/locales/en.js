@@ -304,4 +304,11 @@ export default {
   "rooms.sumMe.todo": "{n} to do",
   "rooms.sumMe.doing": "{n} in progress",
   "rooms.sumMe.done": "{n} done",
+  "icons.search": "Search all icons (in English), e.g. broom",
+  "icons.filled": "Filled",
+  "icons.outline": "Outline",
+  "icons.hint": "Search words are in English.",
+  "icons.none": "No icons found. Try another word.",
+  "icons.error": "Couldn’t load the icon library. Check your connection.",
+  "icons.more": "Show more",
 };

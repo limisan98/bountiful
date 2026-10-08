@@ -304,4 +304,11 @@ export default {
   "rooms.sumMe.todo": "{n} te doen",
   "rooms.sumMe.doing": "{n} bezig",
   "rooms.sumMe.done": "{n} klaar",
+  "icons.search": "Zoek in alle pictogrammen (in het Engels), bijv. broom",
+  "icons.filled": "Gevuld",
+  "icons.outline": "Omlijnd",
+  "icons.hint": "Zoekwoorden zijn in het Engels.",
+  "icons.none": "Geen pictogrammen gevonden. Probeer een ander woord.",
+  "icons.error": "De pictogrambibliotheek kon niet worden geladen. Controleer je verbinding.",
+  "icons.more": "Meer tonen",
 };
