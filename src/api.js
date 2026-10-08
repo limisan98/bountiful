@@ -95,10 +95,17 @@ const real = {
   async sendMessage(channel, body) { return ok(await sb.from('messages').insert({ channel, body }).select().single()); },
   async deleteMessage(id) { ok(await sb.from('messages').delete().eq('id', id)); },
 
+  // ---- rooms to clean ----
+  async loadRooms(from) { return ok(await sb.from('room_requests').select('*').gte('day', from).order('created_at')); },
+  async addRooms(rows) { return ok(await sb.from('room_requests').insert(rows).select()); },
+  async assignRooms(ids, assignee) { await rpc('assign_rooms', { p_ids: ids, p_assignee: assignee }); return ok(await sb.from('room_requests').select('*').in('id', ids)); },
+  async setRoomStatus(id, status) { await rpc('set_room_status', { p_id: id, p_status: status }); return ok(await sb.from('room_requests').select('*').eq('id', id).single()); },
+  async deleteRoom(id) { ok(await sb.from('room_requests').delete().eq('id', id)); },
+
   // ---- live updates: `handler(table, eventType, newRow, oldRow)` ----
   subscribe(handler) {
     const ch = sb.channel('bountiful-live');
-    ['profiles', 'roles', 'areas', 'tasks', 'assignments', 'assignment_reports', 'messages'].forEach((table) => {
+    ['profiles', 'roles', 'areas', 'tasks', 'assignments', 'assignment_reports', 'messages', 'room_requests'].forEach((table) => {
       ch.on('postgres_changes', { event: '*', schema: 'public', table }, (p) => handler(table, p.eventType, p.new, p.old));
     });
     ch.subscribe();

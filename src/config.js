@@ -9,15 +9,14 @@ export const SUPABASE_KEY = 'sb_publishable_vV-KN4LPBhvGYc6zOvz9zg_xHlMDRxz';
 export const PALETTE = ['#86E3CE', '#D0E6A5', '#FFDD94', '#FA897B', '#CCABD8'];
 export const MINT = PALETTE[0];
 
-// Four roles. Names, icons and colors below are only the starting point:
+// Three roles. Names, icons and colors below are only the starting point:
 // supervisors can change them inside the app (they are stored in the database).
 export const ROLE_DEFAULTS = {
   custodian_supervisor: { department: 'custodian', is_supervisor: true,  icon: 'shield-check', color: '#86E3CE', sort: 1 },
   custodian:            { department: 'custodian', is_supervisor: false, icon: 'sparkles',     color: '#FFDD94', sort: 2 },
-  reception_supervisor: { department: 'reception', is_supervisor: true,  icon: 'star',         color: '#CCABD8', sort: 3 },
-  receptionist:         { department: 'reception', is_supervisor: false, icon: 'key',          color: '#FA897B', sort: 4 },
+  receptionist:         { department: 'reception', is_supervisor: false, icon: 'key',          color: '#FA897B', sort: 3 },
 };
-export const ROLE_ORDER = ['custodian_supervisor', 'custodian', 'reception_supervisor', 'receptionist'];
+export const ROLE_ORDER = ['custodian_supervisor', 'custodian', 'receptionist'];
 export const DEPARTMENTS = ['custodian', 'reception'];
 
 // Icons a supervisor can choose from (all Tabler "filled" icons that are bundled in assets/icons.js)

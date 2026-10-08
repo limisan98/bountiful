@@ -1,7 +1,7 @@
 // Loading, live updates and the small "selectors" the screens use. All database calls go through api.js.
 import { api } from './api.js';
 import { state, set } from './store.js';
-import { addMonths, monthKey, lastOfMonth, toMin } from './time.js';
+import { addMonths, monthKey, lastOfMonth, toMin, ymd, addDays } from './time.js';
 import { departmentOf } from './roles.js';
 import { t } from './i18n.js';
 import { notifyLive } from './notify.js';
@@ -11,13 +11,13 @@ const months = new Set();
 
 export function resetData() {
   months.clear();
-  set({ roles: {}, areas: [], tasks: {}, assignments: {}, reports: {}, messages: {} });
+  set({ roles: {}, areas: [], tasks: {}, assignments: {}, reports: {}, messages: {}, rooms: {} });
 }
 
 // ---- loading ----
 export async function loadCore() {
-  const [roles, areas, tasks] = await Promise.all([api.loadRoles(), api.loadAreas(), api.loadTasks()]);
-  set({ roles: byId(roles), areas, tasks: byId(tasks) });
+  const [roles, areas, tasks, rooms] = await Promise.all([api.loadRoles(), api.loadAreas(), api.loadTasks(), api.loadRooms(ymd(addDays(new Date(), -7)))]);
+  set({ roles: byId(roles), areas, tasks: byId(tasks), rooms: byId(rooms) });
   const now = new Date();
   await Promise.all([monthKey(now), monthKey(addMonths(now, -1)), monthKey(addMonths(now, 1))].map(ensureMonth));
 }
@@ -38,6 +38,9 @@ export const person = (id) => state.profiles[id];
 export const assignmentsOn = (day) => Object.values(state.assignments)
   .filter((a) => a.day === day)
   .sort((x, y) => toMin(x.start_time) - toMin(y.start_time) || (x.created_at || '').localeCompare(y.created_at || ''));
+export const roomsOn = (day) => Object.values(state.rooms)
+  .filter((r) => r.day === day)
+  .sort((x, y) => x.room.localeCompare(y.room, undefined, { numeric: true }));
 export const areaOf = (id) => state.areas.find((a) => a.id === id);
 export const areaName = (a) => (a ? a.name || t('area.' + a.key) : '');
 export const activePeople = () => Object.values(state.profiles).filter((p) => p.active !== false);
@@ -117,6 +120,16 @@ function dropMessage(id) {
   set({ messages: next });
 }
 
+// ---- rooms to clean ----
+function putRooms(rows) { set({ rooms: { ...state.rooms, ...byId([].concat(rows)) } }); }
+export async function addRooms(rows) { putRooms(await api.addRooms(rows)); }
+export async function assignRooms(ids, assignee) { putRooms(await api.assignRooms(ids, assignee)); }
+export async function setRoomStatus(id, status) { putRooms(await api.setRoomStatus(id, status)); }
+export async function removeRoom(id) {
+  await api.deleteRoom(id);
+  const rooms = { ...state.rooms }; delete rooms[id]; set({ rooms });
+}
+
 // ---- live updates from the database (other people's changes show up at once) ----
 let stop = null;
 export function startLive() {
@@ -145,6 +158,10 @@ export function startLive() {
       const reports = { ...state.reports };
       if (del) delete reports[id]; else reports[id] = row;
       set({ reports });
+    } else if (table === 'room_requests') {
+      const rooms = { ...state.rooms };
+      if (del) delete rooms[id]; else rooms[id] = row;
+      set({ rooms });
     } else if (table === 'messages') {
       if (del) { dropMessage(id); return; }
       const cur = state.messages[row.channel];

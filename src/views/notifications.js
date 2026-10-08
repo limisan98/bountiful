@@ -3,7 +3,7 @@ import { api } from '../api.js';
 import { state, toast, useStore } from '../store.js';
 import { t } from '../i18n.js';
 import { Icon, Sheet } from '../ui.js';
-import { isSupervisor } from '../roles.js';
+import { isSupervisor, departmentOf } from '../roles.js';
 import { colorStyle } from '../color.js';
 import { areaName } from '../data.js';
 import { TYPES, KEY, loadPrefs } from '../notify.js';
@@ -20,6 +20,7 @@ export function NotificationsSheet({ onClose }) {
   const [prefs, setPrefs] = useState(loadPrefs);
   const [st, setSt] = useState(status);
   const sup = isSupervisor(state.profile);
+  const rec = departmentOf(state.profile) === 'reception';
   const areas = useStore().areas;
 
   async function allow() {
@@ -70,6 +71,9 @@ export function NotificationsSheet({ onClose }) {
     </div>
     ${sup ? html`<div class="field"><span class="field-label">${t('notif.supTitle')}</span>
       <div class="list tight">${TYPES.filter((x) => x.only === 'sup').map(row)}</div>
+    </div>` : null}
+    ${rec ? html`<div class="field"><span class="field-label">${t('notif.recTitle')}</span>
+      <div class="list tight">${TYPES.filter((x) => x.only === 'reception').map(row)}</div>
     </div>` : null}
     <p class="field-hint">${t('notif.note')}</p>
   <//>`;

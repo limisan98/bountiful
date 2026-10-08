@@ -648,3 +648,33 @@ a, img, svg { -webkit-touch-callout: none; -webkit-user-drag: none; }
 
 /* on a phone the chat has the whole screen to itself (the bottom bar would cover the message box) */
 @media (max-width: 1023px) { body:has(.chat-shell) .dock { display: none; } }
+
+/* ---------- rooms to clean ---------- */
+.rooms-day { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rooms-day .cal-title { font-size: 22px; font-weight: 800; letter-spacing: -.01em; }
+.room-who { display: flex; align-items: center; gap: 10px; }
+.room { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: #fff; border-radius: var(--r-l); padding: 8px 14px 8px 8px; box-shadow: var(--shadow-s); transition: box-shadow var(--d2) var(--ease), background var(--d2) var(--ease); }
+.room.selected { background: var(--brand-soft); box-shadow: inset 0 0 0 2.5px var(--mint); }
+.room-pick { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 180px; text-align: left; padding: 6px; border-radius: var(--r-l); }
+.room-check { width: 26px; height: 26px; border-radius: 50%; flex: none; display: grid; place-items: center; background: var(--track); color: transparent; transition: background var(--d2) var(--ease), color var(--d2) var(--ease); }
+.room-check.on { background: var(--mint); color: var(--ink); }
+.room-ic { width: 46px; height: 46px; border-radius: 16px; flex: none; display: grid; place-items: center; background: #FFF4DD; color: #8A6A12; }
+.room.done .room-ic { background: var(--brand-soft); color: var(--brand-ink); }
+.room.doing .room-ic { background: #EFE6F5; color: #6C4A85; }
+.room-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.room-name { font-size: 18px; font-weight: 800; }
+.room-state { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.room-state.waiting { color: #A5502F; }
+.room-note { font-size: 13px; color: var(--ink-2); overflow-wrap: anywhere; }
+.room-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+.room-actions .btn { min-height: 40px; padding: 8px 16px; min-width: 0; }
+.room-bar { position: fixed; left: 0; right: 0; margin: 0 auto; bottom: calc(104px + env(safe-area-inset-bottom)); width: min(calc(100% - 32px), 460px); z-index: 16; display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 99px; padding: 10px 10px 10px 22px; box-shadow: 0 14px 40px rgba(30, 42, 40, .2); }
+.room-bar > span { flex: 1; min-width: 0; }
+.room-bar .btn { min-height: 44px; padding: 8px 18px; min-width: 0; }
+@media (min-width: 1024px) {
+  .room-bar { bottom: 32px; left: 272px; }
+}
+
+.rooms { padding-bottom: 72px; }
+.room-actions .pick.danger { background: transparent; box-shadow: none; color: var(--ink-3); min-height: 40px; padding: 8px 10px; }
+.room-actions .pick.danger.sure { background: var(--coral); color: var(--ink); padding: 8px 16px; }

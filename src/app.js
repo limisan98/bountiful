@@ -12,12 +12,14 @@ import { CalendarView } from './views/calendar.js';
 import { ChatView } from './views/chat.js';
 import { TeamView } from './views/team.js';
 import { TasksView } from './views/tasks.js';
+import { RoomsView } from './views/rooms.js';
 import { ProfileSheet } from './views/profile.js';
 
 // ---------------------------------------------------------------- pages
 const NAV = [
   { route: 'home', icon: 'home', label: 'nav.home', dock: true },
   { route: 'calendar', icon: 'calendar-event', label: 'nav.calendar', dock: true },
+  { route: 'rooms', icon: 'bed', label: 'nav.rooms', dock: true },
   { route: 'chat', icon: 'messages', label: 'nav.chat', dock: true },
   { route: 'team', icon: 'id', label: 'nav.team', dock: true },
   { route: 'tasks', icon: 'list-check', label: 'nav.tasks', dock: true, only: 'sup' },
@@ -53,6 +55,7 @@ function Shell() {
   else if (active === 'calendar') view = html`<${CalendarView} />`;
   else if (active === 'team') view = html`<${TeamView} />`;
   else if (active === 'tasks') view = html`<${TasksView} />`;
+  else if (active === 'rooms') view = html`<${RoomsView} />`;
   else if (active === 'shifts') view = html`<${ShiftsSoon} />`;
 
   const nav = html`<nav class="dock" aria-label="Main" style=${`--n:${dock.length};--i:${Math.max(idx, 0)}`}>
@@ -95,7 +98,7 @@ function Paused() {
 function Splash() { return html`<div class="boot"><div class="boot-logo"></div></div>`; }
 
 function DemoBanner() {
-  const roles = [['custodian_supervisor', 'custodian_supervisor'], ['custodian', 'custodian'], ['reception_supervisor', 'reception_supervisor'], ['receptionist', 'receptionist']];
+  const roles = [['custodian_supervisor', 'custodian_supervisor'], ['custodian', 'custodian'], ['receptionist', 'receptionist']];
   return html`<div class="demo-banner"><span>${t('demo.banner')}</span>
     ${roles.map(([r]) => html`<a href=${'?demo=' + r} class=${state.profile && state.profile.role === r ? 'on' : ''}>${roleInfo(r).name}</a>`)}
   </div>`;

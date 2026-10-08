@@ -3,7 +3,7 @@
 // notification service (a server), which is a later step.
 import { state, toast } from './store.js';
 import { t } from './i18n.js';
-import { isSupervisor } from './roles.js';
+import { isSupervisor, departmentOf } from './roles.js';
 import { mentionsMe } from './mentions.js';
 import { areaOf, areaName } from './data.js';
 import { parseYmd, fmt, hhmm } from './time.js';
@@ -17,6 +17,8 @@ export const TYPES = [
   { key: 'reminder', icon: 'alarm', def: true },
   { key: 'done', icon: 'circle-check', def: true, sections: true },
   { key: 'chat', icon: 'messages', def: false },
+  { key: 'rooms', icon: 'bed', def: true, only: 'sup' },
+  { key: 'roomsDone', icon: 'bed', def: true, only: 'reception' },
   { key: 'started', icon: 'player-play', def: false, only: 'sup' },
   { key: 'delay', icon: 'clock', def: true, only: 'sup' },
   { key: 'comment', icon: 'message-report', def: true, only: 'sup' },
@@ -32,7 +34,7 @@ export function loadPrefs() {
   return { ...defaults, doneAreas: [], ...(local || {}), ...((meta && meta.notif) || {}) };
 }
 
-function show(title, body, url) {
+function show(title, body, url, tag) {
   if (document.visibilityState === 'visible') {
     if (url === '#/chat' && location.hash.startsWith('#/chat')) return; // already looking at it
     toast(body ? `${title}: ${body}` : title);
@@ -40,7 +42,7 @@ function show(title, body, url) {
   }
   if (!('Notification' in window) || Notification.permission !== 'granted' || !navigator.serviceWorker) return;
   navigator.serviceWorker.getRegistration().then((reg) => {
-    if (reg) reg.showNotification(title, { body: (body || '').slice(0, 140), icon: 'assets/logo/icon-192.png', data: { url: './' + url } });
+    if (reg) reg.showNotification(title, { body: (body || '').slice(0, 140), icon: 'assets/logo/icon-192.png', data: { url: './' + url }, ...(tag ? { tag } : {}) });
   }).catch(() => {});
 }
 
@@ -78,6 +80,20 @@ export function notifyLive(table, type, row) {
           show(t('notify.done', { name }), [tname, areaName(areaOf(area))].filter(Boolean).join(' · '), '#/calendar');
         }
       } else if (row.status === 'doing' && sup && p.started) show(t('notify.started', { name }), tname, '#/calendar');
+    }
+    return;
+  }
+
+  if (table === 'room_requests') {
+    const prev = state.rooms[row.id];
+    const room = `${row.room} · ${fmt(parseYmd(row.day), { weekday: 'short', day: 'numeric', month: 'short' })}`;
+    if (type === 'INSERT') {
+      if (sup && p.rooms && row.requested_by !== me.id) show(t('notify.rooms', { name: nameOf(row.requested_by) }), room, '#/rooms', 'rooms-new');
+    } else if (prev) {
+      if (row.assignee === me.id && prev.assignee !== me.id && p.assigned) show(t('notify.roomAssigned'), room, '#/rooms', 'rooms-assigned');
+      if (row.status === 'done' && prev.status !== 'done' && row.requested_by === me.id && departmentOf(me) === 'reception' && p.roomsDone) {
+        show(t('notify.roomDone', { name: nameOf(row.assignee) }), room, '#/rooms', 'rooms-done');
+      }
     }
     return;
   }

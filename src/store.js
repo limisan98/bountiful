@@ -13,6 +13,7 @@ export const state = {
   tasks: {},         // task library, by id
   assignments: {},   // who does which task on which day, by id
   reports: {},       // finished-task reports, by assignment id (private: mine, or everyone's for supervisors)
+  rooms: {},         // rooms to clean (Reception -> supervisor -> custodian), by id
   messages: {},      // chat: { all: {list, more}, custodian: {...}, reception: {...} }
   lang: 'en',
   toast: null,

@@ -1,4 +1,4 @@
-// DEMO MODE: open the site with ?demo=custodian_supervisor (or custodian, reception_supervisor, receptionist)
+// DEMO MODE: open the site with ?demo=custodian_supervisor (or custodian, receptionist)
 // to look around with pretend people and pretend work. Nothing here touches the real database and nobody is really signed in.
 import { state, set } from './store.js';
 import { useDemoApi } from './api.js';
@@ -19,7 +19,7 @@ const people = [
   { id: 'd2', email: 'jonas.weber@example.org', display_name: 'Jonas Weber', role: 'custodian', active: true, avatar_url: null },
   { id: 'd3', email: 'maria.santos@example.org', display_name: 'Maria Santos', role: 'custodian', active: true, avatar_url: swatch('#FFDD94', '#9A7A2E') },
   { id: 'd4', email: 'noah.lindqvist@example.org', display_name: 'Noah Lindqvist', role: 'custodian', active: true, avatar_url: null },
-  { id: 'd5', email: 'elena.rossi@example.org', display_name: 'Elena Rossi', role: 'reception_supervisor', active: true, avatar_url: swatch('#CCABD8', '#6C4A85') },
+  { id: 'd5', email: 'elena.rossi@example.org', display_name: 'Elena Rossi', role: 'receptionist', active: true, avatar_url: swatch('#CCABD8', '#6C4A85') },
   { id: 'd6', email: 'liam.devries@example.org', display_name: 'Liam de Vries', role: 'receptionist', active: true, avatar_url: null },
 ].map((p) => ({ ...p, created_at: iso(-60, 9) }));
 const pending = [{ email: 'sofia.berg@example.org', full_name: 'Sofia Berg', role: 'custodian', invite_code: 'K3M9Q2XA', claimed_by: null }];
@@ -86,6 +86,18 @@ const messages = [
   { id: uid(), channel: 'reception', sender: 'd5', body: 'Reception: welcome pack stock is fine until Friday.', created_at: iso(-1, 15, 0) },
 ];
 
+// rooms to clean: Reception lists them, the supervisor hands them to a custodian
+const rooms = [];
+{
+  const mkRoom = (day, room, extra = {}) => rooms.push({ id: uid(), day: ymd(addDays(now(), day)), room, note: '', status: 'todo', requested_by: 'd5', assignee: null, assigned_by: null, done_at: null, created_at: iso(day - 1, 16, 30), ...extra });
+  mkRoom(0, '4', { assignee: 'd3', assigned_by: 'd1', status: 'done', done_at: iso(0, 11, 20) });
+  mkRoom(0, '7', { assignee: 'd3', assigned_by: 'd1', status: 'doing' });
+  mkRoom(0, '12', { assignee: 'd2', assigned_by: 'd1', note: 'Guests arrive at 3 pm' });
+  mkRoom(0, 'Suite A');
+  mkRoom(1, '3', { requested_by: 'd6' });
+  mkRoom(1, '5', { requested_by: 'd6', note: 'Extra bed please' });
+  mkRoom(1, '9', { requested_by: 'd6' });
+}
 let handler = null;
 let sentHello = false;
 const me = () => people.find((p) => p.id === state.profile.id);
@@ -158,6 +170,24 @@ const demoApi = {
     const i = reports.findIndex((r) => r.assignment_id === id); if (i >= 0) reports.splice(i, 1);
     return clone(fresh(id));
   },
+  async loadRooms(from) {
+    const mineOnly = !isSup() && dept() !== 'reception';
+    return clone(rooms.filter((r) => r.day >= from && (!mineOnly || r.assignee === state.profile.id)));
+  },
+  async addRooms(rows) {
+    const made = rows.map((r) => ({ id: uid(), note: '', status: 'todo', requested_by: state.profile.id, assignee: null, assigned_by: null, done_at: null, created_at: new Date().toISOString(), ...r }));
+    rooms.push(...made); return clone(made);
+  },
+  async assignRooms(ids, assignee) {
+    rooms.filter((r) => ids.includes(r.id) && r.status !== 'done').forEach((r) => Object.assign(r, { assignee, assigned_by: assignee ? state.profile.id : null, status: 'todo', done_at: null }));
+    return clone(rooms.filter((r) => ids.includes(r.id)));
+  },
+  async setRoomStatus(id, status) {
+    const r = rooms.find((x) => x.id === id);
+    Object.assign(r, { status, done_at: status === 'done' ? new Date().toISOString() : null });
+    return clone(r);
+  },
+  async deleteRoom(id) { const i = rooms.findIndex((r) => r.id === id); if (i >= 0) rooms.splice(i, 1); },
   async loadMyStats(since) {
     const mine = Object.fromEntries(assignments.filter((a) => a.assignee === state.profile.id && a.day >= since).map((a) => [a.id, a]));
     return reports.filter((r) => mine[r.assignment_id]).map((r) => ({ day: mine[r.assignment_id].day, minutes: r.minutes_spent }));
