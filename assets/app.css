@@ -16,7 +16,7 @@
   --shadow: 0 14px 34px rgba(70, 60, 160, .09);
   --shadow-s: 0 4px 16px rgba(70, 60, 160, .07);
   --maxw: 560px;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: "Lexend", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -27,7 +27,7 @@ body {
 }
 body.noscroll { overflow: hidden; }
 button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; padding: 0; }
-input, select { font: inherit; }
+input, select, textarea { font: inherit; }
 a { color: inherit; }
 h1, h2, h3 { margin: 0; }
 .ic { display: block; flex: none; }
@@ -95,7 +95,8 @@ h1, h2, h3 { margin: 0; }
 .btn.danger.sure { background: var(--bad); color: #fff; }
 .btn.small { height: 46px; width: auto; padding: 0 20px; font-size: 14px; }
 .row-btns { display: flex; gap: 10px; width: 100%; flex-wrap: wrap; }
-.row-btns .btn { flex: 1; min-width: 140px; }
+.row-btns .btn { flex: 1; min-width: 0; white-space: nowrap; }
+.code-card .row-btns { flex-direction: column; }
 .icon-btn { width: 44px; height: 44px; border-radius: 50%; background: #fff; display: grid; place-items: center; color: var(--ink-2); box-shadow: var(--shadow-s); flex: none; }
 .fab { width: 58px; height: 58px; border-radius: 50%; background: var(--brand); color: #fff; display: grid; place-items: center; box-shadow: 0 10px 22px rgba(109, 74, 255, .3); flex: none; }
 
@@ -164,7 +165,7 @@ h1, h2, h3 { margin: 0; }
 .tile.dark { color: #3D2F00; }
 .tile-icon { width: 50px; height: 50px; border-radius: 17px; background: rgba(255, 255, 255, .25); display: grid; place-items: center; margin-bottom: auto; }
 .tile-title { margin-top: 16px; font-size: 19px; font-weight: 800; }
-.tile-sub { font-size: 12.5px; line-height: 1.35; opacity: .88; padding-right: 8px; }
+.tile-sub { font-size: 12.5px; line-height: 1.35; opacity: .88; padding-right: 8px; min-height: 2.7em; }
 .tile-soon { position: absolute; top: 16px; right: 16px; font-size: 11px; font-weight: 700; background: rgba(255, 255, 255, .3); padding: 3px 10px; border-radius: 99px; }
 .tile-go { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); color: var(--c); display: grid; pointer-events: none; }
 .empty-card { background: #fff; border-radius: var(--r-l); padding: 30px 24px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; box-shadow: var(--shadow-s); }

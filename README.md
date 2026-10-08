@@ -14,6 +14,7 @@ Shared tasks and teamwork for the temple crew. Minimal, rounded, and easy to use
 | `assets/app.css` | All colors, sizes and rounded corners |
 | `assets/icons.js` | The Tabler *filled* icons the app uses (MIT license) |
 | `assets/logo/` | **Provisional** logo and app icons: replace with your own |
+| `assets/lexend.css` | The Lexend font (all weights, embedded so no outside server is contacted) |
 | `assets/vendor/` | Libraries (kept here so the site never depends on another server) |
 | `supabase/` | The database setup scripts, in the order they were run |
 
