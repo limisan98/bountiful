@@ -1,7 +1,7 @@
 // Service worker: lets Bountiful be installed on a phone's home screen and
 // open fast. It always asks the internet first, so updates show up right away.
 // (Phone notifications will be added here in a later step.)
-const CACHE = 'bountiful-shell-v1';
+const CACHE = 'bountiful-shell-v2';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -29,4 +29,21 @@ self.addEventListener('fetch', (event) => {
       })
       .catch(() => caches.match(req).then((hit) => hit || caches.match('./')))
   );
+});
+
+// Phone notifications: when the notification service sends a message, show it; tapping it opens the app.
+self.addEventListener('push', (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (_) { data = { body: event.data && event.data.text() }; }
+  event.waitUntil(self.registration.showNotification(data.title || 'Bountiful', {
+    body: data.body || '', icon: 'assets/logo/icon-192.png', data: { url: data.url || './' },
+  }));
+});
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || './';
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+    for (const c of list) if ('focus' in c) return c.focus();
+    return self.clients.openWindow(url);
+  }));
 });

@@ -4,6 +4,7 @@ import { state, set } from './store.js';
 import { addMonths, monthKey, lastOfMonth, toMin } from './time.js';
 import { departmentOf } from './roles.js';
 import { t } from './i18n.js';
+import { notifyLive } from './notify.js';
 
 const byId = (rows, key = 'id') => Object.fromEntries(rows.map((r) => [r[key], r]));
 const months = new Set();
@@ -122,6 +123,7 @@ export function startLive() {
   if (stop) return;
   stop = api.subscribe((table, type, row, old) => {
     const del = type === 'DELETE';
+    try { notifyLive(table, type, row); } catch (_) { /* a notification problem must never break live updates */ }
     const rec = (del ? old : row) || {};
     const id = table === 'assignment_reports' ? rec.assignment_id : rec.id;
     if (!id) return;

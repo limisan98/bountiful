@@ -4,6 +4,7 @@ import { state, set, useStore, toast } from '../store.js';
 import { t, friendlyError } from '../i18n.js';
 import { Icon, Avatar, RoleChip, Segmented, Field, PasswordInput, Sheet, LangMenu, useSheetClose } from '../ui.js';
 import { squarePhoto } from '../image.js';
+import { NotificationsSheet } from './notifications.js';
 import { addDays, startOfWeek, todayYmd, ymd, dur } from '../time.js';
 import { colorStyle } from '../color.js';
 
@@ -26,6 +27,7 @@ export function ProfileSheet({ onClose }) {
   const [rows, setRows] = useState(null);
   const [pwOpen, setPwOpen] = useState(false);
   const [pw, setPw] = useState('');
+  const [notif, setNotif] = useState(false);
   const fileRef = useRef(null);
   const email = s.session && s.session.user && s.session.user.email;
 
@@ -114,6 +116,8 @@ export function ProfileSheet({ onClose }) {
       <p class="field-hint">${t('profile.activityNote')}</p>
     </div>
 
+    <button class="btn soft" onClick=${() => setNotif(true)}><${Icon} name="bell" size=${18} />${t('notif.title')}</button>
+
     ${pwOpen
       ? html`<form class="stack-form pop" onSubmit=${changePassword}>
           <${Field} label=${t('profile.newPassword')} hint=${t('auth.passwordHelp')}>
@@ -127,6 +131,7 @@ export function ProfileSheet({ onClose }) {
       : html`<button class="btn soft" onClick=${() => setPwOpen(true)}><${Icon} name="lock" size=${18} />${t('profile.password')}</button>`}
 
     <${SignOut} onClose=${onClose} />
+    ${notif ? html`<${NotificationsSheet} onClose=${() => setNotif(false)} />` : null}
   <//>`;
 }
 

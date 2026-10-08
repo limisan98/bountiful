@@ -226,7 +226,7 @@ input[type="date"].input, input[type="time"].input { appearance: none; -webkit-a
 .lang-list .tick { margin-left: auto; color: var(--brand-ink); }
 
 /* ---------- login ---------- */
-.auth { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 84px 20px calc(32px + env(safe-area-inset-bottom)); }
+.auth { min-height: 100dvh; display: flex; align-items: flex-start; justify-content: center; padding: calc(76px + env(safe-area-inset-top)) 20px calc(32px + env(safe-area-inset-bottom)); }
 .auth-lang { position: fixed; top: calc(16px + env(safe-area-inset-top)); right: 16px; z-index: 40; }
 .auth-card { width: 100%; max-width: 440px; background: #fff; border-radius: var(--r-xl); padding: 34px 26px 30px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 24px; animation: page-in .5s var(--ease) backwards; }
 .auth-brand { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; }
@@ -469,7 +469,7 @@ body:has(.chat-shell) #app { height: 100dvh; display: flex; flex-direction: colu
 .bubble time { display: block; margin-top: 2px; font-size: 11px; color: var(--ink-3); text-align: right; }
 .msg.mine .bubble time { color: rgba(30, 42, 40, .6); }
 .msg-actions { display: flex; gap: 8px; }
-.composer { display: flex; align-items: flex-end; gap: 10px; padding: 10px 16px calc(14px + env(safe-area-inset-bottom)); background: var(--bg); }
+.composer { position: relative; display: flex; align-items: flex-end; gap: 10px; padding: 10px 16px calc(14px + env(safe-area-inset-bottom)); background: var(--bg); }
 .composer textarea { flex: 1; min-width: 0; resize: none; border: 1.5px solid var(--line); background: #fff; border-radius: 26px; padding: 14px 20px; font-size: 16px; line-height: 1.35; max-height: 128px; outline: none; transition: border-color var(--d2) var(--ease), box-shadow var(--d2) var(--ease); }
 .composer textarea:focus { border-color: var(--mint); box-shadow: 0 0 0 4px rgba(134, 227, 206, .3); }
 .send { width: 52px; height: 52px; border-radius: 50%; background: var(--mint); color: var(--ink); display: grid; place-items: center; flex: none; box-shadow: 0 8px 18px rgba(134, 227, 206, .5); }
@@ -532,6 +532,7 @@ a, img, svg { -webkit-touch-callout: none; -webkit-user-drag: none; }
    DESKTOP (wide screens): sidebar navigation, roomy multi-column pages
    ============================================================ */
 @media (min-width: 1024px) {
+  .auth { align-items: center; padding-top: 84px; }
   :root { --maxw: 1160px; }
   body { font-size: 16px; }
 
@@ -618,3 +619,32 @@ a, img, svg { -webkit-touch-callout: none; -webkit-user-drag: none; }
   :root { --maxw: 1280px; }
   .list.grid { grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); }
 }
+
+/* ---------- notifications panel ---------- */
+.notif-status { display: flex; align-items: center; gap: 16px; padding: 18px; border-radius: var(--r-l); background: var(--brand-soft); color: var(--ink); }
+.notif-status.on { background: var(--brand-soft); }
+.notif-status.off, .notif-status.ios { background: #FFF4DD; }
+.notif-status.blocked, .notif-status.unsupported { background: var(--bad-soft); }
+.notif-status p { margin: 0; font-weight: 600; line-height: 1.4; }
+.notif-ic { width: 52px; height: 52px; border-radius: 18px; background: rgba(255, 255, 255, .7); display: grid; place-items: center; flex: none; }
+.notif-ic.small { width: 40px; height: 40px; border-radius: 14px; background: var(--brand-soft); color: var(--brand-ink); }
+.notif-type { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.notif-type .muted { font-size: 13px; line-height: 1.35; }
+
+/* ---------- @mentions ---------- */
+.mention { font-weight: 700; color: var(--brand-ink); background: var(--brand-soft); padding: 0 7px; border-radius: 99px; white-space: nowrap; }
+.msg.mine .mention { background: rgba(255, 255, 255, .6); color: var(--ink); }
+.mention.me { background: var(--yellow); color: var(--ink); }
+.msg.pinged .bubble { box-shadow: 0 0 0 2.5px var(--yellow), var(--shadow-s); }
+.at-btn { width: 46px; height: 46px; margin-bottom: 3px; border-radius: 50%; flex: none; background: var(--brand-soft); color: var(--brand-ink); font-weight: 800; font-size: 20px; display: grid; place-items: center; }
+.mention-pop { position: absolute; left: 16px; right: 16px; bottom: 100%; margin-bottom: 4px; max-height: 288px; overflow-y: auto; background: #fff; border-radius: 26px; box-shadow: var(--shadow-m, 0 14px 40px rgba(30, 42, 40, .16)); padding: 8px; display: flex; flex-direction: column; gap: 2px; z-index: 5; }
+.mention-opt { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 12px; border-radius: 20px; text-align: left; transition: background var(--d1, .15s) var(--ease); }
+.mention-opt.on { background: var(--brand-soft); }
+.mention-name { font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notif-item { display: flex; flex-direction: column; background: #fff; border-radius: var(--r-l); }
+.notif-item .switch-row { background: transparent; }
+.notif-sections { display: flex; flex-direction: column; gap: 10px; padding: 0 20px 18px; }
+.notif-sections .small { font-size: 12px; }
+
+/* on a phone the chat has the whole screen to itself (the bottom bar would cover the message box) */
+@media (max-width: 1023px) { body:has(.chat-shell) .dock { display: none; } }

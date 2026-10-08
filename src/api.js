@@ -47,6 +47,7 @@ const real = {
     return data.publicUrl;
   },
   async changePassword(password) { ok(await sb.auth.updateUser({ password })); },
+  async saveNotifPrefs(notif) { ok(await sb.auth.updateUser({ data: { notif } })); },
   async saveLanguage(lang) { ok(await sb.auth.updateUser({ data: { lang } })); },
   async loadRoles() { return ok(await sb.from('roles').select('*').order('sort')); },
   async updateRole(id, patch) { return ok(await sb.from('roles').update(patch).eq('id', id).select().single()); },
