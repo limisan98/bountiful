@@ -109,7 +109,7 @@ export default {
   'notif.chatHelp': `Varje nytt meddelande i dina teamchattar`,
   'notif.reports': `Rapporter`,
   'notif.reportsHelp': `Automatiska dags-, vecko-, månads- och kvartalsrapporter`,
-  'notif.note': `Dina val sparas. Aviseringarna börjar komma när aviseringstjänsten har slagits på för appen.`,
+  'notif.note': `Dina val sparas. Tillåt aviseringar ovan så kommer de även när appen är stängd. På iPhone lägger du först till Bountiful på hemskärmen.`,
   'chat.mention': `Nämn någon`,
   'notify.mention': `{name} nämnde dig`,
   'notify.assigned': `En ny uppgift åt dig`,

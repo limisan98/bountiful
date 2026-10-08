@@ -6,7 +6,7 @@ import { Icon, Sheet } from '../ui.js';
 import { isSupervisor, departmentOf } from '../roles.js';
 import { colorStyle } from '../color.js';
 import { areaName } from '../data.js';
-import { TYPES, KEY, loadPrefs } from '../notify.js';
+import { TYPES, KEY, loadPrefs, enablePush } from '../notify.js';
 
 function status() {
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -27,6 +27,7 @@ export function NotificationsSheet({ onClose }) {
   async function allow() {
     try { await Notification.requestPermission(); } catch (_) { /* ignore */ }
     setSt(status());
+    enablePush();
   }
   async function test() {
     const opts = { body: t('notif.testBody'), icon: 'assets/logo/icon-192.png' };

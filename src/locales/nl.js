@@ -109,7 +109,7 @@ export default {
   'notif.chatHelp': `Elk nieuw bericht in je teamchats`,
   'notif.reports': `Rapporten`,
   'notif.reportsHelp': `Automatische dag-, week-, maand- en kwartaalrapporten`,
-  'notif.note': `Je keuzes worden bewaard. Meldingen komen binnen zodra de meldingsdienst voor de app is ingeschakeld.`,
+  'notif.note': `Je keuzes worden bewaard. Sta hierboven meldingen toe en ze komen ook binnen als de app dicht is. Op een iPhone zet je Bountiful eerst op je beginscherm.`,
   'chat.mention': `Iemand noemen`,
   'notify.mention': `{name} heeft je genoemd`,
   'notify.assigned': `Een nieuwe taak voor jou`,

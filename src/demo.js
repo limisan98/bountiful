@@ -194,6 +194,8 @@ const demoApi = {
   async changePassword() {},
   async saveLanguage() {},
   async saveNotifPrefs() {},
+  async savePushSubscription() {},
+  async dropPushSubscription() {},
   async loadRoles() { return clone(roles); },
   async updateRole(id, patch) { Object.assign(roles.find((r) => r.id === id), patch); return clone(roles.find((r) => r.id === id)); },
   async loadAreas() { return clone(areas); },

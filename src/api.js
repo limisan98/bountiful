@@ -48,6 +48,8 @@ const real = {
   },
   async changePassword(password) { ok(await sb.auth.updateUser({ password })); },
   async saveNotifPrefs(notif) { ok(await sb.auth.updateUser({ data: { notif } })); },
+  async savePushSubscription(endpoint, p256dh, auth, lang) { await rpc('save_push_subscription', { p_endpoint: endpoint, p_p256dh: p256dh, p_auth: auth, p_lang: lang }); },
+  async dropPushSubscription(endpoint) { await rpc('drop_push_subscription', { p_endpoint: endpoint }); },
   async saveLanguage(lang) { ok(await sb.auth.updateUser({ data: { lang } })); },
   async loadRoles() { return ok(await sb.from('roles').select('*').order('sort')); },
   async updateRole(id, patch) { return ok(await sb.from('roles').update(patch).eq('id', id).select().single()); },

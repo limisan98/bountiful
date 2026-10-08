@@ -1,3 +1,4 @@
+import { enablePush } from './notify.js';
 import { html, render, useEffect, useState } from '../assets/vendor/htm-preact.js';
 import { sb, api } from './api.js';
 import { state, set, useStore } from './store.js';
@@ -152,6 +153,7 @@ async function applySession(session) {
     if (me.active !== false) {
       await loadCore().catch((e) => console.error(e));
       startLive();
+      enablePush(); // phone notifications even when the app is closed (does nothing if not allowed yet / demo)
     }
   } catch (e) {
     console.error(e);

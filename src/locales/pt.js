@@ -109,7 +109,7 @@ export default {
   'notif.chatHelp': `Cada nova mensagem nos chats da sua equipe`,
   'notif.reports': `Relatórios`,
   'notif.reportsHelp': `Relatórios automáticos diários, semanais, mensais e trimestrais`,
-  'notif.note': `Suas escolhas ficam salvas. As notificações começarão a chegar quando o serviço de notificações do app for ativado.`,
+  'notif.note': `Suas escolhas ficam salvas. Permita as notificações acima e elas também chegam com o app fechado. No iPhone, primeiro adicione o Bountiful à tela de início.`,
   'chat.mention': `Mencionar alguém`,
   'notify.mention': `{name} mencionou você`,
   'notify.assigned': `Uma nova tarefa para você`,

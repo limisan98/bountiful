@@ -1,7 +1,10 @@
-// Notifications that Bountiful can show by itself: while the app is open (or sitting in the background of the phone),
-// it hears about changes live and tells the person. Reaching a phone that has the app fully closed needs the
-// notification service (a server), which is a later step.
+// Notifications, two ways:
+// 1) While the app is open (or sitting in the background), it hears about changes live and tells the person itself.
+// 2) When the app is closed, the database asks the "push" function (supabase/functions/push) to send a real phone
+//    notification. This file signs the phone up for that (enablePush) and signs it out again (disablePush).
 import { state, toast } from './store.js';
+import { SUPABASE_URL } from './config.js';
+import { api } from './api.js';
 import { t } from './i18n.js';
 import { isSupervisor, departmentOf } from './roles.js';
 import { mentionsMe } from './mentions.js';
@@ -39,11 +42,58 @@ export function loadPrefs() {
   return { ...defaults, doneAreas: [], ...(local || {}), ...((meta && meta.notif) || {}) };
 }
 
-function show(title, body, url, tag) {
+// true once this phone is signed up for real push (then the server sends the "big" notifications, so the app must not repeat them)
+let pushActive = false;
+
+const keyBytes = (b64u) => {
+  const s = atob((b64u + '='.repeat((4 - (b64u.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(s, (c) => c.charCodeAt(0));
+};
+const sameKey = (buf, bytes) => !!buf && new Uint8Array(buf).length === bytes.length && new Uint8Array(buf).every((v, i) => v === bytes[i]);
+
+// Sign this phone up for notifications that arrive even when the app is closed. Safe to call again and again.
+export async function enablePush() {
+  try {
+    if (state.demo || !state.session || !('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+    if (!('Notification' in window) || Notification.permission !== 'granted') return false;
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (!reg) return false;
+    const r = await fetch(SUPABASE_URL + '/functions/v1/push');
+    if (!r.ok) return false;
+    const key = keyBytes((await r.json()).publicKey);
+    let sub = await reg.pushManager.getSubscription();
+    if (sub && !sameKey(sub.options && sub.options.applicationServerKey, key)) { await sub.unsubscribe(); sub = null; }
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+    const j = sub.toJSON();
+    await api.savePushSubscription(j.endpoint, j.keys.p256dh, j.keys.auth, state.lang);
+    pushActive = true;
+    return true;
+  } catch (e) {
+    console.warn('push signup failed', e);
+    return false;
+  }
+}
+
+// Sign this phone out of notifications (used when the person signs out, so the next person on it gets nothing).
+export async function disablePush() {
+  pushActive = false;
+  try {
+    if (state.demo || !('serviceWorker' in navigator)) return;
+    const reg = await navigator.serviceWorker.getRegistration();
+    const sub = reg && (await reg.pushManager.getSubscription());
+    if (!sub) return;
+    await api.dropPushSubscription(sub.endpoint).catch(() => {});
+    await sub.unsubscribe();
+  } catch (_) { /* ignore */ }
+}
+
+// localOnly = this kind of notification is not sent by the server, so the app shows it itself even when a push phone is signed up
+function show(title, body, url, tag, localOnly) {
   if (document.visibilityState === 'visible') {
     toast(body ? `${title}: ${body}` : title);
     return;
   }
+  if (pushActive && !localOnly) return; // the server already sends this one to the phone
   if (!('Notification' in window) || Notification.permission !== 'granted' || !navigator.serviceWorker) return;
   navigator.serviceWorker.getRegistration().then((reg) => {
     if (reg) reg.showNotification(title, { body: (body || '').slice(0, 140), icon: 'assets/logo/icon-192.png', data: { url: './' + url }, ...(tag ? { tag } : {}) });
@@ -90,9 +140,9 @@ export function notifyLive(table, type, row) {
       if (row.status === 'done' && p.done) {
         const area = tk && tk.area_id;
         if (!p.doneAreas.length || (area && p.doneAreas.includes(area))) {
-          show(t('notify.done', { name }), [tname, areaName(areaOf(area))].filter(Boolean).join(' · '), '#/calendar');
+          show(t('notify.done', { name }), [tname, areaName(areaOf(area))].filter(Boolean).join(' · '), '#/calendar', undefined, true);
         }
-      } else if (row.status === 'doing' && sup && p.started) show(t('notify.started', { name }), tname, '#/calendar');
+      } else if (row.status === 'doing' && sup && p.started) show(t('notify.started', { name }), tname, '#/calendar', undefined, true);
     }
     return;
   }
@@ -150,12 +200,12 @@ export function notifyLive(table, type, row) {
     const prev = state.reports[row.assignment_id] || {};
     const tk = state.tasks[a.task_id];
     const name = nameOf(a.assignee);
-    if (p.delay && row.delay_reason && row.delay_reason !== prev.delay_reason) show(t('notify.delay', { name }), row.delay_reason, '#/calendar');
-    else if (p.comment && row.comment && row.comment !== prev.comment) show(t('notify.comment', { name }), `${tk ? tk.name + ': ' : ''}${row.comment}`, '#/calendar');
+    if (p.delay && row.delay_reason && row.delay_reason !== prev.delay_reason) show(t('notify.delay', { name }), row.delay_reason, '#/calendar', undefined, true);
+    else if (p.comment && row.comment && row.comment !== prev.comment) show(t('notify.comment', { name }), `${tk ? tk.name + ': ' : ''}${row.comment}`, '#/calendar', undefined, true);
     return;
   }
 
   if (table === 'profiles' && type === 'INSERT' && sup && p.joined && row.id !== me.id) {
-    show(t('notify.joined'), row.display_name || '', '#/team');
+    show(t('notify.joined'), row.display_name || '', '#/team', undefined, true);
   }
 }

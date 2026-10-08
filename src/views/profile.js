@@ -1,3 +1,4 @@
+import { enablePush, disablePush } from '../notify.js';
 import { html, useState, useRef, useEffect } from '../../assets/vendor/htm-preact.js';
 import { api, sb } from '../api.js';
 import { state, set, useStore, toast } from '../store.js';
@@ -99,7 +100,7 @@ export function ProfileSheet({ onClose }) {
 
     <div class="field">
       <span class="field-label">${t('profile.language')}</span>
-      <${LangMenu} align="left" onPick=${(code) => { api.saveLanguage(code).catch(() => {}); }} />
+      <${LangMenu} align="left" onPick=${(code) => { api.saveLanguage(code).then(() => enablePush()).catch(() => {}); }} />
     </div>
 
     <div class="field">
@@ -140,6 +141,7 @@ function SignOut({ onClose }) {
   const go = async () => {
     close();
     if (state.demo) { location.href = location.pathname; return; }
+    await disablePush(); // this phone stops getting this person's notifications
     await sb.auth.signOut();
   };
   return html`<button class="btn ghost" onClick=${go}><${Icon} name="square-rounded-arrow-left" size=${20} />${t('profile.signout')}</button>`;

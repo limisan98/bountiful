@@ -1,7 +1,7 @@
 // Service worker: lets Bountiful be installed on a phone's home screen and
 // open fast. It always asks the internet first, so updates show up right away.
-// (Phone notifications will be added here in a later step.)
-const CACHE = 'bountiful-shell-v2';
+// It also shows phone notifications sent by the server (supabase/functions/push), even when the app is closed.
+const CACHE = 'bountiful-shell-v3';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -35,15 +35,24 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('push', (event) => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch (_) { data = { body: event.data && event.data.text() }; }
-  event.waitUntil(self.registration.showNotification(data.title || 'Bountiful', {
-    body: data.body || '', icon: 'assets/logo/icon-192.png', data: { url: data.url || './' },
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+    // the person is looking at the app right now: the app shows its own little message, no need for a phone notification
+    if (list.some((c) => c.visibilityState === 'visible')) return null;
+    return self.registration.showNotification(data.title || 'Bountiful', {
+      body: data.body || '', icon: 'assets/logo/icon-192.png', badge: 'assets/logo/icon-192.png',
+      data: { url: data.url || './' }, ...(data.tag ? { tag: data.tag } : {}),
+    });
   }));
 });
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || './';
+  const url = new URL((event.notification.data && event.notification.data.url) || './', self.registration.scope).href;
   event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
-    for (const c of list) if ('focus' in c) return c.focus();
+    for (const c of list) {
+      if ('focus' in c) {
+        return c.focus().then(() => ('navigate' in c ? c.navigate(url).catch(() => {}) : null));
+      }
+    }
     return self.clients.openWindow(url);
   }));
 });
