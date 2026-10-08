@@ -32,7 +32,7 @@ export function TasksView() {
     ${groups.map((g) => html`<section key=${g.key} class="rise">
       <h3 class="section-title">${g.area ? html`<span class="title-ic" style=${colorStyle(g.area.color)}><${Icon} name=${g.area.icon} size=${16} /></span>${areaName(g.area)}` : t('tasks.noArea')}
         <span class="count">${g.items.length}</span></h3>
-      <div class="list">
+      <div class="list grid">
         ${g.items.map((x) => html`<button class="person task-row" key=${x.id} onClick=${() => setEditing(x)}>
           <${TaskBadge} icon=${x.icon} color=${x.color} size=${50} />
           <span class="person-main">

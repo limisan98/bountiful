@@ -41,7 +41,7 @@ export function HomeView() {
 
   const tiles = TILES.filter((x) => !x.only || sup);
 
-  return html`<div class="stack">
+  return html`<div class="stack home">
     <section class="hero rise">
       <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span>
       <p class="hero-kicker">${t('home.today')}</p>
@@ -50,6 +50,8 @@ export function HomeView() {
       <${RoleChip} role=${me.role} />
     </section>
 
+    <div class="home-cols">
+      <div class="col">
     <section class="rise">
       <h3 class="section-title">${t('home.tasks')}${mine.length ? html`<span class="count">${done}/${mine.length}</span>` : null}</h3>
       ${mine.length ? html`<div class="progress-card">
@@ -60,6 +62,8 @@ export function HomeView() {
         : html`<${Empty} icon="clipboard-check" text=${t('home.tasksEmpty')} />`}
     </section>
 
+      </div>
+      <div class="col">
     ${next.length ? html`<section class="rise">
       <h3 class="section-title">${t('home.coming')}</h3>
       ${next.map((x) => html`<div class="coming" key=${x.k}><span class="mini-label">${fmt(parseYmd(x.k), { weekday: 'long', day: 'numeric', month: 'short' })}</span>
@@ -94,6 +98,9 @@ export function HomeView() {
           </button>`;
         })}
       </div></section>` : null}` : null}
+
+      </div>
+    </div>
 
     <section class="rise">
       <h3 class="section-title">${t('home.quick')}</h3>

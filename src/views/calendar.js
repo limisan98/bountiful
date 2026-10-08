@@ -81,10 +81,14 @@ export function CalendarView() {
           const list = days[k] || [];
           const colors = [];
           list.forEach((a) => { const tk = s.tasks[a.task_id]; if (tk && !colors.includes(tk.color)) colors.push(tk.color); });
+          const counts = {};
+          list.forEach((a) => { counts[a.task_id] = (counts[a.task_id] || 0) + 1; });
+          const groups = Object.entries(counts).map(([id, n]) => [s.tasks[id], n]).filter(([tk]) => tk);
           const out = d.getMonth() !== cursor.getMonth();
           return html`<button key=${k} class=${'day' + (out ? ' out' : '') + (k === today ? ' today' : '') + (list.length ? ' has' : '')}
             onClick=${() => setOpenDay(k)} aria-label=${fmt(d, { weekday: 'long', day: 'numeric', month: 'long' })}>
             <span class="day-n">${d.getDate()}</span>
+            <span class="day-chips">${groups.slice(0, 3).map(([tk, n]) => html`<i style=${`--c:${tk.color}`}>${tk.name}${n > 1 ? ' ×' + n : ''}</i>`)}${groups.length > 3 ? html`<b>+${groups.length - 3}</b>` : null}</span>
             <span class="dots">${colors.slice(0, 3).map((c) => html`<i style=${`--c:${c}`}></i>`)}${colors.length > 3 ? html`<b>+</b>` : null}</span>
           </button>`;
         })}

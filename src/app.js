@@ -55,8 +55,16 @@ function Shell() {
   else if (active === 'tasks') view = html`<${TasksView} />`;
   else if (active === 'shifts') view = html`<${ShiftsSoon} />`;
 
+  const nav = html`<nav class="dock" aria-label="Main" style=${`--n:${dock.length};--i:${Math.max(idx, 0)}`}>
+    <div class="dock-brand"><${LogoMark} size=${40} /><b>Bountiful</b></div>
+    <span class=${'dock-ind' + (idx < 0 ? ' none' : '')}></span>
+    ${dock.map((n) => html`<a key=${n.route} href=${'#/' + n.route} class=${active === n.route ? 'on' : ''}
+      aria-label=${t(n.label)} aria-current=${active === n.route ? 'page' : undefined}><${Icon} name=${n.icon} size=${26} /><span class="dock-label">${t(n.label)}</span></a>`)}
+  </nav>`;
+  const profile = s.sheet === 'profile' ? html`<${ProfileSheet} onClose=${() => set({ sheet: null })} />` : null;
+
   if (active === 'chat') {
-    return html`<div class="shell chat-shell"><${ChatView} />${s.sheet === 'profile' ? html`<${ProfileSheet} onClose=${() => set({ sheet: null })} />` : null}</div>`;
+    return html`<div class="shell chat-shell"><${ChatView} />${nav}${profile}</div>`;
   }
 
   return html`<div class="shell">
@@ -67,12 +75,8 @@ function Shell() {
       </button>
     </header>
     <main class="screen" key=${active}>${view}</main>
-    <nav class="dock" aria-label="Main" style=${`--n:${dock.length};--i:${Math.max(idx, 0)}`}>
-      <span class=${'dock-ind' + (idx < 0 ? ' none' : '')}></span>
-      ${dock.map((n) => html`<a key=${n.route} href=${'#/' + n.route} class=${active === n.route ? 'on' : ''}
-        aria-label=${t(n.label)} aria-current=${active === n.route ? 'page' : undefined}><${Icon} name=${n.icon} size=${26} /></a>`)}
-    </nav>
-    ${s.sheet === 'profile' ? html`<${ProfileSheet} onClose=${() => set({ sheet: null })} />` : null}
+    ${nav}
+    ${profile}
   </div>`;
 }
 
@@ -138,6 +142,8 @@ async function applySession(session) {
 
 async function boot() {
   initLang();
+  // no pinch-zoom on iPhones either (the page itself is already built to fit every screen)
+  document.addEventListener('gesturestart', (e) => e.preventDefault());
   render(html`<${App} />`, document.getElementById('app'));
 
   const demoRole = new URLSearchParams(location.search).get('demo');

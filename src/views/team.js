@@ -76,7 +76,7 @@ export function TeamView() {
       if (!list.length) return null;
       return html`<section key=${dep} class="rise">
         <h3 class="section-title">${t('dept.' + dep)}<span class="count">${list.length}</span></h3>
-        <div class="list">
+        <div class="list grid">
           ${list.map((p) => {
             const body = html`<${PersonLine} profile=${p} size=${52} extra=${html`<span class="pline-tail">
               ${p.id === me.id ? html`<span class="you">${t('team.you')}</span>` : null}
@@ -90,7 +90,7 @@ export function TeamView() {
       </section>`;
     })}
 
-    ${tab === 'invites' && html`<div class="list rise">
+    ${tab === 'invites' && html`<div class="list grid rise">
       ${rows === null ? html`<p class="muted center">${t('common.loading')}</p>` : null}
       ${rows && !pending.length ? html`<${Empty} icon="ticket" text=${t('team.noInvites')} />` : null}
       ${pending.map((r) => html`<button class="person" key=${r.email} onClick=${() => setManaging(r)}>
@@ -107,7 +107,7 @@ export function TeamView() {
     ${tab === 'roles' && html`<div class="rise">
       ${DEPARTMENTS.map((dep) => html`<section key=${dep} class="role-section">
         <h3 class="section-title">${t('dept.' + dep)}</h3>
-        <div class="list">
+        <div class="list grid">
           ${roleList().filter((r) => r.department === dep).map((r) => html`<button class="person" key=${r.id} onClick=${() => setEditRole(r.id)}>
             <span class="role-badge" style=${`--c:${r.color}`}><${Icon} name=${r.icon} size=${24} /></span>
             <span class="person-main"><span class="person-name">${r.name}</span>
