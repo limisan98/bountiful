@@ -21,7 +21,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (req.method !== 'GET' || url.origin !== self.location.origin) return; // never touch Supabase calls
   event.respondWith(
-    fetch(req)
+    fetch(req, { cache: 'no-cache' }) // always check with the server, so new versions show up at once
       .then((res) => {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(req, copy));
