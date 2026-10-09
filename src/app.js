@@ -6,14 +6,13 @@ import { initLang, setLang, t } from './i18n.js';
 import { Icon, Avatar, Toast, ComingSoon } from './ui.js';
 import { LogoMark } from './logo.js';
 import { isSupervisor, roleInfo } from './roles.js';
-import { loadCore, startLive, stopLive, resetData, inCrew } from './data.js';
+import { loadCore, startLive, stopLive, resetData, inCrew, refresh } from './data.js';
 import { AuthScreen } from './views/auth.js';
 import { HomeView } from './views/home.js';
 import { CalendarView } from './views/calendar.js';
 import { ChatView } from './views/chat.js';
 import { TeamView } from './views/team.js';
-import { TasksView } from './views/tasks.js';
-import { RoomsView } from './views/rooms.js';
+import { TasksView } from './views/board.js';
 import { ReportsView } from './views/reports.js';
 import { MeetingsView } from './views/meetings.js';
 import { ProfileSheet } from './views/profile.js';
@@ -23,17 +22,17 @@ import { PersonSheet } from './views/person.js';
 const NAV = [
   { route: 'home', icon: 'home', label: 'nav.home', dock: true },
   { route: 'calendar', icon: 'calendar-event', label: 'nav.calendar', dock: true },
-  { route: 'rooms', icon: 'bed', label: 'nav.rooms', dock: true },
+  { route: 'tasks', icon: 'list-check', label: 'nav.tasks', dock: true },
   { route: 'chat', icon: 'messages', label: 'nav.chat', dock: true, only: 'crew' }, // the custodian team only
   { route: 'team', icon: 'id', label: 'nav.team', dock: true },
-  { route: 'tasks', icon: 'list-check', label: 'nav.tasks', dock: true, only: 'sup' },
   { route: 'meetings', icon: 'calendar-month', label: 'nav.meetings', desk: true }, // in the desktop sidebar; on phones reachable from Home
   { route: 'reports', icon: 'clipboard-data', label: 'nav.reports', only: 'sup', desk: true }, // in the desktop sidebar; on phones reachable from Home
   { route: 'shifts', icon: 'clock', label: 'nav.shifts' }, // coming soon: reachable from Home, not in the dock yet
 ];
 
 function currentRoute() {
-  const r = location.hash.replace(/^#\/?/, '') || 'home';
+  let r = location.hash.replace(/^#\/?/, '') || 'home';
+  if (r === 'rooms') r = 'tasks'; // the old Rooms tab is now part of Tasks
   return NAV.some((n) => n.route === r) ? r : 'home';
 }
 
@@ -62,7 +61,6 @@ function Shell() {
   else if (active === 'calendar') view = html`<${CalendarView} />`;
   else if (active === 'team') view = html`<${TeamView} />`;
   else if (active === 'tasks') view = html`<${TasksView} />`;
-  else if (active === 'rooms') view = html`<${RoomsView} />`;
   else if (active === 'reports') view = html`<${ReportsView} />`;
   else if (active === 'meetings') view = html`<${MeetingsView} />`;
   else if (active === 'shifts') view = html`<${ShiftsSoon} />`;
@@ -191,6 +189,17 @@ async function boot() {
     }, 0);
   });
 
+  // Back from sleep / connection came back: catch up on what was missed (live updates can be lost while the phone sleeps)
+  let last = 0;
+  const catchUp = () => { if (Date.now() - last > 15000) { last = Date.now(); refresh(); } };
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') catchUp(); });
+  addEventListener('online', catchUp);
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (e) => {
+      if (e.data && e.data.type === 'push') refresh();
+    });
+  }
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }

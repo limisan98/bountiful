@@ -77,26 +77,10 @@ function MonthPick({ value, onPick }) {
   </div>`;
 }
 
-// ---- Time (24-hour, minutes in steps of 5) ----
+// ---- Time: the phone's own time wheel (a plain, familiar picker), drawn like the other fields ----
 export function TimeField({ value, onChange, label }) {
-  const [open, setOpen] = useState(false);
-  const btn = useRef(null);
   return html`<span class="picker">
-    <button type="button" ref=${btn} class="input picker-btn center" aria-haspopup="dialog" aria-expanded=${open} aria-label=${label}
-      onClick=${() => setOpen(true)}><span>${(value || '').slice(0, 5)}</span></button>
-    ${open ? html`<${Popover} anchor=${btn.current} width=${300} onClose=${() => setOpen(false)}>
-      <${TimePick} value=${(value || '09:00').slice(0, 5)} onChange=${onChange} onDone=${() => setOpen(false)} /><//>` : null}
+    <input type="time" class="input time-input" step="300" aria-label=${label} value=${(value || '').slice(0, 5)}
+      onInput=${(e) => { if (e.target.value) onChange(e.target.value); }} onChange=${(e) => { if (e.target.value) onChange(e.target.value); }} />
   </span>`;
-}
-
-function TimePick({ value, onChange, onDone }) {
-  const [h, m] = value.split(':').map(Number);
-  return html`<div class="tpick">
-    <span class="mini-label">${t('picker.hour')}</span>
-    <div class="tpick-grid hours">${Array.from({ length: 24 }, (_, i) => html`<button type="button" key=${i} class=${'cpick-day' + (i === h ? ' on' : '')}
-      onClick=${() => onChange(`${pad(i)}:${pad(m)}`)}>${pad(i)}</button>`)}</div>
-    <span class="mini-label">${t('picker.minute')}</span>
-    <div class="tpick-grid mins">${Array.from({ length: 12 }, (_, i) => i * 5).concat(m % 5 ? [m] : []).sort((a, b) => a - b).map((i) => html`<button type="button" key=${i} class=${'cpick-day' + (i === m ? ' on' : '')}
-      onClick=${() => { onChange(`${pad(h)}:${pad(i)}`); onDone(); }}>${pad(i)}</button>`)}</div>
-  </div>`;
 }

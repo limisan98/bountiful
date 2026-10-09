@@ -12,11 +12,14 @@ export const startOfWeek = (d) => addDays(d, 1 - isoWeekday(d));
 export const lastOfMonth = (key) => { const [y, m] = key.split('-').map(Number); return ymd(new Date(y, m, 0)); };
 
 export const hhmm = (s) => (s || '').slice(0, 5);
-export const toMin = (s) => { const [h, m] = hhmm(s).split(':').map(Number); return h * 60 + (m || 0); };
+export const toMin = (s) => { if (!s) return 0; const [h, m] = hhmm(s).split(':').map(Number); return h * 60 + (m || 0); };
 export const fromMin = (n) => `${pad(Math.floor(n / 60))}:${pad(n % 60)}`;
-export const goalMin = (a) => toMin(a.end_time) - toMin(a.start_time);
+export const goalMin = (a) => (a.start_time && a.end_time ? toMin(a.end_time) - toMin(a.start_time) : 0);
+export const hasTime = (a) => !!(a.start_time && a.end_time);
+export const timeKey = (a) => (a.start_time ? toMin(a.start_time) : 1440); // tasks without a clock time go last
+export const timeText = (a) => (hasTime(a) ? `${hhmm(a.start_time)}–${hhmm(a.end_time)}` : '');
 // The time goal of a task: the one the supervisor set, otherwise the length of the planned window
-export const taskGoal = (tk, a) => (tk && tk.goal_minutes) || (a ? goalMin(a) : tk ? toMin(tk.end_time) - toMin(tk.start_time) : 0);
+export const taskGoal = (tk, a) => (tk && tk.goal_minutes) || (a && goalMin(a)) || (tk ? toMin(tk.end_time) - toMin(tk.start_time) : 0) || 30;
 
 // 80 -> "1h 20m"
 export function dur(min) {

@@ -872,3 +872,57 @@ a, img, svg { -webkit-touch-callout: none; -webkit-user-drag: none; }
 .stepper.small .stepper-val input { width: 56px; }
 .stepper.small .stepper-val { height: 40px; border-radius: 16px; flex: none; }
 .stepper.small .stepper-val input { font-size: 18px; }
+
+/* ---- Time fields: the phone's own time picker ---- */
+.time-input { width: 100%; min-width: 0; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; appearance: none; -webkit-appearance: none; min-height: 52px; }
+.time-input::-webkit-calendar-picker-indicator { opacity: .5; cursor: pointer; }
+
+/* ---- The three task states: Not started (gray) · In progress (yellow) · Done (green) ---- */
+:root {
+  --st-todo: #EDF0EF; --st-todo-ink: #5B6866;
+  --st-doing: #FFE9A8; --st-doing-ink: #7A5600;
+  --st-done: #CFF1D6; --st-done-ink: #1B7A3B;
+}
+.chip.status-chip.todo { background: var(--st-todo); color: var(--st-todo-ink); }
+.chip.status-chip.doing { background: var(--st-doing); color: var(--st-doing-ink); }
+.chip.status-chip.done { background: var(--st-done); color: var(--st-done-ink); }
+.arow-state { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--st-todo); color: var(--st-todo-ink); }
+.arow-state.doing { background: var(--st-doing); color: var(--st-doing-ink); }
+.arow-state.done { background: var(--st-done); color: var(--st-done-ink); }
+.req-chip.todo { background: var(--st-todo); color: var(--st-todo-ink); }
+.req-chip.doing { background: var(--st-doing); color: var(--st-doing-ink); }
+.req-chip.done { background: var(--st-done); color: var(--st-done-ink); }
+.block.todo { box-shadow: inset 4px 0 0 #B9C3C0; }
+.block.doing { box-shadow: inset 4px 0 0 #F2B91C; }
+.block.done { box-shadow: inset 4px 0 0 #3DB767; opacity: 1; }
+.arow.doing { box-shadow: var(--shadow-s), inset 0 0 0 2px #F6D372; }
+
+/* ---- One task line with its extras: select tick, person, start button ---- */
+.arow-wrap { display: flex; align-items: center; gap: 8px; border-radius: var(--r-l); transition: background var(--d2) var(--ease); }
+.arow-wrap > .arow { flex: 1; min-width: 0; }
+.arow-wrap.selected { background: var(--brand-soft); box-shadow: inset 0 0 0 2.5px var(--mint); }
+.arow-wrap > .room-check { margin-left: 10px; }
+.arow-person { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--ink-2); min-width: 0; }
+.arow-person.waiting { color: #A5502F; }
+.start-btn { width: 46px; height: 46px; border-radius: 50%; flex: none; display: grid; place-items: center; background: var(--mint); color: var(--ink); margin-right: 8px; box-shadow: 0 6px 14px rgba(134, 227, 206, .45); }
+.start-btn.on { background: var(--st-doing); color: var(--st-doing-ink); box-shadow: none; }
+.waiting-card { display: flex; align-items: center; gap: 12px; color: #A5502F; background: #FDEEEA; box-shadow: none; font-weight: 600; }
+.pick-person { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pick-person.on { background: var(--brand-soft); box-shadow: inset 0 0 0 2.5px var(--mint); }
+.tpl { max-width: 100%; }
+.suggest { align-items: center; }
+
+/* ---- Comments on a task ---- */
+.comment-list { display: flex; flex-direction: column; gap: 10px; }
+.comment { display: flex; gap: 10px; align-items: flex-start; }
+.comment-body { flex: 1; min-width: 0; background: #fff; border-radius: 20px; padding: 10px 14px; box-shadow: var(--shadow-s); }
+.comment.mine .comment-body { background: var(--brand-soft); box-shadow: none; }
+.comment-head { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.comment-head small { color: var(--ink-3); flex: 1; }
+.comment-body p { margin: 2px 0 0; overflow-wrap: anywhere; }
+.comment-del { color: var(--ink-3); width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; }
+.comment-form { display: flex; align-items: center; gap: 10px; }
+.comment-form .input { flex: 1; min-width: 0; }
+.comment-form .send { width: 48px; height: 48px; }
+.arow-wrap > .room-check { background: #fff; box-shadow: inset 0 0 0 2px var(--line); width: 28px; height: 28px; }
+.arow-wrap > .room-check.on { background: var(--mint); box-shadow: none; }

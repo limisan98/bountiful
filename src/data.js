@@ -1,7 +1,7 @@
 // Loading, live updates and the small "selectors" the screens use. All database calls go through api.js.
 import { api } from './api.js';
 import { state, set } from './store.js';
-import { addMonths, monthKey, lastOfMonth, toMin, ymd, addDays } from './time.js';
+import { addMonths, monthKey, lastOfMonth, toMin, timeKey, ymd, addDays } from './time.js';
 import { departmentOf, isSupervisor } from './roles.js';
 import { t } from './i18n.js';
 import { notifyLive } from './notify.js';
@@ -11,14 +11,14 @@ const months = new Set();
 
 export function resetData() {
   months.clear();
-  set({ roles: {}, areas: [], tasks: {}, assignments: {}, reports: {}, messages: {}, chatOpen: null, person: null, rooms: {}, digests: {}, invites: {}, meetings: {}, settings: {} });
+  set({ roles: {}, areas: [], tasks: {}, assignments: {}, reports: {}, messages: {}, chatOpen: null, person: null, comments: {}, digests: {}, invites: {}, meetings: {}, settings: {} });
 }
 
 // ---- loading ----
 export async function loadCore() {
   const me = state.profile;
-  const [roles, areas, tasks, rooms, digests, invites, meetings, recent, settings] = await Promise.all([
-    api.loadRoles(), api.loadAreas(), api.loadTasks(), api.loadRooms(ymd(addDays(new Date(), -30))),
+  const [roles, areas, tasks, digests, invites, meetings, recent, settings] = await Promise.all([
+    api.loadRoles(), api.loadAreas(), api.loadTasks(),
     isSupervisor(me) ? api.loadDigests() : [],
     departmentOf(me) === 'custodian' ? api.loadInvites(addDays(new Date(), -60).toISOString()) : [],
     api.loadMeetings(ymd(addDays(new Date(), -30))),
@@ -28,7 +28,7 @@ export async function loadCore() {
   const messages = {};
   recent.forEach((m) => { (messages[m.channel] = messages[m.channel] || { list: [], more: true, loaded: false }).list.push(m); });
   Object.values(messages).forEach((c) => c.list.reverse());
-  set({ roles: byId(roles), areas, tasks: byId(tasks), rooms: byId(rooms), digests: byId(digests), invites: byId(invites), meetings: byId(meetings), settings, messages, chatSeen: loadSeen(messages) });
+  set({ roles: byId(roles), areas, tasks: byId(tasks), digests: byId(digests), invites: byId(invites), meetings: byId(meetings), settings, messages, chatSeen: loadSeen(messages) });
   const now = new Date();
   await Promise.all([monthKey(now), monthKey(addMonths(now, -1)), monthKey(addMonths(now, 1))].map(ensureMonth));
 }
@@ -48,10 +48,7 @@ export const task = (id) => state.tasks[id];
 export const person = (id) => state.profiles[id];
 export const assignmentsOn = (day) => Object.values(state.assignments)
   .filter((a) => a.day === day)
-  .sort((x, y) => toMin(x.start_time) - toMin(y.start_time) || (x.created_at || '').localeCompare(y.created_at || ''));
-export const roomsOn = (day) => Object.values(state.rooms)
-  .filter((r) => r.day === day)
-  .sort((x, y) => x.room.localeCompare(y.room, undefined, { numeric: true }));
+  .sort((x, y) => timeKey(x) - timeKey(y) || (x.created_at || '').localeCompare(y.created_at || ''));
 export const areaOf = (id) => state.areas.find((a) => a.id === id);
 export const areaName = (a) => (a ? a.name || t('area.' + a.key) : '');
 export const activePeople = () => Object.values(state.profiles).filter((p) => p.active !== false);
@@ -103,12 +100,6 @@ export async function archiveTask(id, fromDay) {
   const assignments = { ...state.assignments };
   (gone || []).forEach((g) => delete assignments[g.id]);
   set({ tasks: { ...state.tasks, [id]: row }, assignments });
-}
-// How long cleaning one room should take (minutes). The supervisor can change it.
-export const roomGoalMin = () => Number(state.settings.room_goal_minutes) || 30;
-export async function setRoomGoal(minutes) {
-  await api.setRoomGoal(minutes);
-  set({ settings: { ...state.settings, room_goal_minutes: String(minutes) } });
 }
 export async function saveRole(id, patch) {
   const row = await api.updateRole(id, patch);
@@ -195,15 +186,72 @@ export async function requestMeeting(supervisor, day, time, topic) { putMeeting(
 export async function answerMeeting(id, accept, reply) { putMeeting(await api.answerMeeting(id, accept, reply)); }
 export async function cancelMeeting(id) { putMeeting(await api.cancelMeeting(id)); }
 
-// ---- rooms to clean ----
-function putRooms(rows) { set({ rooms: { ...state.rooms, ...byId([].concat(rows)) } }); }
-export async function addRooms(rows) { putRooms(await api.addRooms(rows)); }
-export async function assignRooms(ids, assignee) { putRooms(await api.assignRooms(ids, assignee)); }
-export async function setRoomStatus(id, status) { putRooms(await api.setRoomStatus(id, status)); }
-export async function editRoom(id, room, day, note) { putRooms(await api.editRoom(id, room, day, note)); }
-export async function removeRoom(id) {
-  await api.deleteRoom(id);
-  const rooms = { ...state.rooms }; delete rooms[id]; set({ rooms });
+// ---- the name of a planned task: "Room cleaning · 12" (rooms carry their room number in the title) ----
+export const itemName = (a) => {
+  const tk = state.tasks[a.task_id];
+  return (tk ? tk.name : '') + (a.title ? (tk ? ' · ' : '') + a.title : '');
+};
+
+// Give planned tasks to people. One person: they take it over. Several people: each of them gets the task
+// (or, with `share`, the tasks are shared out between them one by one). No people: take it back.
+export async function giveTasks(ids, people, share) {
+  const items = ids.map((id) => state.assignments[id]).filter((a) => a && a.status !== 'done');
+  if (!people.length) {
+    for (const a of items) await editAssignment(a.id, { assignee: null, status: 'todo', started_at: null, steps_done: [] });
+    return;
+  }
+  const updates = [], copies = [];
+  items.forEach((a, i) => {
+    const who = share ? [people[i % people.length]] : people;
+    who.forEach((p, k) => {
+      if (k === 0) updates.push([a, p]);
+      else copies.push({ task_id: a.task_id, assignee: p, day: a.day, start_time: a.start_time, end_time: a.end_time, note: a.note, kind: a.kind, title: a.title, requested_by: a.requested_by });
+    });
+  });
+  for (const [a, p] of updates) {
+    await editAssignment(a.id, a.assignee === p ? { assignee: p } : { assignee: p, status: 'todo', started_at: null, steps_done: [] });
+  }
+  if (copies.length) await planAssignments(copies);
+}
+export async function askRooms(day, rooms, note) {
+  const made = await api.requestRooms(day, rooms, note);
+  set({ assignments: { ...state.assignments, ...byId(made) } });
+  return made;
+}
+export async function editRoomRequest(id, title, day, note) { putAssignment(await api.editRoomRequest(id, title, day, note)); }
+
+// ---- comments on a task ----
+export const commentsOf = (id) => state.comments[id] || null;
+const mergeComments = (old, more) => {
+  const m = new Map((old || []).map((x) => [x.id, x]));
+  more.forEach((x) => m.set(x.id, x));
+  return [...m.values()].sort((a, b) => a.created_at.localeCompare(b.created_at));
+};
+export async function loadComments(id) { set({ comments: { ...state.comments, [id]: mergeComments(state.comments[id], await api.loadComments(id)) } }); }
+export async function addComment(id, body) {
+  const row = await api.addComment(id, body);
+  set({ comments: { ...state.comments, [id]: mergeComments(state.comments[id], [row]) } });
+}
+export async function removeComment(assignmentId, id) {
+  await api.deleteComment(id);
+  set({ comments: { ...state.comments, [assignmentId]: (state.comments[assignmentId] || []).filter((c) => c.id !== id) } });
+}
+
+// Come back up to date (after the phone slept, or the connection dropped): reload what is on screen
+let refreshing = false;
+export async function refresh() {
+  if (refreshing || !state.profile || state.demo) return;
+  refreshing = true;
+  try {
+    const parts = await Promise.all([...months].map(async (k) => {
+      const from = k + '-01', to = lastOfMonth(k);
+      const [a, r] = await Promise.all([api.loadAssignments(from, to), api.loadReports(from, to)]);
+      return { a, r };
+    }));
+    const assignments = {}, reports = {};
+    parts.forEach((p) => { p.a.forEach((x) => { assignments[x.id] = x; }); p.r.forEach((x) => { reports[x.assignment_id] = x; }); });
+    set({ assignments, reports, tasks: byId(await api.loadTasks()) });
+  } catch (_) { /* try again next time */ } finally { refreshing = false; }
 }
 
 // ---- live updates from the database (other people's changes show up at once) ----
@@ -246,10 +294,10 @@ export function startLive() {
       const invites = { ...state.invites };
       if (del) delete invites[id]; else invites[id] = row;
       set({ invites });
-    } else if (table === 'room_requests') {
-      const rooms = { ...state.rooms };
-      if (del) delete rooms[id]; else rooms[id] = row;
-      set({ rooms });
+    } else if (table === 'assignment_comments') {
+      const aid = rec.assignment_id;
+      if (del) { if (aid && state.comments[aid]) set({ comments: { ...state.comments, [aid]: state.comments[aid].filter((c) => c.id !== id) } }); }
+      else if (state.comments[aid]) set({ comments: { ...state.comments, [aid]: mergeComments(state.comments[aid], [row]) } });
     } else if (table === 'messages') {
       if (del) { dropMessage(id); return; }
       const cur = chat(row.channel);

@@ -8,8 +8,8 @@ import { api } from './api.js';
 import { t } from './i18n.js';
 import { isSupervisor, departmentOf } from './roles.js';
 import { mentionsMe } from './mentions.js';
-import { areaOf, areaName } from './data.js';
-import { parseYmd, fmt, hhmm } from './time.js';
+import { areaOf, areaName, itemName } from './data.js';
+import { parseYmd, fmt, hhmm, hasTime } from './time.js';
 
 export const KEY = 'bountiful.notif';
 
@@ -29,7 +29,7 @@ export const TYPES = [
   { key: 'meetingAnswer', icon: 'calendar-event', def: true, only: 'staff' },
   { key: 'started', icon: 'player-play', def: false, only: 'sup' },
   { key: 'delay', icon: 'clock', def: true, only: 'sup' },
-  { key: 'comment', icon: 'message-report', def: true, only: 'sup' },
+  { key: 'comment', icon: 'message-report', def: true },
   { key: 'joined', icon: 'circle-plus', def: true, only: 'sup' },
   { key: 'daily', icon: 'report-analytics', def: false, only: 'sup' },
 ];
@@ -96,12 +96,12 @@ function show(title, body, url, tag, localOnly) {
   if (pushActive && !localOnly) return; // the server already sends this one to the phone
   if (!('Notification' in window) || Notification.permission !== 'granted' || !navigator.serviceWorker) return;
   navigator.serviceWorker.getRegistration().then((reg) => {
-    if (reg) reg.showNotification(title, { body: (body || '').slice(0, 140), icon: 'assets/logo/icon-192.png', data: { url: './' + url }, ...(tag ? { tag } : {}) });
+    if (reg) reg.showNotification(title, { body: (body || '').slice(0, 140), icon: 'assets/logo/icon-192.png', data: { url: './' + url }, ...(tag ? { tag, renotify: true } : {}) });
   }).catch(() => {});
 }
 
 const nameOf = (id) => (state.profiles[id] ? state.profiles[id].display_name : t('chat.former'));
-const when = (a) => `${fmt(parseYmd(a.day), { weekday: 'short', day: 'numeric', month: 'short' })}, ${hhmm(a.start_time)}`;
+const when = (a) => fmt(parseYmd(a.day), { weekday: 'short', day: 'numeric', month: 'short' }) + (hasTime(a) ? `, ${hhmm(a.start_time)}` : '');
 
 // Called for every live change, BEFORE the app's own copy is updated (so the old version is still around to compare).
 export function notifyLive(table, type, row) {
@@ -123,27 +123,55 @@ export function notifyLive(table, type, row) {
   }
 
   if (table === 'assignments') {
-    const prev = state.assignments[row.id];
+    const prev = state.assignments[row.id]; // (missing when it was not on this phone yet: then it counts as new)
     const tk = state.tasks[row.task_id];
-    const tname = tk ? tk.name : '';
-    if (row.assignee === me.id && row.created_by !== me.id && p.assigned) {
-      if (type === 'INSERT') show(t('notify.assigned'), `${tname} · ${when(row)}`, '#/home');
-      else if (prev && (prev.day !== row.day || prev.start_time !== row.start_time || prev.end_time !== row.end_time)) show(t('notify.changed'), `${tname} · ${when(row)}`, '#/home');
+    const name = itemName(row);
+    const text = `${name} · ${when(row)}`;
+    const room = row.kind === 'room';
+    const theirs = row.assignee === me.id;
+    const wasMine = !!prev && prev.assignee === me.id;
+    const tag = 'task-' + row.id;
+
+    // a room request from reception, or one that was changed
+    if (room && sup && p.rooms && row.requested_by && row.requested_by !== me.id && !row.assignee) {
+      if (type === 'INSERT' || !prev) show(t('notify.rooms', { name: nameOf(row.requested_by) }), text, '#/tasks', 'rooms-new');
+      else if (prev.title !== row.title || prev.day !== row.day || (prev.note || '') !== (row.note || '')) {
+        show(t('notify.roomsEdited', { name: nameOf(row.requested_by) }), text + (row.note ? ' · ' + row.note : ''), '#/tasks', 'rooms-edit-' + row.id);
+      }
     }
-    // a task handed over to me by a colleague (through an invitation I accepted) is not news
-    if (type === 'UPDATE' && prev && prev.assignee !== me.id && row.assignee === me.id && p.assigned
-        && !Object.values(state.invites).some((i) => i.assignment_id === row.id && i.to_user === me.id)) {
-      show(t('notify.assigned'), `${tname} · ${when(row)}`, '#/home');
+    // a task given to me. This also covers being given the SAME task again, or one that was taken away and given back.
+    // (not when a colleague handed it over through an invitation I accepted, and not when I did it myself:
+    // there is only one supervisor, so a supervisor who sees a task move to them did it themselves)
+    const viaInvite = Object.values(state.invites).some((i) => i.assignment_id === row.id && i.to_user === me.id);
+    if (theirs && !wasMine && p.assigned && !viaInvite && row.created_by !== me.id && (type === 'INSERT' || !sup)) {
+      show(t(room ? 'notify.roomAssigned' : 'notify.assigned'), text, '#/tasks', tag);
+    } else if (theirs && wasMine && p.assigned && row.created_by !== me.id) {
+      const moved = prev.day !== row.day || prev.start_time !== row.start_time || prev.end_time !== row.end_time;
+      const edited = room && (prev.title !== row.title || (prev.note || '') !== (row.note || ''));
+      if (moved || edited) show(t(room ? 'notify.roomEdited' : 'notify.changed'), text, '#/tasks', tag);
     }
-    if (type === 'UPDATE' && prev && prev.status !== row.status && row.assignee !== me.id) {
-      const name = nameOf(row.assignee);
-      if (row.status === 'done' && p.done) {
-        const area = tk && tk.area_id;
-        if (!p.doneAreas.length || (area && p.doneAreas.includes(area))) {
-          show(t('notify.done', { name }), [tname, areaName(areaOf(area))].filter(Boolean).join(' · '), '#/calendar', undefined, true);
+    if (type === 'UPDATE' && prev && prev.status !== row.status && !theirs) {
+      const who = row.assignee ? nameOf(row.assignee) : '';
+      if (row.status === 'done') {
+        if (sup && p.done) {
+          const area = tk && tk.area_id;
+          if (!p.doneAreas.length || (area && p.doneAreas.includes(area))) {
+            show(t('notify.done', { name: who }), [name, areaName(areaOf(area))].filter(Boolean).join(' · '), '#/tasks', 'done-' + row.id);
+          }
         }
-      } else if (row.status === 'doing' && sup && p.started) show(t('notify.started', { name }), tname, '#/calendar', undefined, true);
+        if (room && row.requested_by === me.id && !sup && p.roomsDone) show(t('notify.roomDone', { name: who }), text, '#/tasks', 'rooms-done');
+      } else if (row.status === 'doing' && sup && p.started) show(t('notify.started', { name: who }), name, '#/tasks', 'started-' + row.id);
     }
+    return;
+  }
+
+  if (table === 'assignment_comments') {
+    if (type !== 'INSERT' || row.author === me.id || !p.comment) return;
+    const a = state.assignments[row.assignment_id];
+    if (!a) return;
+    const author = state.profiles[row.author];
+    const fromBoss = author && isSupervisor(author);
+    if ((fromBoss && a.assignee === me.id) || (!fromBoss && sup)) show(t('notify.comment', { name: nameOf(row.author) }), `${itemName(a)}: ${row.body}`, '#/tasks', 'comment-' + row.assignment_id);
     return;
   }
 
@@ -169,27 +197,6 @@ export function notifyLive(table, type, row) {
     if (type === 'INSERT' && row.to_user === me.id) show(t('notify.invite', { name: nameOf(row.from_user) }), tk ? tk.name : '', '#/chat', 'invite');
     else if (type === 'UPDATE' && prev && prev.status === 'pending' && row.from_user === me.id && (row.status === 'accepted' || row.status === 'declined')) {
       show(t('notify.invite.' + row.status, { name: nameOf(row.to_user) }), tk ? tk.name : '', '#/chat', 'invite-answer');
-    }
-    return;
-  }
-
-  if (table === 'room_requests') {
-    const prev = state.rooms[row.id];
-    const room = `${row.room} · ${fmt(parseYmd(row.day), { weekday: 'short', day: 'numeric', month: 'short' })}`;
-    if (type === 'INSERT') {
-      if (sup && p.rooms && row.requested_by !== me.id) show(t('notify.rooms', { name: nameOf(row.requested_by) }), room, '#/rooms', 'rooms-new');
-    } else {
-      // a room that was not visible to me before (e.g. just given to me) counts as new
-      if (sup && prev && p.rooms && row.requested_by !== me.id && (prev.room !== row.room || prev.day !== row.day || (prev.note || '') !== (row.note || ''))) {
-        show(t('notify.roomsEdited', { name: nameOf(row.requested_by) }), room + (row.note ? ' · ' + row.note : ''), '#/rooms', 'rooms-edit-' + row.id);
-      }
-      if (row.assignee === me.id && prev && prev.assignee === me.id && row.requested_by !== me.id && p.assigned && (prev.room !== row.room || prev.day !== row.day || (prev.note || '') !== (row.note || ''))) {
-        show(t('notify.roomEdited'), room + (row.note ? ' · ' + row.note : ''), '#/rooms', 'rooms-edit-' + row.id);
-      }
-      if (row.assignee === me.id && (!prev || prev.assignee !== me.id) && p.assigned) show(t('notify.roomAssigned'), room, '#/rooms', 'rooms-assigned');
-      if (prev && row.status === 'done' && prev.status !== 'done' && row.requested_by === me.id && departmentOf(me) === 'reception' && p.roomsDone) {
-        show(t('notify.roomDone', { name: nameOf(row.assignee) }), room, '#/rooms', 'rooms-done');
-      }
     }
     return;
   }

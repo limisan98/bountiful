@@ -17,7 +17,7 @@ export const state = {
   invites: {},       // task invitations between custodians, by id
   meetings: {},      // meeting requests (mine, or addressed to me), by id
   settings: {},      // app-wide settings (e.g. room_goal_minutes)
-  rooms: {},         // rooms to clean (Reception -> supervisor -> custodian), by id
+  comments: {},      // comments on tasks, by assignment id (loaded when a task is opened)
   messages: {},      // chat, by channel: 'general' or 'dm:<id>:<id>' -> { list, more, loaded }
   chatOpen: null,    // the conversation that is open in the chat screen (null = the list)
   chatSeen: {},      // channel -> time I last looked (for the unread counters; kept on this device)

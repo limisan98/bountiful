@@ -1,7 +1,7 @@
 // Service worker: lets Bountiful be installed on a phone's home screen and
 // open fast. It always asks the internet first, so updates show up right away.
 // It also shows phone notifications sent by the server (supabase/functions/push), even when the app is closed.
-const CACHE = 'bountiful-shell-v3';
+const CACHE = 'bountiful-shell-v4';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -36,12 +36,16 @@ self.addEventListener('push', (event) => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch (_) { data = { body: event.data && event.data.text() }; }
   event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
-    // the person is looking at the app right now: the app shows its own little message, no need for a phone notification
-    if (list.some((c) => c.visibilityState === 'visible')) return null;
+    // Every push MUST show a notification: iPhones count "silent" pushes and cancel the sign-up after a few of them,
+    // which is why notifications used to stop appearing now and then. So it is always shown; when the app is open
+    // it disappears again after a few seconds, and the app is told to catch up (in case its live connection had dropped).
+    const open = list.some((c) => c.visibilityState === 'visible');
+    if (open) list.forEach((c) => c.postMessage({ type: 'push' }));
+    const tag = data.tag || 'b-' + Date.now();
     return self.registration.showNotification(data.title || 'Bountiful', {
       body: data.body || '', icon: 'assets/logo/icon-192.png', badge: 'assets/logo/icon-192.png',
-      data: { url: data.url || './' }, ...(data.tag ? { tag: data.tag } : {}),
-    });
+      data: { url: data.url || './' }, tag, renotify: true, // renotify: a second notification with the same tag still buzzes
+    }).then(() => (open ? new Promise((r) => setTimeout(r, 6000)).then(() => self.registration.getNotifications({ tag }).then((ns) => ns.forEach((n) => n.close()))) : null));
   }));
 });
 self.addEventListener('notificationclick', (event) => {

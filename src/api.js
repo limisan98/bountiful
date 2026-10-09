@@ -52,7 +52,6 @@ const real = {
   async dropPushSubscription(endpoint) { await rpc('drop_push_subscription', { p_endpoint: endpoint }); },
   async saveLanguage(lang) { ok(await sb.auth.updateUser({ data: { lang } })); },
   async loadSettings() { return Object.fromEntries(ok(await sb.from('app_settings').select('*')).map((r) => [r.key, r.value])); },
-  async setRoomGoal(minutes) { await rpc('set_room_goal', { p_minutes: minutes }); },
   async loadRoles() { return ok(await sb.from('roles').select('*').order('sort')); },
   async updateRole(id, patch) { return ok(await sb.from('roles').update(patch).eq('id', id).select().single()); },
 
@@ -135,18 +134,23 @@ const real = {
   },
   async cancelMeeting(id) { await rpc('cancel_meeting', { p_id: id }); return ok(await sb.from('meeting_requests').select('*').eq('id', id).single()); },
 
-  // ---- rooms to clean ----
-  async loadRooms(from) { return ok(await sb.from('room_requests').select('*').gte('day', from).order('created_at')); },
-  async addRooms(rows) { return ok(await sb.from('room_requests').insert(rows).select()); },
-  async assignRooms(ids, assignee) { await rpc('assign_rooms', { p_ids: ids, p_assignee: assignee }); return ok(await sb.from('room_requests').select('*').in('id', ids)); },
-  async setRoomStatus(id, status) { await rpc('set_room_status', { p_id: id, p_status: status }); return ok(await sb.from('room_requests').select('*').eq('id', id).single()); },
-  async editRoom(id, room, day, note) { await rpc('edit_room', { p_id: id, p_room: room, p_day: day, p_note: note }); return ok(await sb.from('room_requests').select('*').eq('id', id).single()); },
-  async deleteRoom(id) { ok(await sb.from('room_requests').delete().eq('id', id)); },
+  // ---- rooms (they are tasks now: Reception asks, the supervisor gives them out) ----
+  async requestRooms(day, rooms, note) { return ok(await sb.rpc('request_rooms', { p_day: day, p_rooms: rooms, p_note: note || '' })); },
+  async editRoomRequest(id, title, day, note) {
+    await rpc('edit_room_request', { p_id: id, p_title: title, p_day: day, p_note: note });
+    return ok(await sb.from('assignments').select('*').eq('id', id).single());
+  },
+  async renotifyAssignment(id) { await rpc('renotify_assignment', { p_id: id }); },
+
+  // ---- comments on a task ----
+  async loadComments(assignmentId) { return ok(await sb.from('assignment_comments').select('*').eq('assignment_id', assignmentId).order('created_at')); },
+  async addComment(assignmentId, body) { return ok(await sb.from('assignment_comments').insert({ assignment_id: assignmentId, body }).select().single()); },
+  async deleteComment(id) { ok(await sb.from('assignment_comments').delete().eq('id', id)); },
 
   // ---- live updates: `handler(table, eventType, newRow, oldRow)` ----
   subscribe(handler) {
     const ch = sb.channel('bountiful-live');
-    ['profiles', 'roles', 'areas', 'tasks', 'assignments', 'assignment_reports', 'messages', 'room_requests', 'custodian_reports', 'task_invites', 'meeting_requests'].forEach((table) => {
+    ['profiles', 'roles', 'areas', 'tasks', 'assignments', 'assignment_reports', 'messages', 'assignment_comments', 'custodian_reports', 'task_invites', 'meeting_requests'].forEach((table) => {
       ch.on('postgres_changes', { event: '*', schema: 'public', table }, (p) => handler(table, p.eventType, p.new, p.old));
     });
     ch.subscribe();

@@ -4,8 +4,8 @@ import { t, friendlyError } from '../i18n.js';
 import { Icon, Avatar, Segmented, Sheet, Empty } from '../ui.js';
 import { isSupervisor } from '../roles.js';
 import { colorStyle } from '../color.js';
-import { ensureMonth } from '../data.js';
-import { ymd, parseYmd, addDays, addMonths, monthKey, monthGrid, startOfWeek, weekdayNames, fmt, todayYmd, toMin, hhmm, dur, goalMin, pad } from '../time.js';
+import { ensureMonth, itemName } from '../data.js';
+import { ymd, parseYmd, addDays, addMonths, monthKey, monthGrid, startOfWeek, weekdayNames, fmt, todayYmd, toMin, hhmm, dur, taskGoal, hasTime, timeKey, pad } from '../time.js';
 import { AssignmentRow, AssignmentSheet, AssignSheet } from './assign.js';
 
 // Group everything by day once, so the grids stay quick
@@ -15,7 +15,7 @@ function byDay(assignments, onlyMe) {
     if (onlyMe && a.assignee !== onlyMe) continue;
     (map[a.day] = map[a.day] || []).push(a);
   }
-  for (const k in map) map[k].sort((x, y) => toMin(x.start_time) - toMin(y.start_time));
+  for (const k in map) map[k].sort((x, y) => timeKey(x) - timeKey(y));
   return map;
 }
 
@@ -127,14 +127,16 @@ export function DaySheet({ day, who: initialWho, onClose, onOpen, onAssign }) {
   const [who, setWho] = useState(initialWho || 'all');
   const d = parseYmd(day);
   const all = Object.values(s.assignments).filter((a) => a.day === day && s.tasks[a.task_id])
-    .sort((x, y) => toMin(x.start_time) - toMin(y.start_time));
+    .sort((x, y) => timeKey(x) - timeKey(y));
   const list = who === 'mine' ? all.filter((a) => a.assignee === me.id) : all;
+  const timed = list.filter(hasTime), anytime = list.filter((a) => !hasTime(a));
 
   // totals: supervisors see everybody's planned time, everybody else only their own
   const totals = {};
   all.forEach((a) => {
+    if (!a.assignee) return;
     const row = (totals[a.assignee] = totals[a.assignee] || { min: 0, n: 0, done: 0 });
-    row.min += goalMin(a); row.n += 1; if (a.status === 'done') row.done += 1;
+    row.min += taskGoal(s.tasks[a.task_id], a); row.n += 1; if (a.status === 'done') row.done += 1;
   });
   const shown = Object.entries(totals).filter(([id]) => sup || id === me.id);
 
@@ -154,8 +156,10 @@ export function DaySheet({ day, who: initialWho, onClose, onOpen, onAssign }) {
         <small>${dur(v.min)} · ${v.done}/${v.n}</small></span></span>`)}
     </div>` : null}
 
-    ${list.length ? html`<${Timeline} list=${list} day=${day} onOpen=${onOpen} />`
-      : html`<${Empty} icon="calendar-event" text=${t('cal.emptyDay')} />`}
+    ${timed.length ? html`<${Timeline} list=${timed} day=${day} onOpen=${onOpen} />` : null}
+    ${anytime.length ? html`<div class="field"><span class="field-label">${t('cal.anytime')}<span class="count">${anytime.length}</span></span>
+      <div class="list tight">${anytime.map((a) => html`<${AssignmentRow} key=${a.id} a=${a} onOpen=${onOpen} showPerson=${true} />`)}</div></div>` : null}
+    ${!list.length ? html`<${Empty} icon="calendar-event" text=${t('cal.emptyDay')} />` : null}
   <//>`;
 }
 
@@ -202,7 +206,7 @@ function Timeline({ list, day, onOpen }) {
         return html`<button key=${a.id} class=${'block ' + a.status + (h < 52 ? ' tiny' : '')} onClick=${() => onOpen(a.id)}
           style=${`${colorStyle(tk.color)};top:${px(it.s)}px;height:${h}px;left:calc(${it.lane * w}% + 1px);width:calc(${w}% - 4px)`}>
           <span class="block-ic"><${Icon} name=${a.status === 'done' ? 'circle-check' : tk.icon} size=${16} /></span>
-          <span class="block-main"><b>${tk.name}</b>
+          <span class="block-main"><b>${itemName(a)}</b>
             <small>${who ? html`<${Avatar} profile=${who} size=${16} ring=${false} />${who.display_name.split(' ')[0]} · ` : null}${hhmm(a.start_time)}–${hhmm(a.end_time)}</small></span>
         </button>`;
       })}

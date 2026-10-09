@@ -33,7 +33,7 @@ const areas = [
 ];
 const mk = (name, icon, color, area_id, s, e, frequency, weekdays, steps, description = '') => ({
   id: uid(), name, icon, color, area_id, start_time: s, end_time: e, frequency, weekdays, description,
-  steps: steps.map((x) => ({ title: x[0], description: x[1] || '' })), deleted: false, created_at: iso(-60, 9),
+  steps: steps.map((x) => ({ title: x[0], description: x[1] || '' })), deleted: false, kind: 'task', goal_minutes: null, created_at: iso(-60, 9),
 });
 const tasks = [
   mk('Temple floors', 'sparkles', '#86E3CE', 'a1', '07:00', '11:00', 'daily', [],
@@ -61,7 +61,7 @@ for (let off = -4; off <= 4; off++) {
     const who = ti === 6 ? [pool[Math.abs(off) % 2]] : [pool[(off + ti + 9) % 3], ...(ti === 0 ? [pool[(off + ti + 10) % 3]] : [])];
     who.forEach((p, wi) => {
       const a = { id: uid(), task_id: tk.id, assignee: p, day: ymd(d), start_time: tk.start_time, end_time: tk.end_time, note: ti === 1 && off === 0 && wi === 0 ? 'Rooms 4 and 7 have guests arriving tonight.' : '',
-        status: 'todo', steps_done: [], started_at: null, completed_at: null, created_by: 'd1', created_at: iso(-5, 9) };
+        status: 'todo', steps_done: [], started_at: null, completed_at: null, created_by: 'd1', created_at: iso(-5, 9), kind: 'task', title: '', requested_by: null };
       const goal = toMin(tk.end_time) - toMin(tk.start_time);
       const finish = (mins, c, dl) => {
         a.status = 'done'; a.steps_done = tk.steps.map((_, i) => i); a.started_at = d.toISOString(); a.completed_at = d.toISOString();
@@ -90,9 +90,9 @@ const messages = [
 ];
 const dmKey = (a, b) => 'dm:' + [a, b].sort().join(':');
 
-// rooms to clean: Reception lists them, the supervisor hands them to a custodian
-const settings = { room_goal_minutes: '30' };
-const rooms = [];
+// (rooms are tasks: see the room task and the planned room tasks below)
+const settings = {};
+const taskComments = []; // comments on tasks
 const invites = [];
 // meeting requests (day, time, topic) from the team to the supervisor
 const meetings = [];
@@ -105,20 +105,26 @@ const meetings = [];
   mk('d6', -2, '11:00', 'Guest feedback', 'declined', 'Let’s talk at the next staff meeting.');
 }
 {
-  const mkRoom = (day, room, extra = {}) => rooms.push({ id: uid(), day: ymd(addDays(now(), day)), room, note: '', status: 'todo', requested_by: 'd5', assignee: null, assigned_by: null, done_at: null, created_at: iso(day - 1, 16, 30), ...extra });
-  mkRoom(0, '4', { assignee: 'd3', assigned_by: 'd1', status: 'done', done_at: iso(0, 11, 20) });
-  mkRoom(0, '7', { assignee: 'd3', assigned_by: 'd1', status: 'doing' });
-  mkRoom(0, '12', { assignee: 'd2', assigned_by: 'd1', note: 'Guests arrive at 3 pm' });
+  const roomTask = { ...mk('Room cleaning', 'bed', '#FFDD94', null, '08:00', '17:00', 'weekdays', [],
+    [['Strip and make the bed'], ['Dust and vacuum'], ['Bathroom'], ['Restock towels and soap']], 'Clean one guest room.'), kind: 'room', goal_minutes: 30 };
+  tasks.push(roomTask);
+  const mkRoom = (day, room, extra = {}) => assignments.push({ id: uid(), task_id: roomTask.id, assignee: null, day: ymd(addDays(now(), day)), start_time: null, end_time: null, note: '',
+    status: 'todo', steps_done: [], started_at: null, completed_at: null, created_by: 'd5', created_at: iso(day - 1, 16, 30), kind: 'room', title: room, requested_by: 'd5', ...extra });
+  mkRoom(0, '4', { assignee: 'd3', status: 'done', started_at: iso(0, 10, 50), completed_at: iso(0, 11, 20), created_by: 'd5' });
+  reports.push({ assignment_id: assignments[assignments.length - 1].id, minutes_spent: 27, goal_minutes: 30, comment: '', delay_reason: '', completed_at: iso(0, 11, 20) });
+  mkRoom(0, '7', { assignee: 'd3', status: 'doing', started_at: new Date(Date.now() - 12 * 60000).toISOString() });
+  mkRoom(0, '12', { assignee: 'd2', note: 'Guests arrive at 3 pm' });
   mkRoom(0, 'Suite A');
-  mkRoom(1, '3', { requested_by: 'd6' });
-  mkRoom(1, '5', { requested_by: 'd6', note: 'Extra bed please' });
-  mkRoom(1, '9', { requested_by: 'd6' });
+  mkRoom(1, '3', { requested_by: 'd6', created_by: 'd6' });
+  mkRoom(1, '5', { requested_by: 'd6', created_by: 'd6', note: 'Extra bed please' });
+  mkRoom(1, '9', { requested_by: 'd6', created_by: 'd6' });
+  taskComments.push({ id: uid(), assignment_id: assignments.find((a) => a.title === '7').id, author: 'd3', body: 'The bathroom tap is dripping.', created_at: iso(0, 10, 55) });
 }
 // task invitations between custodians (they also appear as messages in the custodians' chat)
 {
   const mkAsg = (taskIdx, off, who) => {
     const tk = tasks[taskIdx], d = addDays(now(), off);
-    const a = { id: uid(), task_id: tk.id, assignee: who, day: ymd(d), start_time: tk.start_time, end_time: tk.end_time, note: '', status: 'todo', steps_done: [], started_at: null, completed_at: null, created_by: 'd1', created_at: iso(-3, 9) };
+    const a = { id: uid(), task_id: tk.id, assignee: who, day: ymd(d), start_time: tk.start_time, end_time: tk.end_time, note: '', status: 'todo', steps_done: [], started_at: null, completed_at: null, created_by: 'd1', created_at: iso(-3, 9), kind: 'task', title: '', requested_by: null };
     assignments.push(a); return a;
   };
   const mkInv = (a, from, to, status, note, hoursAgo) => {
@@ -149,13 +155,13 @@ function summarize(pid, from, to, detail) {
     items: done.filter((a) => detail || rep(a).comment || rep(a).delay_reason)
       .map((a) => ({ day: a.day, task: tkOf(a).name, minutes: rep(a).minutes_spent, goal: rep(a).goal_minutes, comment: rep(a).comment || '', delay: rep(a).delay_reason || '' })),
     open: detail ? mine.filter((a) => a.status !== 'done').map((a) => ({ day: a.day, task: tkOf(a).name })) : [],
-    rooms: rooms.filter((r) => r.assignee === pid && r.status === 'done' && r.day >= from && r.day <= to).map((r) => ({ day: r.day, room: r.room })),
+    rooms: [],
   };
 }
 {
   const put = (kind, from, to, pid, hours = 23) => {
     const sm = summarize(pid, from, to, kind === 'day');
-    if (sm.planned || sm.rooms.length) digests.push({ id: uid(), kind, period_start: from, period_end: to, custodian: pid, summary: sm, created_at: iso(0, 0) });
+    if (sm.planned) digests.push({ id: uid(), kind, period_start: from, period_end: to, custodian: pid, summary: sm, created_at: iso(0, 0) });
   };
   ['d2', 'd3', 'd4'].forEach((pid) => {
     [-1, -2, -3].forEach((o) => put('day', ymd(addDays(now(), o)), ymd(addDays(now(), o)), pid));
@@ -178,7 +184,7 @@ const pushProfiles = () => {
 };
 const fresh = (id) => ({ assignment: assignments.find((a) => a.id === id), report: reports.find((r) => r.assignment_id === id) || null });
 const clone = (x) => JSON.parse(JSON.stringify(x));
-const goalOf = (a) => toMin(a.end_time) - toMin(a.start_time);
+const goalOf = (a) => { const tk = tasks.find((x) => x.id === a.task_id); return (tk && tk.goal_minutes) || (a.start_time ? toMin(a.end_time) - toMin(a.start_time) : toMin(tk.end_time) - toMin(tk.start_time)) || 30; };
 
 const demoApi = {
   async listAllowlist() {
@@ -200,7 +206,6 @@ const demoApi = {
   async savePushSubscription() {},
   async dropPushSubscription() {},
   async loadSettings() { return { ...settings }; },
-  async setRoomGoal(minutes) { settings.room_goal_minutes = String(minutes); },
   async loadRoles() { return clone(roles); },
   async updateRole(id, patch) { Object.assign(roles.find((r) => r.id === id), patch); return clone(roles.find((r) => r.id === id)); },
   async loadAreas() { return clone(areas); },
@@ -217,7 +222,7 @@ const demoApi = {
       && (isSup() || days[r.assignment_id].assignee === state.profile.id)));
   },
   async saveAssignments(rows) {
-    const made = rows.map((r) => ({ id: uid(), note: '', status: 'todo', steps_done: [], started_at: null, completed_at: null, created_by: state.profile.id, created_at: new Date().toISOString(), ...r }));
+    const made = rows.map((r) => ({ id: uid(), note: '', status: 'todo', steps_done: [], started_at: null, completed_at: null, created_by: state.profile.id, created_at: new Date().toISOString(), kind: 'task', title: '', requested_by: null, ...r }));
     assignments.push(...made); return clone(made);
   },
   async updateAssignment(id, patch) { const a = assignments.find((x) => x.id === id); Object.assign(a, patch); return clone(a); },
@@ -289,32 +294,24 @@ const demoApi = {
     return clone({ result, invite: inv, assignment: a });
   },
   async cancelInvite(id) { const inv = invites.find((i) => i.id === id); inv.status = 'canceled'; inv.answered_at = new Date().toISOString(); return clone(inv); },
-  async loadRooms(from) {
-    const mineOnly = !isSup() && dept() !== 'reception';
-    return clone(rooms.filter((r) => r.day >= from && (!mineOnly || r.assignee === state.profile.id)));
+  async requestRooms(day, rooms, note) {
+    const tk = tasks.find((x) => x.kind === 'room' && !x.deleted);
+    const made = rooms.map((room) => ({ id: uid(), task_id: tk.id, assignee: null, day, start_time: null, end_time: null, note: note || '', status: 'todo', steps_done: [],
+      started_at: null, completed_at: null, created_by: state.profile.id, created_at: new Date().toISOString(), kind: 'room', title: room, requested_by: state.profile.id }));
+    assignments.push(...made); return clone(made);
   },
-  async addRooms(rows) {
-    const made = rows.map((r) => ({ id: uid(), note: '', status: 'todo', requested_by: state.profile.id, assignee: null, assigned_by: null, done_at: null, created_at: new Date().toISOString(), ...r }));
-    rooms.push(...made); return clone(made);
-  },
-  async assignRooms(ids, assignee) {
-    rooms.filter((r) => ids.includes(r.id) && r.status !== 'done').forEach((r) => Object.assign(r, { assignee, assigned_by: assignee ? state.profile.id : null, status: 'todo', done_at: null }));
-    return clone(rooms.filter((r) => ids.includes(r.id)));
-  },
-  async editRoom(id, room, day, note) {
-    const r = rooms.find((x) => x.id === id);
-    Object.assign(r, { room: room.trim(), day, note: (note || '').trim() });
+  async editRoomRequest(id, title, day, note) {
+    const r = assignments.find((x) => x.id === id);
+    Object.assign(r, { title: title.trim(), day, note: (note || '').trim() });
     return clone(r);
   },
-  async setRoomStatus(id, status) {
-    const r = rooms.find((x) => x.id === id);
-    const was = r.status;
-    Object.assign(r, { status, done_at: status === 'done' ? new Date().toISOString() : null,
-      started_at: status === 'todo' ? null : status === 'doing' && was !== 'doing' ? new Date().toISOString() : r.started_at,
-      minutes_spent: status === 'done' && was === 'doing' && r.started_at ? Math.max(0, Math.round((Date.now() - Date.parse(r.started_at)) / 60000)) : null });
-    return clone(r);
+  async renotifyAssignment() {},
+  async loadComments(id) { return clone(taskComments.filter((c) => c.assignment_id === id)); },
+  async addComment(assignmentId, body) {
+    const row = { id: uid(), assignment_id: assignmentId, author: state.profile.id, body, created_at: new Date().toISOString() };
+    taskComments.push(row); return clone(row);
   },
-  async deleteRoom(id) { const i = rooms.findIndex((r) => r.id === id); if (i >= 0) rooms.splice(i, 1); },
+  async deleteComment(id) { const i = taskComments.findIndex((c) => c.id === id); if (i >= 0) taskComments.splice(i, 1); },
   async loadMyStats(since) {
     const mine = Object.fromEntries(assignments.filter((a) => a.assignee === state.profile.id && a.day >= since).map((a) => [a.id, a]));
     return reports.filter((r) => mine[r.assignment_id]).map((r) => ({ day: mine[r.assignment_id].day, minutes: r.minutes_spent }));

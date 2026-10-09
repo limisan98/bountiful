@@ -3,7 +3,7 @@ import { TimeField } from '../pickers.js';
 import { useStore, toast } from '../store.js';
 import { t, friendlyError } from '../i18n.js';
 import { Icon, TaskBadge, Segmented, Field, Sheet, IconPicker, ColorPicker, Empty, useSheetControl } from '../ui.js';
-import { saveTask, archiveTask, areaName, areaOf, roomGoalMin, setRoomGoal } from '../data.js';
+import { saveTask, archiveTask, areaName, areaOf } from '../data.js';
 import { TASK_ICONS, PALETTE } from '../config.js';
 import { hhmm, toMin, dur, taskGoal, weekdayNames, todayYmd, addDays, parseYmd, ymd } from '../time.js';
 import { colorStyle } from '../color.js';
@@ -14,10 +14,11 @@ export function freqText(task) {
   const days = [...(task.weekdays || [])].sort((a, b) => a - b);
   return days.length ? days.map((d) => names[d - 1]).join(', ') : t('task.noDays');
 }
-export const windowText = (task) => `${hhmm(task.start_time)}–${hhmm(task.end_time)}`;
+export const windowText = (task) => (task.kind === 'room' ? t('task.roomKind') : `${hhmm(task.start_time)}–${hhmm(task.end_time)}`);
 export const goalText = (task) => dur(taskGoal(task));
 
-export function TasksView() {
+// The supervisor's library of tasks (what can be planned). The day-by-day board is in board.js.
+export function LibraryView() {
   const s = useStore();
   const [editing, setEditing] = useState(null); // null | 'new' | task
   const [goals, setGoals] = useState(false);
@@ -26,10 +27,8 @@ export function TasksView() {
     { key: 'none', area: null, items: list.filter((x) => !x.area_id || !areaOf(x.area_id)) }].filter((g) => g.items.length);
 
   return html`<div class="stack">
-    <div class="page-head">
-      <div><h2 class="page-title">${t('tasks.title')}</h2><p class="page-sub">${t('tasks.sub')}</p></div>
-      <button class="fab pop" onClick=${() => setEditing('new')} aria-label=${t('tasks.new')}><${Icon} name="plus" size=${26} /></button>
-    </div>
+    <p class="page-sub">${t('tasks.sub')}</p>
+    <button class="fab float pop" onClick=${() => setEditing('new')} aria-label=${t('tasks.new')}><${Icon} name="plus" size=${26} /></button>
     <button class="btn soft small auto goals-btn" onClick=${() => setGoals(true)}><${Icon} name="alarm" size=${18} />${t('goals.title')}</button>
     ${!list.length ? html`<${Empty} icon="list-check" text=${t('tasks.empty')} />` : null}
     ${groups.map((g) => html`<section key=${g.key} class="rise">
@@ -41,7 +40,7 @@ export function TasksView() {
           <span class="person-main">
             <span class="person-name">${x.name}</span>
             <span class="person-mail">${windowText(x)} · ${goalText(x)}</span>
-            <span class="person-mail">${freqText(x)}</span>
+            ${x.kind === 'room' ? null : html`<span class="person-mail">${freqText(x)}</span>`}
           </span>
           <${Icon} name="pencil" size=${18} class="chev" />
         </button>`)}
@@ -60,15 +59,35 @@ export function TaskEditor({ task, onClose, onSaved }) {
     name: task.name, description: task.description || '', icon: task.icon, color: task.color, area_id: task.area_id || null,
     start_time: hhmm(task.start_time), end_time: hhmm(task.end_time), frequency: task.frequency, weekdays: task.weekdays || [],
     steps: (task.steps || []).map((x) => ({ title: x.title || '', description: x.description || '' })),
-    goal: task.goal_minutes || '',
+    goal: task.goal_minutes || '', kind: task.kind || 'task',
   } : {
     name: '', description: '', icon: 'sparkles', color: PALETTE[0], area_id: s.areas[0] ? s.areas[0].id : null,
-    start_time: '09:00', end_time: '10:00', frequency: 'daily', weekdays: [1, 2, 3, 4, 5], steps: [], goal: '',
+    start_time: '09:00', end_time: '10:00', frequency: 'daily', weekdays: [1, 2, 3, 4, 5], steps: [], goal: '', kind: 'task',
   });
   const [busy, setBusy] = useState(false);
   const [sure, setSure] = useState(false);
   const up = (patch) => setF((x) => ({ ...x, ...patch }));
-  const valid = f.name.trim() && toMin(f.end_time) > toMin(f.start_time) && (f.frequency === 'daily' || f.weekdays.length);
+  const room = f.kind === 'room';
+  const valid = f.name.trim() && (room || (toMin(f.end_time) > toMin(f.start_time) && (f.frequency === 'daily' || f.weekdays.length)));
+
+  // Templates: anything planned before (even tasks that were removed since). Typing a name suggests matching ones.
+  const past = (() => {
+    const seen = new Set();
+    return Object.values(s.tasks).sort((a, b) => (a.deleted ? 1 : 0) - (b.deleted ? 1 : 0) || a.name.localeCompare(b.name))
+      .filter((x) => { const k = x.name.trim().toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
+  })();
+  const q = f.name.trim().toLowerCase();
+  const suggestions = task || !q ? [] : past.filter((x) => x.name.toLowerCase().includes(q) && x.name.toLowerCase() !== q).slice(0, 4);
+  const [showAll, setShowAll] = useState(false);
+  const useTemplate = (x) => {
+    setF({
+      name: x.name, description: x.description || '', icon: x.icon, color: x.color, area_id: x.area_id || null,
+      start_time: hhmm(x.start_time), end_time: hhmm(x.end_time), frequency: x.frequency, weekdays: x.weekdays || [],
+      steps: (x.steps || []).map((st) => ({ title: st.title || '', description: st.description || '' })),
+      goal: x.goal_minutes || '', kind: x.kind || 'task',
+    });
+    setShowAll(false);
+  };
 
   const setStep = (i, patch) => up({ steps: f.steps.map((x, k) => (k === i ? { ...x, ...patch } : x)) });
   const moveStep = (i, d) => {
@@ -85,9 +104,11 @@ export function TaskEditor({ task, onClose, onSaved }) {
     try {
       const row = await saveTask({
         ...(task ? { id: task.id } : {}),
-        name: f.name.trim(), description: f.description.trim(), icon: f.icon, color: f.color, area_id: f.area_id,
-        start_time: f.start_time, end_time: f.end_time, goal_minutes: Number(f.goal) > 0 ? Math.min(1440, Math.round(Number(f.goal))) : null, frequency: f.frequency,
-        weekdays: f.frequency === 'daily' ? [] : f.weekdays,
+        name: f.name.trim(), description: f.description.trim(), icon: f.icon, color: f.color, area_id: f.area_id, kind: f.kind,
+        start_time: room ? '08:00' : f.start_time, end_time: room ? '17:00' : f.end_time,
+        goal_minutes: Number(f.goal) > 0 ? Math.min(1440, Math.round(Number(f.goal))) : null,
+        frequency: room ? 'weekdays' : f.frequency,
+        weekdays: room || f.frequency === 'daily' ? [] : f.weekdays,
         steps: f.steps.map((x) => ({ title: x.title.trim(), description: x.description.trim() })).filter((x) => x.title),
       });
       toast(t('tasks.saved'));
@@ -109,9 +130,23 @@ export function TaskEditor({ task, onClose, onSaved }) {
 
   return html`<${Sheet} title=${task ? t('tasks.edit') : t('tasks.new')} onClose=${onClose} control=${ctl}>
     <form class="stack-form" onSubmit=${save}>
+      ${!task && past.length ? html`<div class="field"><span class="field-label">${t('tasks.template')}</span>
+        <div class="chips">${(showAll ? past : past.slice(0, 6)).map((x) => html`<button type="button" key=${x.id} class="pick tpl" style=${colorStyle(x.color)} onClick=${() => useTemplate(x)}>
+          <${Icon} name=${x.icon} size=${16} />${x.name}</button>`)}
+          ${past.length > 6 && !showAll ? html`<button type="button" class="pick ghost" onClick=${() => setShowAll(true)}>${t('tasks.templateMore', { n: past.length - 6 })}</button>` : null}</div>
+        <span class="field-hint">${t('tasks.templateHint')}</span></div>` : null}
+
       <div class="editor-head">
         <${TaskBadge} icon=${f.icon} color=${f.color} size=${64} />
         <${Field} label=${t('task.name')}><input class="input" value=${f.name} required maxlength="80" onInput=${(e) => up({ name: e.target.value })} /><//>
+      </div>
+      ${suggestions.length ? html`<div class="chips pop suggest"><span class="mini-label">${t('tasks.suggest')}</span>${suggestions.map((x) => html`<button type="button" key=${x.id} class="pick tpl" style=${colorStyle(x.color)} onClick=${() => useTemplate(x)}>
+        <${Icon} name=${x.icon} size=${16} />${x.name}</button>`)}</div>` : null}
+
+      <div class="field"><span class="field-label">${t('task.kind')}</span>
+        <${Segmented} value=${f.kind} onChange=${(v) => up({ kind: v })} options=${[
+          { value: 'task', label: t('task.kindTask'), icon: 'list-check' }, { value: 'room', label: t('task.kindRoom'), icon: 'bed' }]} />
+        ${room ? html`<span class="field-hint pop">${t('task.kindRoomHint')}</span>` : null}
       </div>
 
       <div class="field"><span class="field-label">${t('task.icon')}</span>
@@ -129,33 +164,33 @@ export function TaskEditor({ task, onClose, onSaved }) {
         <textarea class="input area" rows="3" maxlength="1000" value=${f.description} onInput=${(e) => up({ description: e.target.value })}></textarea>
       <//>
 
-      <div class="field"><span class="field-label">${t('task.window')}</span>
+      ${room ? null : html`<div class="field"><span class="field-label">${t('task.window')}</span>
         <div class="time-row">
           <${TimeField} value=${f.start_time} label=${t('task.from')} onChange=${(v) => up({ start_time: v })} />
           <span class="muted">–</span>
           <${TimeField} value=${f.end_time} label=${t('task.to')} onChange=${(v) => up({ end_time: v })} />
         </div>
         <span class=${'field-hint' + (goal <= 0 ? ' bad' : '')}>${goal > 0 ? t('task.windowLen', { time: dur(goal) }) : t('task.badWindow')}</span>
-      </div>
+      </div>`}
 
       <div class="field"><span class="field-label">${t('task.goalLabel')}</span>
         <div class="stepper">
           <button type="button" class="mini big" aria-label="-5" onClick=${() => up({ goal: Math.max(0, (Number(f.goal) || Math.max(goal, 0)) - 5) || '' })}>−5</button>
-          <label class="stepper-val"><input type="number" inputmode="numeric" min="1" max="1440" value=${f.goal} placeholder=${goal > 0 ? String(goal) : ''}
+          <label class="stepper-val"><input type="number" inputmode="numeric" min="1" max="1440" value=${f.goal} placeholder=${!room && goal > 0 ? String(goal) : '30'}
             onInput=${(e) => up({ goal: e.target.value === '' ? '' : Math.max(0, Math.min(1440, Number(e.target.value))) })} /><span>min</span></label>
           <button type="button" class="mini big" aria-label="+5" onClick=${() => up({ goal: Math.min(1440, (Number(f.goal) || Math.max(goal, 0)) + 5) })}>+5</button>
         </div>
         <span class="field-hint">${t('task.goalHint')}</span>
       </div>
 
-      <div class="field"><span class="field-label">${t('task.frequency')}</span>
+      ${room ? null : html`<div class="field"><span class="field-label">${t('task.frequency')}</span>
         <${Segmented} value=${f.frequency} onChange=${(v) => up({ frequency: v })} options=${[
           { value: 'daily', label: t('task.everyDay') }, { value: 'weekdays', label: t('task.certainDays') }]} />
         ${f.frequency === 'weekdays' ? html`<div class="days pop">
           ${names.map((n, i) => html`<button type="button" key=${i} class=${'day-opt' + (f.weekdays.includes(i + 1) ? ' on' : '')}
             onClick=${() => toggleDay(i + 1)}>${n}</button>`)}
         </div>` : null}
-      </div>
+      </div>`}
 
       <div class="field"><span class="field-label">${t('task.steps')}</span>
         <div class="steps-edit">
@@ -183,24 +218,22 @@ export function TaskEditor({ task, onClose, onSaved }) {
   <//>`;
 }
 
-// ---- Supervisor: how long should each task take? (also: cleaning one room) ----
-function TimeGoals({ onClose }) {
+// ---- Supervisor: how long should each task take? (room tasks too: the time for one room) ----
+export function TimeGoals({ onClose }) {
   const s = useStore();
   const ctl = useSheetControl();
   const list = Object.values(s.tasks).filter((x) => !x.deleted).sort((a, b) => a.name.localeCompare(b.name));
-  const [vals, setVals] = useState(() => ({ ...Object.fromEntries(list.map((x) => [x.id, taskGoal(x)])), rooms: roomGoalMin() }));
+  const [vals, setVals] = useState(() => Object.fromEntries(list.map((x) => [x.id, taskGoal(x)])));
   const [busy, setBusy] = useState(false);
   const set1 = (id, v) => setVals((x) => ({ ...x, [id]: v === '' ? '' : Math.max(0, Math.min(1440, Number(v))) }));
   const bump = (id, d) => set1(id, Math.max(1, (Number(vals[id]) || 0) + d));
   const changed = list.filter((x) => Number(vals[x.id]) > 0 && Number(vals[x.id]) !== taskGoal(x));
-  const roomChanged = Number(vals.rooms) > 0 && Number(vals.rooms) !== roomGoalMin();
-  const n = changed.length + (roomChanged ? 1 : 0);
+  const n = changed.length;
 
   async function save() {
     setBusy(true);
     try {
       for (const x of changed) await saveTask({ id: x.id, goal_minutes: Math.round(Number(vals[x.id])) });
-      if (roomChanged) await setRoomGoal(Math.min(600, Math.round(Number(vals.rooms))));
       toast(t('goals.saved'));
       ctl.close();
     } catch (ex) { toast(friendlyError(ex), 'bad'); }
@@ -215,8 +248,6 @@ function TimeGoals({ onClose }) {
   return html`<${Sheet} title=${t('goals.title')} onClose=${onClose} control=${ctl}>
     <p class="muted small-text">${t('goals.sub')}</p>
     <div class="list tight">
-      <div class="goal-row"><${TaskBadge} icon="bed" color="#86E3CE" size=${42} />
-        <span class="goal-main"><b>${t('goals.rooms')}</b><small>${t('goals.roomsHint')}</small></span>${stepper('rooms')}</div>
       ${list.map((x) => html`<div class="goal-row" key=${x.id}><${TaskBadge} icon=${x.icon} color=${x.color} size=${42} />
         <span class="goal-main"><b>${x.name}</b><small>${windowText(x)}</small></span>${stepper(x.id)}</div>`)}
     </div>

@@ -5,8 +5,9 @@ import { Icon, Avatar, TaskBadge, Segmented, Field, Sheet, PersonLine, Empty, us
 import { isSupervisor, roleInfo } from '../roles.js';
 import { colorStyle } from '../color.js';
 import { startAssignment, saveSteps, finishAssignment, reopenAssignment, removeAssignment, editAssignment, planAssignments,
-  ensureMonth, areaOf, areaName, activePeople } from '../data.js';
-import { hhmm, toMin, fromMin, dur, goalMin, taskGoal, fmt, parseYmd, ymd, addDays, isoWeekday, appliesOn, monthKey, todayYmd } from '../time.js';
+  ensureMonth, areaOf, areaName, activePeople, itemName, loadComments, addComment, removeComment, editRoomRequest, giveTasks } from '../data.js';
+import { api } from '../api.js';
+import { hhmm, toMin, fromMin, dur, hasTime, timeText, taskGoal, fmt, parseYmd, ymd, addDays, isoWeekday, appliesOn, monthKey, todayYmd } from '../time.js';
 import { DateField, TimeField } from '../pickers.js';
 import { TaskEditor, freqText } from './tasks.js';
 import { DEPARTMENTS, ROLE_ORDER } from '../config.js';
@@ -14,34 +15,41 @@ import { TimerSheet, LiveClock } from './timer.js';
 
 const STATUS_ICON = { todo: 'clock', doing: 'hourglass', done: 'circle-check' };
 
-// ---- One line in a list: "Clean the temple · 10:00–14:00" ----
-export function AssignmentRow({ a, onOpen, showPerson }) {
+// ---- One line in a list: the task, when, and WHO (picture + name) ----
+export function AssignmentRow({ a, onOpen, showPerson, selectable, selected, onToggle, extra }) {
   const s = useStore();
   const tk = s.tasks[a.task_id];
   if (!tk) return null;
   const who = s.profiles[a.assignee];
-  return html`<button class=${'arow ' + a.status} key=${a.id} onClick=${() => onOpen(a.id)} style=${colorStyle(tk.color)}>
-    <${TaskBadge} icon=${tk.icon} color=${tk.color} size=${46} />
+  const person = a.assignee
+    ? (who ? html`<span class="arow-person"><${Avatar} profile=${who} size=${22} ring=${false} /><span class="arow-who">${who.display_name}</span></span>` : null)
+    : html`<span class="arow-person waiting"><${Icon} name="user-question" size=${16} /><span class="arow-who">${t('task.waiting')}</span></span>`;
+  const body = html`<${TaskBadge} icon=${tk.icon} color=${tk.color} size=${46} />
     <span class="arow-main">
-      <span class="arow-name">${tk.name}</span>
-      <span class="arow-sub"><${Icon} name="clock" size=${13} />${hhmm(a.start_time)}–${hhmm(a.end_time)}
-        ${showPerson && who ? html`<span class="dot-sep">·</span><${Avatar} profile=${who} size=${18} ring=${false} /><span class="arow-who">${who.display_name.split(' ')[0]}</span>` : null}</span>
+      <span class="arow-name">${itemName(a)}</span>
+      ${showPerson ? person : null}
+      <span class="arow-sub">${hasTime(a) ? html`<${Icon} name="clock" size=${13} />${timeText(a)}` : null}
+        ${a.note ? html`${hasTime(a) ? html`<span class="dot-sep">·</span>` : null}<span class="arow-note">${a.note}</span>` : null}</span>
     </span>
-    <span class=${'arow-state ' + a.status}><${Icon} name=${STATUS_ICON[a.status]} size=${20} /></span>
-  </button>`;
+    <span class=${'arow-state ' + a.status}><${Icon} name=${STATUS_ICON[a.status]} size=${20} /></span>`;
+  return html`<div class=${'arow-wrap ' + a.status + (selected ? ' selected' : '')} key=${a.id}>
+    ${selectable ? html`<button type="button" class=${'room-check' + (selected ? ' on' : '')} aria-pressed=${!!selected} aria-label=${t('task.select')} onClick=${onToggle}><${Icon} name="check" size=${16} /></button>` : null}
+    <button class=${'arow ' + a.status} onClick=${() => onOpen(a.id)} style=${colorStyle(tk.color)}>${body}</button>
+    ${extra || null}
+  </div>`;
 }
 
-// ---- Task details: do it, tick steps, finish, read the report ----
-export function AssignmentSheet({ id, onClose }) {
+// ---- Task details: do it, tick steps, comment, finish, read the report ----
+export function AssignmentSheet({ id, onClose, openTimer }) {
   const s = useStore();
   const a = s.assignments[id];
   const gone = !a || !s.tasks[a.task_id];
   useEffect(() => { if (gone) onClose(); }, [gone]);
   if (gone) return null;
-  return html`<${DetailBody} id=${id} onClose=${onClose} />`;
+  return html`<${DetailBody} id=${id} onClose=${onClose} openTimer=${openTimer} />`;
 }
 
-function DetailBody({ id, onClose }) {
+function DetailBody({ id, onClose, openTimer }) {
   const ctl = useSheetControl();
   const s = useStore();
   const a = s.assignments[id];
@@ -54,11 +62,15 @@ function DetailBody({ id, onClose }) {
   const area = areaOf(tk.area_id);
   const steps = tk.steps || [];
   const [finishing, setFinishing] = useState(false);
-  const [running, setRunning] = useState(false);
+  const [running, setRunning] = useState(!!openTimer && mine && a.status === 'doing');
   const [editing, setEditing] = useState(false);
+  const [giving, setGiving] = useState(false);
   const [sure, setSure] = useState(false);
   const [busy, setBusy] = useState(false);
   const canSee = mine || sup;
+  const asked = a.requested_by === me.id && a.kind === 'room'; // Reception asked for this room
+  const canEditAsk = asked && a.status !== 'done';
+  const canWithdraw = asked && !a.assignee;
 
   const run = async (fn, ok) => {
     setBusy(true);
@@ -72,17 +84,20 @@ function DetailBody({ id, onClose }) {
     saveSteps(id, next).catch((ex) => toast(friendlyError(ex), 'bad'));
   };
   const date = parseYmd(a.day);
-  const statusTxt = t('status.' + a.status);
   const over = report && report.minutes_spent > report.goal_minutes;
   const goal = taskGoal(tk, a);
+  const del = () => {
+    if (!sure) { setSure(true); return; }
+    run(async () => { await removeAssignment(id); ctl.close(); }, t('act.removed'));
+  };
 
-  return html`<${Sheet} title=${tk.name} kicker=${fmt(date, { weekday: 'long', day: 'numeric', month: 'long' })} onClose=${onClose} control=${ctl}>
+  return html`<${Sheet} title=${itemName(a)} kicker=${fmt(date, { weekday: 'long', day: 'numeric', month: 'long' })} onClose=${onClose} control=${ctl}>
     <div class="detail-top" style=${colorStyle(tk.color)}>
       <${TaskBadge} icon=${tk.icon} color=${tk.color} size=${72} />
       <div class="detail-chips">
-        <span class=${'chip status-chip ' + a.status}><${Icon} name=${STATUS_ICON[a.status]} size=${15} />${statusTxt}</span>
+        <span class=${'chip status-chip ' + a.status}><${Icon} name=${STATUS_ICON[a.status]} size=${15} />${t('status.' + a.status)}</span>
         ${area ? html`<span class="chip tint" style=${colorStyle(area.color)}><${Icon} name=${area.icon} size=${15} />${areaName(area)}</span>` : null}
-        <span class="chip"><${Icon} name="clock" size=${15} />${hhmm(a.start_time)}–${hhmm(a.end_time)}</span>
+        ${hasTime(a) ? html`<span class="chip"><${Icon} name="clock" size=${15} />${timeText(a)}</span>` : null}
         <span class="chip"><${Icon} name="alarm" size=${15} />${t('task.goal', { time: dur(goal) })}</span>
       </div>
     </div>
@@ -93,7 +108,8 @@ function DetailBody({ id, onClose }) {
       <${LiveClock} startedAt=${a.started_at} />
     </button>` : null}
 
-    ${who ? html`<div class="card slim"><${PersonLine} profile=${who} size=${44} /></div>` : null}
+    ${who ? html`<div class="card slim"><${PersonLine} profile=${who} size=${44} /></div>`
+      : html`<div class="card slim waiting-card"><${Icon} name="user-question" size=${24} /><span>${t('task.waitingLong')}</span></div>`}
 
     ${a.note ? html`<div class="note-card"><${Icon} name="message-circle" size=${20} /><p>${a.note}</p></div>` : null}
     ${tk.description ? html`<div class="field"><span class="field-label">${t('task.description')}</span><p class="body-text">${tk.description}</p></div>` : null}
@@ -120,14 +136,17 @@ function DetailBody({ id, onClose }) {
     </div>` : null}
     ${a.status === 'done' && !canSee ? html`<p class="muted center small-text">${t('status.doneBy', { name: who ? who.display_name : '' })}</p>` : null}
 
+    ${canSee && a.assignee ? html`<${Comments} a=${a} />` : null}
+
     ${finishing && mine ? html`<${FinishPanel} a=${a} tk=${tk} report=${report} onDone=${() => setFinishing(false)} />` : null}
-    ${running && mine && a.status === 'doing' ? html`<${TimerSheet} title=${tk.name} icon=${tk.icon} color=${tk.color} startedAt=${a.started_at} goal=${goal}
+    ${running && mine && a.status === 'doing' ? html`<${TimerSheet} title=${itemName(a)} icon=${tk.icon} color=${tk.color} startedAt=${a.started_at} goal=${goal}
       steps=${steps} stepsDone=${a.steps_done} onStep=${toggleStep} finishLabel=${t('act.finish')}
       onFinish=${() => { setRunning(false); setFinishing(true); }} onClose=${() => setRunning(false)} />` : null}
 
     ${mine && !finishing ? html`<div class="stack-form">
       ${a.status === 'todo' ? html`<button class="btn" disabled=${busy} onClick=${() => run(async () => { await startAssignment(id); setRunning(true); })}>
         <${Icon} name="arrow-badge-right" size=${20} />${t('act.start')}</button>` : null}
+      ${a.status === 'doing' ? html`<button class="btn soft" onClick=${() => setRunning(true)}><${Icon} name="hourglass" size=${20} />${t('timer.open')}</button>` : null}
       ${a.status !== 'done' ? html`<button class=${'btn' + (a.status === 'todo' ? ' soft' : '')} disabled=${busy} onClick=${() => setFinishing(true)}>
         <${Icon} name="circle-check" size=${20} />${t('act.finish')}</button>` : null}
       ${a.status === 'done' ? html`<button class="btn soft" onClick=${() => setFinishing(true)}><${Icon} name="pencil" size=${18} />${t('act.editReport')}</button>` : null}
@@ -136,15 +155,121 @@ function DetailBody({ id, onClose }) {
 
     ${sup && !finishing ? html`<div class="stack-form sup-actions">
       ${!mine && a.status === 'done' ? html`<button class="btn ghost" disabled=${busy} onClick=${() => run(() => reopenAssignment(id), t('act.reopened'))}>${t('act.reopen')}</button>` : null}
+      ${a.status !== 'done' ? html`<button class="btn soft" onClick=${() => setGiving(true)}><${Icon} name="users" size=${18} />${a.assignee ? t('task.giveElse') : t('task.give')}</button>` : null}
       <div class="row-btns">
         <button class="btn soft" onClick=${() => setEditing(true)}><${Icon} name="pencil" size=${18} />${t('act.edit')}</button>
-        <button class=${'btn danger' + (sure ? ' sure' : '')} disabled=${busy}
-          onClick=${() => { if (!sure) { setSure(true); return; } run(async () => { await removeAssignment(id); }, t('act.removed')); }}>
+        <button class=${'btn danger' + (sure ? ' sure' : '')} disabled=${busy} onClick=${del}>
           <${Icon} name="trash" size=${18} />${sure ? t('act.removeSure') : t('act.remove')}</button>
       </div>
     </div>` : null}
 
-    ${editing ? html`<${AssignSheet} edit=${a} onClose=${() => setEditing(false)} />` : null}
+    ${!sup && (canEditAsk || canWithdraw) ? html`<div class="stack-form sup-actions"><div class="row-btns">
+      ${canEditAsk ? html`<button class="btn soft" onClick=${() => setEditing(true)}><${Icon} name="pencil" size=${18} />${t('act.edit')}</button>` : null}
+      ${canWithdraw ? html`<button class=${'btn danger' + (sure ? ' sure' : '')} disabled=${busy} onClick=${del}><${Icon} name="trash" size=${18} />${sure ? t('act.removeSure') : t('act.remove')}</button>` : null}
+    </div></div>` : null}
+
+    ${editing && sup ? html`<${AssignSheet} edit=${a} onClose=${() => setEditing(false)} />` : null}
+    ${editing && !sup ? html`<${EditRequest} a=${a} onClose=${() => setEditing(false)} />` : null}
+    ${giving ? html`<${GiveSheet} ids=${[id]} onClose=${() => setGiving(false)} onDone=${() => {}} />` : null}
+  <//>`;
+}
+
+// ---- Comments on a task: the person doing it and the supervisors talk here ----
+function Comments({ a }) {
+  const s = useStore();
+  const me = s.profile;
+  const list = s.comments[a.id];
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { loadComments(a.id).catch(() => {}); }, [a.id]);
+  async function send(e) {
+    e.preventDefault();
+    const body = text.trim();
+    if (!body || busy) return;
+    setBusy(true);
+    try { await addComment(a.id, body); setText(''); } catch (ex) { toast(friendlyError(ex), 'bad'); }
+    setBusy(false);
+  }
+  return html`<div class="field comments"><span class="field-label">${t('comment.title')}${list && list.length ? html`<span class="count">${list.length}</span>` : null}</span>
+    ${list && list.length ? html`<div class="comment-list">${list.map((c) => {
+      const au = s.profiles[c.author];
+      return html`<div class=${'comment' + (c.author === me.id ? ' mine' : '')} key=${c.id}>
+        <${Avatar} profile=${au} size=${30} ring=${false} />
+        <div class="comment-body"><div class="comment-head"><b>${au ? (c.author === me.id ? t('team.you') : au.display_name.split(' ')[0]) : t('chat.former')}</b>
+          <small>${new Date(c.created_at).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</small>
+          ${c.author === me.id || isSupervisor(me) ? html`<button type="button" class="comment-del" aria-label=${t('act.remove')} onClick=${() => removeComment(a.id, c.id).catch((ex) => toast(friendlyError(ex), 'bad'))}><${Icon} name="x" size=${14} /></button>` : null}</div>
+          <p>${c.body}</p></div>
+      </div>`;
+    })}</div>` : html`<p class="muted small-text">${t('comment.none')}</p>`}
+    <form class="comment-form" onSubmit=${send}>
+      <input class="input" type="text" maxlength="1000" placeholder=${t('comment.placeholder')} value=${text} onInput=${(e) => setText(e.target.value)} />
+      <button class="send" type="submit" disabled=${!text.trim() || busy} aria-label=${t('comment.send')}><${Icon} name="send" size=${20} /></button>
+    </form>
+  </div>`;
+}
+
+// ---- Reception: change a room you asked for ----
+function EditRequest({ a, onClose }) {
+  const ctl = useSheetControl();
+  const [room, setRoom] = useState(a.title);
+  const [date, setDate] = useState(a.day);
+  const [note, setNote] = useState(a.note || '');
+  const [busy, setBusy] = useState(false);
+  async function save(e) {
+    e.preventDefault();
+    if (!room.trim() || busy) return;
+    setBusy(true);
+    try { await editRoomRequest(a.id, room.trim().slice(0, 40), date, note.trim()); toast(t('rooms.saved')); ctl.close(); }
+    catch (ex) { toast(friendlyError(ex), 'bad'); setBusy(false); }
+  }
+  return html`<${Sheet} title=${t('rooms.editTitle')} onClose=${onClose} control=${ctl}>
+    <form class="stack-form" onSubmit=${save}>
+      <${Field} label=${t('rooms.roomName')}><input class="input" type="text" maxlength="40" required value=${room} onInput=${(e) => setRoom(e.target.value)} /><//>
+      <${Field} label=${t('rooms.day')}><${DateField} value=${date} label=${t('rooms.day')} onChange=${setDate} /><//>
+      <${Field} label=${t('rooms.note')}><input class="input" type="text" maxlength="300" value=${note} onInput=${(e) => setNote(e.target.value)} /><//>
+      <button class="btn" type="submit" disabled=${!room.trim() || busy}><${Icon} name="check" size=${18} />${t('rooms.save')}</button>
+    </form>
+  <//>`;
+}
+
+// ---- Supervisor: give tasks to one or more people (or take them back) ----
+export function GiveSheet({ ids, onClose, onDone }) {
+  const s = useStore();
+  const ctl = useSheetControl();
+  const [people, setPeople] = useState([]);
+  const [share, setShare] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const crew = activePeople().filter((p) => roleInfo(p.role).department === 'custodian')
+    .sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role) || a.display_name.localeCompare(b.display_name));
+  const items = ids.map((i) => s.assignments[i]).filter(Boolean);
+  const day = items[0] ? items[0].day : todayYmd();
+  const load = (id) => Object.values(s.assignments).filter((a) => a.day === day && a.assignee === id && a.status !== 'done').length;
+  const anyAssigned = items.some((a) => a.assignee);
+  const toggle = (id) => setPeople((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+
+  async function go(list) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await giveTasks(ids, list, share && list.length > 1 && ids.length > 1);
+      toast(list.length ? t('task.given', { n: ids.length }) : t('task.takenBack'));
+      onDone();
+      ctl.close();
+    } catch (ex) { toast(friendlyError(ex), 'bad'); setBusy(false); }
+  }
+  return html`<${Sheet} title=${t('task.giveTitle')} kicker=${t('rooms.selected', { n: ids.length })} onClose=${onClose} control=${ctl}>
+    <p class="muted small-text">${t('task.giveHint')}</p>
+    <div class="list tight">
+      ${crew.map((p) => html`<button type="button" class=${'person pick-person' + (people.includes(p.id) ? ' on' : '')} key=${p.id} aria-pressed=${people.includes(p.id)} onClick=${() => toggle(p.id)}>
+        <${PersonLine} profile=${p} size=${44} extra=${load(p.id) ? html`<span class="count">${t('rooms.load', { n: load(p.id) })}</span>` : null} />
+        <span class=${'room-check' + (people.includes(p.id) ? ' on' : '')}><${Icon} name="check" size=${16} /></span>
+      </button>`)}
+      ${!crew.length ? html`<p class="muted">${t('rooms.noCrew')}</p>` : null}
+    </div>
+    ${people.length > 1 && ids.length > 1 ? html`<${Segmented} value=${share ? 'share' : 'each'} onChange=${(v) => setShare(v === 'share')} options=${[
+      { value: 'each', label: t('task.eachDoes') }, { value: 'share', label: t('task.shareOut') }]} />` : null}
+    <button class="btn" disabled=${busy || !people.length} onClick=${() => go(people)}><${Icon} name="check" size=${20} />${t('task.giveGo', { n: people.length })}</button>
+    ${anyAssigned ? html`<button class="btn soft" disabled=${busy} onClick=${() => go([])}>${t('rooms.takeBack')}</button>` : null}
   <//>`;
 }
 
@@ -200,18 +325,21 @@ function FinishPanel({ a, tk, report, onDone }) {
   </form>`;
 }
 
-// ---- Supervisor: plan a task for one or more people (or edit one planned task) ----
-export function AssignSheet({ day, edit, onClose }) {
+// ---- Supervisor: plan a task for one or more people (or edit one planned task). Room tasks take room numbers. ----
+export function AssignSheet({ day, edit, onClose, presetTask }) {
   const s = useStore();
   const ctl = useSheetControl();
   const close = ctl.close;
   const initialDay = edit ? edit.day : day || todayYmd();
-  const [taskId, setTaskId] = useState(edit ? edit.task_id : null);
-  const [people, setPeople] = useState(edit ? [edit.assignee] : []);
+  const [taskId, setTaskId] = useState(edit ? edit.task_id : presetTask || null);
+  const [people, setPeople] = useState(edit ? (edit.assignee ? [edit.assignee] : []) : []);
   const [date, setDate] = useState(initialDay);
-  const [start, setStart] = useState(edit ? hhmm(edit.start_time) : '09:00');
-  const [end, setEnd] = useState(edit ? hhmm(edit.end_time) : '10:00');
+  const [timed, setTimed] = useState(edit ? hasTime(edit) : true);
+  const [start, setStart] = useState(edit && hasTime(edit) ? hhmm(edit.start_time) : '09:00');
+  const [end, setEnd] = useState(edit && hasTime(edit) ? hhmm(edit.end_time) : '10:00');
   const [note, setNote] = useState(edit ? edit.note : '');
+  const [title, setTitle] = useState(edit ? edit.title || '' : '');
+  const [roomsText, setRoomsText] = useState('');
   const [repeat, setRepeat] = useState('day');
   const [touched, setTouched] = useState(!!edit);
   const [busy, setBusy] = useState(false);
@@ -219,64 +347,97 @@ export function AssignSheet({ day, edit, onClose }) {
 
   const d = parseYmd(date || initialDay);
   const tasks = Object.values(s.tasks).filter((x) => !x.deleted);
-  const due = tasks.filter((x) => appliesOn(x, d)).sort((a, b) => a.start_time.localeCompare(b.start_time));
-  const others = tasks.filter((x) => !appliesOn(x, d)).sort((a, b) => a.name.localeCompare(b.name));
+  const normal = tasks.filter((x) => x.kind !== 'room');
+  const roomTasks = tasks.filter((x) => x.kind === 'room').sort((a, b) => a.name.localeCompare(b.name));
+  const due = normal.filter((x) => appliesOn(x, d)).sort((a, b) => a.start_time.localeCompare(b.start_time));
+  const others = normal.filter((x) => !appliesOn(x, d)).sort((a, b) => a.name.localeCompare(b.name));
   const team = activePeople();
+  const tk = taskId ? s.tasks[taskId] : null;
+  const isRoom = !!tk && tk.kind === 'room';
+  const rooms = isRoom && !edit ? [...new Set(roomsText.split(/[,;\n]/).map((x) => x.trim().slice(0, 40)).filter(Boolean))].slice(0, 40) : [];
 
-  const pickTask = (tk) => {
-    setTaskId(tk.id);
+  // "Same as last time": who did this task the last time it was planned
+  const lastTime = (() => {
+    if (!taskId || isRoom || edit) return [];
+    const rows = Object.values(s.assignments).filter((x) => x.task_id === taskId && x.assignee && x.day < date).sort((a, b) => b.day.localeCompare(a.day));
+    if (!rows.length) return [];
+    return [...new Set(rows.filter((x) => x.day === rows[0].day).map((x) => x.assignee))].filter((id) => s.profiles[id] && s.profiles[id].active !== false);
+  })();
+
+  const pickTask = (x) => {
+    setTaskId(x.id);
+    if (x.kind === 'room') { if (!touched) setTimed(false); return; }
     if (!touched) {
-      setStart(hhmm(tk.start_time));
-      setEnd(tk.goal_minutes ? fromMin(Math.min(1439, toMin(tk.start_time) + tk.goal_minutes)) : hhmm(tk.end_time));
+      setTimed(true);
+      setStart(hhmm(x.start_time));
+      setEnd(x.goal_minutes ? fromMin(Math.min(1439, toMin(x.start_time) + x.goal_minutes)) : hhmm(x.end_time));
     }
   };
+  useEffect(() => { if (presetTask && s.tasks[presetTask]) pickTask(s.tasks[presetTask]); }, []);
   const togglePerson = (id) => {
-    if (edit) { setPeople([id]); return; }
+    if (edit) { setPeople((p) => (p.includes(id) ? [] : [id])); return; }
     setPeople((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   };
-  const valid = taskId && people.length && date && toMin(end) > toMin(start);
+  const timeOk = !timed || toMin(end) > toMin(start);
+  const valid = taskId && date && timeOk && (isRoom ? (edit ? title.trim() : rooms.length) : people.length);
 
   async function save(e) {
     e.preventDefault();
     if (!valid) return;
     setBusy(true);
     try {
+      const times = timed ? { start_time: start, end_time: end } : { start_time: null, end_time: null };
       if (edit) {
         await ensureMonth(monthKey(parseYmd(date)));
-        await editAssignment(edit.id, { assignee: people[0], day: date, start_time: start, end_time: end, note: note.trim() });
+        const who = people[0] || null;
+        const patch = { day: date, ...times, note: note.trim() };
+        if (edit.kind === 'room') patch.title = title.trim().slice(0, 40);
+        if (who !== edit.assignee) { patch.assignee = who; patch.status = 'todo'; patch.started_at = null; patch.steps_done = []; }
+        await editAssignment(edit.id, patch);
         toast(t('assign.updated'));
         close();
       } else {
-        const tk = s.tasks[taskId];
         const days = [d];
-        if (repeat === 'week') for (let x = addDays(d, 1); isoWeekday(x) !== 1; x = addDays(x, 1)) if (appliesOn(tk, x)) days.push(x);
-        const keys = [...new Set(days.map(monthKey))];
-        await Promise.all(keys.map(ensureMonth));
-        const have = new Set(Object.values(s.assignments).filter((x) => x.task_id === taskId).map((x) => x.assignee + x.day));
+        if (repeat === 'week' && !isRoom) for (let x = addDays(d, 1); isoWeekday(x) !== 1; x = addDays(x, 1)) if (appliesOn(tk, x)) days.push(x);
+        await Promise.all([...new Set(days.map(monthKey))].map(ensureMonth));
+        const base = { task_id: taskId, kind: isRoom ? 'room' : 'task', note: note.trim(), ...times };
         const rows = [];
-        let skipped = 0;
-        days.forEach((x) => people.forEach((p) => {
-          if (have.has(p + ymd(x))) skipped += 1;
-          else rows.push({ task_id: taskId, assignee: p, day: ymd(x), start_time: start, end_time: end, note: note.trim() });
-        }));
+        let again = 0;
+        if (isRoom) {
+          // every room number is its own task; with people chosen, each of them gets the room (or share them out)
+          rooms.forEach((r) => {
+            const who = people.length ? people : [null];
+            who.forEach((p) => rows.push({ ...base, assignee: p, day: ymd(d), title: r }));
+          });
+        } else {
+          const have = new Map(Object.values(s.assignments).filter((x) => x.task_id === taskId && x.assignee).map((x) => [x.assignee + x.day, x]));
+          const remind = [];
+          days.forEach((x) => people.forEach((p) => {
+            const old = have.get(p + ymd(x));
+            if (old) { if (old.status !== 'done') remind.push(old.id); again += 1; } // already planned: remind them instead of silently skipping
+            else rows.push({ ...base, assignee: p, day: ymd(x), title: '' });
+          }));
+          for (const id of remind) await api.renotifyAssignment(id).catch(() => {});
+        }
         if (rows.length) await planAssignments(rows);
-        toast(rows.length ? t('assign.planned', { n: rows.length }) + (skipped ? ' · ' + t('assign.skipped', { n: skipped }) : '') : t('assign.nothing'));
-        if (rows.length) close();
+        toast(rows.length ? t('assign.planned', { n: rows.length }) + (again ? ' · ' + t('assign.reminded', { n: again }) : '') : again ? t('assign.reminded', { n: again }) : t('assign.nothing'));
+        if (rows.length || again) close();
       }
     } catch (ex) { toast(friendlyError(ex), 'bad'); }
     setBusy(false);
   }
 
-  const taskCard = (tk) => html`<button type="button" key=${tk.id} class=${'task-pick' + (taskId === tk.id ? ' on' : '')} style=${colorStyle(tk.color)}
-    onClick=${() => pickTask(tk)} disabled=${!!edit && taskId !== tk.id}>
-    <${TaskBadge} icon=${tk.icon} color=${tk.color} size=${40} />
-    <span><b>${tk.name}</b><small>${hhmm(tk.start_time)}–${hhmm(tk.end_time)}</small></span>
+  const taskCard = (x) => html`<button type="button" key=${x.id} class=${'task-pick' + (taskId === x.id ? ' on' : '')} style=${colorStyle(x.color)}
+    onClick=${() => pickTask(x)} disabled=${!!edit && taskId !== x.id}>
+    <${TaskBadge} icon=${x.icon} color=${x.color} size=${40} />
+    <span><b>${x.name}</b><small>${x.kind === 'room' ? t('task.roomKind') : hhmm(x.start_time) + '–' + hhmm(x.end_time)}</small></span>
   </button>`;
 
   return html`<${Sheet} title=${edit ? t('assign.editTitle') : t('assign.title')} onClose=${onClose} control=${ctl}>
     <form class="stack-form" onSubmit=${save}>
       <div class="field"><span class="field-label">${t('assign.task')}</span>
         ${!tasks.length ? html`<p class="muted small-text">${t('assign.noTasks')}</p>` : null}
+        ${roomTasks.length ? html`<span class="mini-label">${t('assign.roomTasks')}</span><div class="task-grid">${roomTasks.map(taskCard)}</div>` : null}
         ${due.length ? html`<span class="mini-label">${t('assign.dueThatDay')}</span>` : null}
         <div class="task-grid">${due.map(taskCard)}</div>
         ${others.length ? html`<span class="mini-label">${t('assign.otherTasks')}</span>` : null}
@@ -284,7 +445,14 @@ export function AssignSheet({ day, edit, onClose }) {
         ${!edit ? html`<button type="button" class="btn soft" onClick=${() => setNewTask(true)}><${Icon} name="plus" size=${18} />${t('tasks.new')}</button>` : null}
       </div>
 
-      <div class="field"><span class="field-label">${t('assign.who')}</span>
+      ${isRoom && !edit ? html`<${Field} label=${t('rooms.list')} hint=${t('rooms.listHint')}>
+          <textarea class="input area" rows="2" maxlength="400" value=${roomsText} placeholder="4, 7, 12" onInput=${(e) => setRoomsText(e.target.value)}></textarea>
+        <//>
+        ${rooms.length ? html`<div class="chips pop">${rooms.map((r) => html`<span class="chip role" key=${r} style="--c:var(--mint);--soft:var(--brand-soft);--ink:var(--brand-ink)">${r}</span>`)}</div>` : null}` : null}
+      ${isRoom && edit ? html`<${Field} label=${t('rooms.roomName')}><input class="input" type="text" maxlength="40" required value=${title} onInput=${(e) => setTitle(e.target.value)} /><//>` : null}
+
+      <div class="field"><span class="field-label">${t('assign.who')}${isRoom ? html`<span class="muted"> · ${t('assign.whoOptional')}</span>` : null}</span>
+        ${lastTime.length ? html`<button type="button" class="pick" onClick=${() => setPeople(lastTime)}><${Icon} name="history" size=${16} />${t('assign.sameAsLast')}</button>` : null}
         ${DEPARTMENTS.map((dep) => {
           const list = team.filter((p) => roleInfo(p.role).department === dep).sort((x, y) => ROLE_ORDER.indexOf(x.role) - ROLE_ORDER.indexOf(y.role));
           if (!list.length) return null;
@@ -294,19 +462,23 @@ export function AssignSheet({ day, edit, onClose }) {
               <${Avatar} profile=${p} size=${30} ring=${false} /><span>${p.display_name.split(' ')[0]}</span>
               <${Icon} name="check" size=${14} class="pp-tick" /></button>`)}</div></div>`;
         })}
+        ${people.length > 1 ? html`<span class="field-hint pop">${t('assign.manyHint')}</span>` : null}
       </div>
 
-      <div class="grid2">
-        <${Field} label=${t('assign.date')}><${DateField} value=${date} label=${t('assign.date')} onChange=${setDate} /><//>
-        <div class="field"><span class="field-label">${t('task.window')}</span>
-          <div class="time-row">
-            <${TimeField} value=${start} label=${t('task.from')} onChange=${(v) => { setTouched(true); setStart(v); }} />
-            <span class="muted">–</span>
-            <${TimeField} value=${end} label=${t('task.to')} onChange=${(v) => { setTouched(true); setEnd(v); }} />
-          </div></div>
+      <${Field} label=${t('assign.date')}><${DateField} value=${date} label=${t('assign.date')} onChange=${setDate} /><//>
+
+      <div class="field"><span class="field-label">${t('task.window')}</span>
+        <${Segmented} value=${timed ? 'at' : 'any'} onChange=${(v) => { setTouched(true); setTimed(v === 'at'); }} options=${[
+          { value: 'any', label: t('assign.anytime') }, { value: 'at', label: t('assign.atTime') }]} />
+        ${timed ? html`<div class="time-row pop">
+          <${TimeField} value=${start} label=${t('task.from')} onChange=${(v) => { setTouched(true); setStart(v); }} />
+          <span class="muted">–</span>
+          <${TimeField} value=${end} label=${t('task.to')} onChange=${(v) => { setTouched(true); setEnd(v); }} />
+        </div>` : null}
+        ${timed && !timeOk ? html`<span class="field-hint bad">${t('task.badWindow')}</span>` : null}
       </div>
 
-      ${!edit ? html`<div class="field"><span class="field-label">${t('assign.repeat')}</span>
+      ${!edit && !isRoom ? html`<div class="field"><span class="field-label">${t('assign.repeat')}</span>
         <${Segmented} value=${repeat} onChange=${setRepeat} options=${[
           { value: 'day', label: t('assign.thisDay') }, { value: 'week', label: t('assign.restOfWeek') }]} />
         ${repeat === 'week' && taskId ? html`<span class="field-hint pop">${t('assign.weekHint', { days: freqText(s.tasks[taskId]) })}</span>` : null}</div>` : null}
