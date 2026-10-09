@@ -18,9 +18,9 @@ const iso = (dayOffset, hh, mm = 0) => { const d = addDays(now(), dayOffset); d.
 const people = [
   { id: 'd1', email: 'anna.lane@example.org', display_name: 'Anna Lane', role: 'custodian_supervisor', active: true, avatar_url: null },
   { id: 'd2', email: 'jonas.weber@example.org', display_name: 'Jonas Weber', role: 'custodian', active: true, avatar_url: null },
-  { id: 'd3', email: 'maria.santos@example.org', display_name: 'Maria Santos', role: 'custodian', active: true, avatar_url: swatch('#FFDD94', '#9A7A2E') },
+  { id: 'd3', email: 'maria.santos@example.org', display_name: 'Maria Santos', role: 'custodian', active: true, avatar_url: null },
   { id: 'd4', email: 'noah.lindqvist@example.org', display_name: 'Noah Lindqvist', role: 'custodian', active: true, avatar_url: null },
-  { id: 'd5', email: 'elena.rossi@example.org', display_name: 'Elena Rossi', role: 'receptionist', active: true, avatar_url: swatch('#CCABD8', '#6C4A85') },
+  { id: 'd5', email: 'elena.rossi@example.org', display_name: 'Elena Rossi', role: 'receptionist', active: true, avatar_url: null },
   { id: 'd6', email: 'liam.devries@example.org', display_name: 'Liam de Vries', role: 'receptionist', active: true, avatar_url: null },
 ].map((p) => ({ ...p, created_at: iso(-60, 9) }));
 const pending = [{ email: 'sofia.berg@example.org', full_name: 'Sofia Berg', role: 'custodian', invite_code: 'K3M9Q2XA', claimed_by: null }];

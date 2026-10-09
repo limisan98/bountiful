@@ -21,7 +21,7 @@ export function Icon({ name, size = 24, class: cls = '' }) {
     fill="currentColor" aria-hidden="true" dangerouslySetInnerHTML=${{ __html: inner || ICONS['circle-check'] }}></svg>`;
 }
 
-// ---- Avatar: profile photo, or initials; the ring has the color of the person's role ----
+// ---- Avatar: profile photo, or a person silhouette; the ring has the color of the person's role ----
 export function initials(name = '') {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return '?';
@@ -34,7 +34,7 @@ export function Avatar({ profile, name, role, url, size = 48, ring = true }) {
   const label = name || (profile && profile.display_name) || '';
   // data-pid: tapping a person's picture anywhere opens their profile card (see app.js)
   return html`<span class=${'avatar' + (ring ? ' ring' : '')} data-pid=${profile && profile.id ? profile.id : undefined} style=${`--s:${size}px;--ring:${r.color};--soft:${r.soft};--ink:${r.ink}`}>
-    ${photo ? html`<img src=${photo} alt="" loading="lazy" />` : html`<span class="initials">${initials(label)}</span>`}
+    ${photo ? html`<img src=${photo} alt="" loading="lazy" />` : html`<svg class="silhouette" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="40" r="19" /><ellipse cx="50" cy="92" rx="34" ry="30" /></svg>`}
   </span>`;
 }
 

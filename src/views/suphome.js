@@ -70,7 +70,7 @@ export function SupervisorHome() {
     <section class="rise sum-card" aria-label=${t('sup.progress')}>
       <h3 class="section-title">${t('sup.progress')}</h3>
       ${total ? html`<div class="sum-body">
-        <div class="ring" role="img" aria-label=${t('sup.percent', { n: pct }) + ': ' + legend.map((l) => l[1] + ' ' + l[2]).join(', ')} style=${`--ring:${ring}`}><span><b>${pct}%</b><small>${t('status.done')}</small></span></div>
+        <div class="sum-ring" role="img" aria-label=${t('sup.percent', { n: pct }) + ': ' + legend.map((l) => l[1] + ' ' + l[2]).join(', ')} style=${`--ring:${ring}`}><span><b>${pct}%</b><small>${t('status.done')}</small></span></div>
         <ul class="ring-legend">${legend.map(([k, label, n]) => html`<li key=${k}><i class=${'lg-' + k}></i><span>${label}</span><b>${n}</b></li>`)}</ul>
       </div>` : html`<${Empty} icon="calendar-event" text=${t('home.teamEmpty')} />`}
     </section>
@@ -156,7 +156,7 @@ function RequestGroup({ g }) {
     </button>`)}</div>` : html`<p class="muted">${t('sup.noOne')}</p>`}
     <div class="req-actions">
       <button type="button" class="btn small soft" disabled=${busy || !people.length} onClick=${share}><${Icon} name="bolt" size=${18} />${t('sup.shareOut')}</button>
-      <button type="button" class="btn small ghost" disabled=${busy} onClick=${() => setChoose(true)}>${t('sup.choose')}</button>
+      <button type="button" class="btn small choose-btn" disabled=${busy} onClick=${() => setChoose(true)}><${Icon} name="user" size=${18} />${t('sup.choose')}</button>
     </div>
     ${choose ? html`<${GiveSheet} ids=${ids} onClose=${() => setChoose(false)} onDone=${() => {}} />` : null}
   </article>`;
