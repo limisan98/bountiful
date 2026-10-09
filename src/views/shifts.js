@@ -86,7 +86,7 @@ function OnDuty({ sup, goPlan }) {
 }
 
 // One person's progress card: shift, status, a bar of finished tasks, and (tap to open) every task of the day.
-function DutyCard({ p, sh, day, now, sup }) {
+export function DutyCard({ p, sh, day, now, sup }) {
   const s = useStore();
   const [open, setOpen] = useState(false);
   const [give, setGive] = useState(false);

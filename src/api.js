@@ -57,6 +57,8 @@ const real = {
 
   // ---- areas and tasks ----
   async loadAreas() { return ok(await sb.from('areas').select('*').order('sort')); },
+  async loadGuestRooms() { return ok(await sb.from('guest_rooms').select('*').order('sort')); },
+  async requestRoomCleaning(day, flow, rooms, note) { return ok(await sb.rpc('request_room_cleaning', { p_day: day, p_flow: flow, p_rooms: rooms, p_note: note || '' })); },
   async loadPresets() { return ok(await sb.from('task_presets').select('*')); },
   async loadTasks() { return ok(await sb.from('tasks').select('*').order('created_at')); },
   async saveTask(task) {

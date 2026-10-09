@@ -29,8 +29,7 @@ export function AssignmentRow({ a, onOpen, showPerson, selectable, selected, onT
     <span class="arow-main">
       <span class="arow-name">${itemName(a)}</span>
       ${showPerson ? person : null}
-      <span class="arow-sub"><${PriorityChip} task=${tk} />${(tk.steps || []).length ? html`<span class="steps-chip"><${Icon} name="list-check" size=${13} />${(a.steps_done || []).filter((i) => i < tk.steps.length).length}/${tk.steps.length}</span>` : null}${hasTime(a) ? html`<${Icon} name="clock" size=${13} />${timeText(a)}` : null}
-        ${a.note ? html`${hasTime(a) ? html`<span class="dot-sep">·</span>` : null}<span class="arow-note">${a.note}</span>` : null}</span>
+      <span class="arow-sub"><${PriorityChip} task=${tk} />${a.note ? html`<span class="arow-note">${a.note}</span>` : null}</span>
     </span>
     <span class=${'arow-state ' + a.status}><${Icon} name=${STATUS_ICON[a.status]} size=${20} /></span>`;
   return html`<div class=${'arow-wrap ' + a.status + (selected ? ' selected' : '')} key=${a.id}>

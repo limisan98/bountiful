@@ -11,6 +11,7 @@ export const state = {
   roles: {},         // the four roles (name, icon, color), by id
   areas: [],         // temple, guesthouse, ...
   tasks: {},         // task library, by id
+  guestRooms: [],    // the rooms of House 1-4 Reception can tick (supabase/015)
   presets: {},       // ready-made area checklists (area x depth), by id: see supabase/014
   assignments: {},   // who does which task on which day, by id
   reports: {},       // finished-task reports, by assignment id (private: mine, or everyone's for supervisors)

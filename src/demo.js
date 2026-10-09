@@ -35,6 +35,7 @@ const areas = [
   { id: 'a6', key: 'annex', name: null, icon: 'home', color: '#FA897B', sort: 6 },
 ];
 DEMO_AREAS.forEach((a, i) => areas.push({ id: 'a' + (7 + i), name: null, ...a }));
+const guestRooms = [1, 2, 3, 4].flatMap((h) => [1, 2, 3, 4, 5, 6].map((n) => ({ id: `g${h}${n}`, house: h, label: String(n), sort: h * 100 + n })));
 const presets = DEMO_PRESETS.map((p, i) => ({ id: 'p' + (i + 1), area_id: areas.find((a) => a.key === p.area).id, level: p.level, goal_minutes: p.goal_minutes, steps: p.steps }));
 const mk = (name, icon, color, area_id, s, e, frequency, weekdays, steps, description = '') => ({
   id: uid(), name, icon, color, area_id, start_time: s, end_time: e, frequency, weekdays, description,
@@ -124,6 +125,20 @@ const meetings = [];
   mkRoom(1, '3', { requested_by: 'd6', created_by: 'd6' });
   mkRoom(1, '5', { requested_by: 'd6', created_by: 'd6', note: 'Extra bed please' });
   mkRoom(1, '9', { requested_by: 'd6', created_by: 'd6' });
+  // Check-out / Check-in room tasks (supabase/015) and a few requests waiting for the supervisor
+  const outTask = { ...mk('Room cleaning · Check-out', 'sparkles-2', '#FA897B', null, '10:00', '14:00', 'weekdays', [],
+    [['Strip the bed and take the linens to the laundry'], ['Dust all surfaces, shelves and the headboard'], ['Scrub the bathroom: shower, sink, toilet, floor'], ['Vacuum and mop the floors'], ['Clean the windows and mirrors'], ['Check for forgotten items and report damage'], ['Empty the bins and restock towels and soap']],
+    'The guests have left (check-out 10:00): deep clean the room so it is ready again.'), kind: 'room', goal_minutes: 60, priority: 'high', room_flow: 'checkout' };
+  const inTask = { ...mk('Room setup · Check-in', 'key', '#86E3CE', null, '10:00', '14:00', 'weekdays', [],
+    [['Make the bed with fresh linens'], ['Put out clean towels and soap'], ['Quick dust and wipe the surfaces'], ['Check lights, heating and the bathroom'], ['Vacuum the floor and empty the bins'], ['Open the window to air the room, then close it']],
+    'Guests arrive at 14:00: set the room up so it is ready for them.'), kind: 'room', goal_minutes: 20, room_flow: 'checkin' };
+  tasks.push(outTask, inTask);
+  const mkFlow = (day, tk, room, extra = {}) => assignments.push({ id: uid(), task_id: tk.id, assignee: null, day: ymd(addDays(now(), day)), start_time: tk.start_time, end_time: tk.end_time, note: '',
+    status: 'todo', steps_done: [], started_at: null, completed_at: null, created_by: 'd5', created_at: iso(day, 8, 40), kind: 'room', title: room, requested_by: 'd5', ...extra });
+  mkFlow(0, outTask, 'House 1 · 2'); mkFlow(0, outTask, 'House 1 · 4'); mkFlow(0, outTask, 'House 3 · 1');
+  mkFlow(0, inTask, 'House 2 · 5', { note: 'Family of four' }); mkFlow(0, inTask, 'House 2 · 6');
+  mkFlow(0, outTask, 'House 4 · 3', { assignee: 'd2' });
+  mkFlow(1, inTask, 'House 1 · 1', { requested_by: 'd6', created_by: 'd6' });
   taskComments.push({ id: uid(), assignment_id: assignments.find((a) => a.title === '7').id, author: 'd3', body: 'The bathroom tap is dripping.', created_at: iso(0, 10, 55) });
 }
 // task invitations between custodians (they also appear as messages in the custodians' chat)
@@ -354,6 +369,14 @@ const demoApi = {
     return clone({ result, invite: inv, assignment: a });
   },
   async cancelInvite(id) { const inv = invites.find((i) => i.id === id); inv.status = 'canceled'; inv.answered_at = new Date().toISOString(); return clone(inv); },
+  async loadGuestRooms() { return clone(guestRooms); },
+  async requestRoomCleaning(day, flow, rooms, note) {
+    const tk = tasks.find((x) => x.kind === 'room' && x.room_flow === flow && !x.deleted);
+    const made = rooms.filter((room) => room.trim() && !assignments.some((a) => a.day === day && a.task_id === tk.id && a.title === room && a.status !== 'done'))
+      .map((room) => ({ id: uid(), task_id: tk.id, assignee: null, day, start_time: tk.start_time, end_time: tk.end_time, note: note || '', status: 'todo', steps_done: [],
+        started_at: null, completed_at: null, created_by: state.profile.id, created_at: new Date().toISOString(), kind: 'room', title: room, requested_by: state.profile.id }));
+    assignments.push(...made); return clone(made);
+  },
   async requestRooms(day, rooms, note) {
     const tk = tasks.find((x) => x.kind === 'room' && !x.deleted);
     const made = rooms.map((room) => ({ id: uid(), task_id: tk.id, assignee: null, day, start_time: null, end_time: null, note: note || '', status: 'todo', steps_done: [],

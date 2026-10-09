@@ -12,14 +12,14 @@ const months = new Set();
 
 export function resetData() {
   months.clear();
-  set({ roles: {}, areas: [], tasks: {}, presets: {}, assignments: {}, reports: {}, messages: {}, chatOpen: null, person: null, comments: {}, shifts: {}, shiftPlan: {}, contracts: {}, logbook: {}, digests: {}, invites: {}, meetings: {}, settings: {} });
+  set({ roles: {}, areas: [], tasks: {}, presets: {}, guestRooms: [], assignments: {}, reports: {}, messages: {}, chatOpen: null, person: null, comments: {}, shifts: {}, shiftPlan: {}, contracts: {}, logbook: {}, digests: {}, invites: {}, meetings: {}, settings: {} });
 }
 
 // ---- loading ----
 export async function loadCore() {
   const me = state.profile;
-  const [roles, areas, tasks, presets, digests, invites, meetings, recent, settings, shifts, contracts, logs] = await Promise.all([
-    api.loadRoles(), api.loadAreas(), api.loadTasks(), api.loadPresets().catch(() => []),
+  const [roles, areas, tasks, presets, guestRooms, digests, invites, meetings, recent, settings, shifts, contracts, logs] = await Promise.all([
+    api.loadRoles(), api.loadAreas(), api.loadTasks(), api.loadPresets().catch(() => []), api.loadGuestRooms().catch(() => []),
     isSupervisor(me) ? api.loadDigests() : [],
     departmentOf(me) === 'custodian' ? api.loadInvites(addDays(new Date(), -60).toISOString()) : [],
     api.loadMeetings(ymd(addDays(new Date(), -30))),
@@ -32,7 +32,7 @@ export async function loadCore() {
   const messages = {};
   recent.forEach((m) => { (messages[m.channel] = messages[m.channel] || { list: [], more: true, loaded: false }).list.push(m); });
   Object.values(messages).forEach((c) => c.list.reverse());
-  set({ roles: byId(roles), areas, tasks: byId(tasks), presets: byId(presets), digests: byId(digests), invites: byId(invites), meetings: byId(meetings), settings, messages, chatSeen: loadSeen(messages),
+  set({ roles: byId(roles), areas, tasks: byId(tasks), presets: byId(presets), guestRooms, digests: byId(digests), invites: byId(invites), meetings: byId(meetings), settings, messages, chatSeen: loadSeen(messages),
     shifts: byId(shifts), contracts: byId(contracts, 'user_id'), logbook: byId(logs) });
   const now = new Date();
   await Promise.all([monthKey(now), monthKey(addMonths(now, -1)), monthKey(addMonths(now, 1))].map(ensureMonth));
@@ -244,6 +244,11 @@ export async function giveTasks(ids, people, share) {
     }
   }
   return { placed, skipped };
+}
+export async function askRoomCleaning(day, flow, rooms, note) {
+  const made = await api.requestRoomCleaning(day, flow, rooms, note);
+  set({ assignments: { ...state.assignments, ...byId(made) } });
+  return made;
 }
 export async function askRooms(day, rooms, note) {
   const made = await api.requestRooms(day, rooms, note);

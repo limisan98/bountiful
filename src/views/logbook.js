@@ -118,7 +118,7 @@ function LogEntry({ e, me, sup, showDay }) {
   </article>`;
 }
 
-function WriteSheet({ day, block: first, onClose }) {
+export function WriteSheet({ day, block: first, onClose }) {
   const s = useStore();
   const ctl = useSheetControl();
   const [block, setBlock] = useState(first);
