@@ -38,7 +38,7 @@ Data flow: `src/api.js` (all Supabase calls, plus `subscribe` for Realtime) → 
 | Shift rules (JS twin of the DB rules), priorities | `src/shifts.js` (`problem()`, `capacityOf`, `PRIORITIES`) |
 | Shifts screen (on duty now + week plan), Logbook screen | `src/views/shifts.js`, `src/views/logbook.js` |
 | "Larger text and buttons" switch (class `big-text` on `<html>`) | `src/access.js`, profile sheet |
-| Database scripts, in the order they were run | `supabase/001…013_*.sql` (013 applied only after the push of 2026-10-09, see below) |
+| Database scripts, in the order they were run | `supabase/001…013_*.sql` (all applied; 013 on 2026-10-09) |
 
 Screens (`src/views/`): `home.js` (tiles), `calendar.js` (day/week of assignments), `board.js` (the Tasks tab: day board, selection + "Give to…", reception's AddRooms; supervisors switch to the library), `tasks.js` (task library `LibraryView`, `TaskEditor` with templates + room kind, `TimeGoals`), `assign.js` (task row, task details with comments, `AssignSheet` plan/edit, `GiveSheet` multi-person), `chat.js` (chat list + conversations; mentions; long-press copy/delete; task invitations), `person.js` (profile card + "Send message"), `invites.js` (invitation card/sheet), `reports.js` (automatic reports), `meetings.js`, `team.js` (people, allowlist, roles), `profile.js`, `notifications.js`, `auth.js` (sign in / create account).
 
