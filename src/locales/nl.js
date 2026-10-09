@@ -567,4 +567,13 @@ export default {
   "imp.more": `Meer tonen`,
   "imp.done": `Diensten geïmporteerd: {n}`,
   "imp.donePartial": `Geïmporteerd: {n} · niet opgeslagen: {m}`,
+  "shift.startsIn": `Begint over {time}`,
+  "shift.elapsed": `{done} van {total}`,
+  "shift.noTasks": `Nog geen taken`,
+  "shift.pct": `{n}% klaar`,
+  "shift.breakdown": `Overzicht van taken`,
+  "shift.noTasksYet": `Deze persoon heeft vandaag nog niets gekregen.`,
+  "shift.estimated": `Gepland {time}`,
+  "shift.actual": `Werkelijk {time}`,
+  "shift.actualNone": `Werkelijk –`,
 };

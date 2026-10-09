@@ -67,8 +67,8 @@ for (let off = -4; off <= 4; off++) {
         status: 'todo', steps_done: [], started_at: null, completed_at: null, created_by: 'd1', created_at: iso(-5, 9), kind: 'task', title: '', requested_by: null };
       const goal = toMin(tk.end_time) - toMin(tk.start_time);
       const finish = (mins, c, dl) => {
-        a.status = 'done'; a.steps_done = tk.steps.map((_, i) => i); a.started_at = d.toISOString(); a.completed_at = d.toISOString();
-        reports.push({ assignment_id: a.id, minutes_spent: mins, goal_minutes: goal, comment: c, delay_reason: dl, completed_at: iso(off, 12 + (ti % 5)) });
+        a.status = 'done'; a.steps_done = tk.steps.map((_, i) => i); a.started_at = iso(off, 7 + (ti % 2)); a.completed_at = iso(off, 9 + (ti % 3), 10 + ti * 5);
+        reports.push({ assignment_id: a.id, minutes_spent: mins, goal_minutes: goal, comment: c, delay_reason: dl, completed_at: a.completed_at });
       };
       if (off < 0) finish(goal + ((ti + wi + off) % 3 === 0 ? 25 : -10), comments[(ti + wi + off + 9) % 5], (ti + wi + off) % 3 === 0 ? delays[(ti + off + 9) % 3] || delays[0] : '');
       else if (off === 0) {

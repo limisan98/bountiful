@@ -3,12 +3,14 @@ import { useStore, toast } from '../store.js';
 import { t, friendlyError } from '../i18n.js';
 import { Icon, Avatar, Segmented, Sheet, Empty, useSheetControl } from '../ui.js';
 import { isSupervisor } from '../roles.js';
-import { assignmentsOn, ensureMonth, setShiftCell, copyShiftWeek, setContract, autoAllocate } from '../data.js';
-import { ymd, parseYmd, addDays, startOfWeek, monthKey, todayYmd, fmt, hhmm, toMin, dur, weekdayNames, isoWeekday } from '../time.js';
+import { assignmentsOn, areaOf, areaName, itemName, ensureMonth, setShiftCell, copyShiftWeek, setContract, autoAllocate } from '../data.js';
+import { ymd, parseYmd, addDays, startOfWeek, monthKey, todayYmd, fmt, hhmm, toMin, dur, weekdayNames, isoWeekday, timeKey, fmtTimeOfDay } from '../time.js';
+import { AssignmentSheet } from './assign.js';
 import { ImportSheet } from './shiftimport.js';
 import { BLOCKS, shiftList, shiftOf, planOf, dayPlanned, contractOf, capacityOf, loadOf, goalOf, currentBlock, shiftName, crewPeople, contractLabel, problem } from '../shifts.js';
 
 const BLOCK_ICON = { '07:00': 'sun-high', '08:00': 'sun', '14:00': 'sunset', '18:30': 'moon' };
+const STATUS_ICON = { todo: 'clock', doing: 'hourglass', done: 'circle-check' };
 const range = (s) => `${hhmm(s.start_time)}–${hhmm(s.end_time)}`;
 
 // Shifts: who is on duty right now (by shift block), and the plan for the week (supervisors edit it).
@@ -72,25 +74,7 @@ function OnDuty({ sup, goPlan }) {
     ${planned && !list.length ? html`<${Empty} icon="clock" text=${t('shift.nobody')} />` : null}
 
     <div class="list">
-      ${list.map(({ p, sh }) => {
-        const start = toMin(sh.start_time), end = toMin(sh.end_time);
-        const state = nowMin >= end ? 'done' : nowMin >= start ? 'now' : 'soon';
-        const cap = capacityOf(p.id, today), load = loadOf(p.id, today);
-        const mine = assignmentsOn(today).filter((a) => a.assignee === p.id && s.tasks[a.task_id]);
-        const finished = mine.filter((a) => a.status === 'done').length;
-        const pct = cap ? Math.min(100, Math.round((load / cap) * 100)) : 0;
-        return html`<article class=${'duty-card st-' + state} key=${p.id}>
-          <${Avatar} profile=${p} size=${60} />
-          <div class="duty-main">
-            <h3>${p.display_name}</h3>
-            <p class="duty-shift"><${Icon} name=${BLOCK_ICON[sh.block]} size=${18} />${shiftName(sh)} · <b>${range(sh)}</b></p>
-            <p class=${'duty-state st-' + state}>${state === 'now' ? t('shift.onDuty') : state === 'soon' ? t('shift.startsAt', { time: hhmm(sh.start_time) }) : t('shift.ended')}</p>
-            <div class=${'load-bar' + (pct >= 100 ? ' full' : pct >= 85 ? ' high' : '')} role="img" aria-label=${t('shift.load', { load: dur(load), cap: dur(cap) })}><i style=${`width:${pct}%`}></i></div>
-            <p class="duty-load">${t('shift.load', { load: dur(load), cap: dur(cap) })} · ${t('shift.tasksDone', { done: finished, total: mine.length })}</p>
-          </div>
-          <span class="contract-chip">${contractLabel(contractOf(p.id))}</span>
-        </article>`;
-      })}
+      ${list.map(({ p, sh }) => html`<${DutyCard} key=${p.id} p=${p} sh=${sh} day=${today} now=${now} sup=${sup} />`)}
     </div>
 
     ${sup && planned && waiting.length ? html`<div class="card waiting-give">
@@ -98,6 +82,67 @@ function OnDuty({ sup, goPlan }) {
       <button class="btn" disabled=${busy} onClick=${give}><${Icon} name="bolt" size=${22} />${t('shift.giveOut')}</button>
     </div>` : null}
   </div>`;
+}
+
+// One person's progress card: shift, status, a bar of finished tasks, and (tap to open) every task of the day.
+function DutyCard({ p, sh, day, now, sup }) {
+  const s = useStore();
+  const [open, setOpen] = useState(false);
+  const [view, setView] = useState(null); // assignment id shown in the details sheet
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const start = toMin(sh.start_time), end = toMin(sh.end_time), len = end - start;
+  const state = nowMin >= end ? 'done' : nowMin >= start ? 'now' : 'soon';
+  const elapsed = Math.max(0, Math.min(len, nowMin - start));
+  const mine = assignmentsOn(day).filter((a) => a.assignee === p.id && s.tasks[a.task_id])
+    .sort((x, y) => timeKey(x) - timeKey(y) || itemName(x).localeCompare(itemName(y)));
+  const finished = mine.filter((a) => a.status === 'done').length;
+  const pct = mine.length ? Math.round((finished / mine.length) * 100) : 0;
+  const status = state === 'now' ? t('shift.onDuty') : state === 'soon' ? t('shift.startsIn', { time: dur(start - nowMin) }) : t('shift.ended');
+  const sub = `${t('shift.elapsed', { done: dur(elapsed), total: dur(len) })} · ${mine.length ? t('shift.tasksDone', { done: finished, total: mine.length }) : t('shift.noTasks')}`;
+  const panel = 'duty-tasks-' + p.id;
+
+  return html`<article class=${'duty-card st-' + state + (open ? ' open' : '')}>
+    <button type="button" class="duty-head" aria-expanded=${open} aria-controls=${panel} onClick=${() => setOpen(!open)}>
+      <${Avatar} profile=${p} size=${60} />
+      <span class="duty-main">
+        <span class="duty-name"><span class="duty-title">${p.display_name}</span><span class="contract-chip">${contractLabel(contractOf(p.id))}</span></span>
+        <span class="duty-shift"><${Icon} name=${BLOCK_ICON[sh.block]} size=${18} />${shiftName(sh)} · <b>${range(sh)}</b></span>
+        <span class=${'duty-state st-' + state}>${status}</span>
+        <span class="duty-progress">
+          <span class="load-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow=${pct} aria-label=${t('shift.pct', { n: pct })}><i style=${`width:${pct}%`}></i></span>
+          <b>${pct}%</b>
+        </span>
+        <span class="duty-load">${sub}</span>
+      </span>
+      <span class="duty-caret" aria-hidden="true"><${Icon} name="chevron-down" size=${22} /></span>
+    </button>
+    ${open ? html`<div class="duty-tasks" id=${panel}>
+      <h4>${t('shift.breakdown')}</h4>
+      ${mine.length ? html`<ul>${mine.map((a) => html`<${DutyTask} key=${a.id} a=${a} now=${now} onOpen=${() => setView(a.id)} />`)}</ul>`
+        : html`<p class="muted">${t('shift.noTasksYet')}</p>`}
+    </div>` : null}
+    ${view && s.assignments[view] ? html`<${AssignmentSheet} id=${view} onClose=${() => setView(null)} />` : null}
+  </article>`;
+}
+
+function DutyTask({ a, now, onOpen }) {
+  const s = useStore();
+  const tk = s.tasks[a.task_id];
+  const area = areaOf(tk.area_id);
+  const report = s.reports[a.id];
+  const goal = goalOf(a);
+  const running = a.status === 'doing' && a.started_at ? Math.max(0, Math.round((now.getTime() - Date.parse(a.started_at)) / 60000)) : null;
+  const actual = report ? report.minutes_spent : running;
+  const slow = actual !== null && actual > goal;
+  const doneAt = a.completed_at || (report && report.completed_at);
+  return html`<li><button type="button" class=${'duty-task ' + a.status} onClick=${onOpen}>
+    <span class=${'arow-state ' + a.status}><${Icon} name=${STATUS_ICON[a.status]} size=${20} /></span>
+    <span class="dt-main">
+      <b>${itemName(a)}</b>
+      <span class="dt-sub">${area ? areaName(area) + ' · ' : ''}${t('shift.estimated', { time: dur(goal) })} · <span class=${slow ? 'slow' : ''}>${actual !== null ? t('shift.actual', { time: dur(actual) }) : t('shift.actualNone')}</span></span>
+    </span>
+    <span class=${'chip status-chip ' + a.status}>${t('status.' + a.status)}${a.status === 'done' && doneAt ? ' · ' + fmtTimeOfDay(doneAt) : ''}</span>
+  </button></li>`;
 }
 
 // ---------------------------------------------------------------- week plan

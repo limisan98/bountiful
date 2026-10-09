@@ -986,23 +986,45 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; gap:
 .block-chips.three { grid-template-columns: repeat(3, 1fr); }
 .block-chip { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 64px; padding: 6px 2px; border-radius: var(--r-l); background: #fff; box-shadow: var(--shadow-s); font-weight: 800; font-size: 14px; color: var(--ink-2); transition: background-color var(--d2) var(--ease), box-shadow var(--d2) var(--ease); }
 .block-chip.on { background: var(--mint); color: var(--ink); box-shadow: none; }
-.duty-card { display: flex; align-items: flex-start; gap: 16px; background: #fff; border-radius: var(--r-l); padding: 16px; box-shadow: var(--shadow-s); }
-.duty-card.st-done { opacity: .6; }
-.duty-card .avatar { flex: none; }
+.duty-card { background: #fff; border-radius: var(--r-l); box-shadow: var(--shadow-s); overflow: hidden; }
+.duty-card.st-done .duty-head { opacity: .65; }
+.duty-head { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: flex-start; gap: 16px; padding: 16px; cursor: pointer; min-height: 44px; }
+.duty-head:focus-visible { outline: 3px solid var(--mint); outline-offset: -3px; border-radius: var(--r-l); }
+.duty-head .avatar { flex: none; }
 .duty-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-.duty-main h3 { font-size: 18px; font-weight: 800; }
-.duty-main p { margin: 0; }
+.duty-name { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.duty-title { font-size: 18px; font-weight: 800; line-height: 1.2; min-width: 0; overflow-wrap: anywhere; }
 .duty-shift { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--ink-2); flex-wrap: wrap; }
 .duty-shift b { color: var(--ink); }
 .duty-state { font-weight: 800; font-size: 14px; }
 .duty-state.st-now { color: #1B7A3B; }
 .duty-state.st-soon { color: #926400; }
 .duty-state.st-done { color: var(--ink-3); }
-.load-bar { height: 12px; border-radius: 99px; background: var(--track); overflow: hidden; }
+.duty-progress { display: flex; align-items: center; gap: 10px; }
+.duty-progress b { font-size: 14px; font-weight: 800; min-width: 38px; text-align: right; }
+.duty-progress .load-bar { flex: 1; }
+.load-bar { display: block; height: 12px; border-radius: 99px; background: var(--track); overflow: hidden; }
 .load-bar i { display: block; height: 100%; border-radius: 99px; background: var(--mint); transition: width .6s var(--ease); }
 .load-bar.high i { background: var(--yellow); }
 .load-bar.full i { background: var(--coral); }
 .duty-load { font-size: 13px; color: var(--ink-2); font-weight: 600; }
+.duty-caret { flex: none; align-self: center; color: var(--ink-3); transition: transform .25s var(--ease); display: grid; }
+.duty-card.open .duty-caret { transform: rotate(180deg); }
+.duty-tasks { padding: 4px 16px 16px; border-top: 1px dashed var(--line, #E3EBE8); animation: duty-open .25s var(--ease); }
+@keyframes duty-open { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.duty-tasks h4 { margin: 12px 0 8px; font-size: 13px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-3); }
+.duty-tasks ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.duty-task { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; min-height: 56px; border-radius: var(--r-m, 18px); background: var(--bg-soft, #F6FAF8); cursor: pointer; }
+.duty-task:focus-visible { outline: 3px solid var(--mint); }
+.dt-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.dt-main b { font-size: 15px; font-weight: 700; overflow-wrap: anywhere; }
+.dt-sub { font-size: 13px; color: var(--ink-2); font-weight: 500; }
+.dt-sub .slow { color: #B3402F; font-weight: 700; }
+.duty-task .chip.status-chip { flex: none; white-space: nowrap; }
+@media (max-width: 520px) {
+  .duty-task { display: grid; grid-template-columns: 36px 1fr; column-gap: 12px; row-gap: 6px; align-items: start; }
+  .duty-task .chip.status-chip { grid-column: 2; justify-self: start; }
+}
 .contract-chip { display: inline-flex; align-items: center; gap: 5px; flex: none; min-height: 32px; padding: 2px 12px; border-radius: 99px; background: var(--track); color: var(--ink-2); font-weight: 800; font-size: 13px; }
 .contract-chip.tap { min-height: 44px; padding: 4px 16px; background: #fff; box-shadow: var(--shadow-s); font-size: 15px; }
 
@@ -1084,7 +1106,7 @@ html.big-text .arow { padding-top: 16px; padding-bottom: 16px; }
 /* ---- phone sizes: keep the 5 block buttons readable ---- */
 @media (max-width: 400px) {
   .block-chip { font-size: 13px; }
-  .duty-card { gap: 12px; padding: 14px 12px; }
+  .duty-head { gap: 12px; padding: 14px 12px; }
   .give-extra { padding-left: 0; }
 }
 /* task rows: let the little labels (priority, steps, time) wrap instead of being cut off */

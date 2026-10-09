@@ -567,4 +567,13 @@ export default {
   "imp.more": `Mostrar más`,
   "imp.done": `Turnos importados: {n}`,
   "imp.donePartial": `Importados: {n} · no se pudieron guardar: {m}`,
+  "shift.startsIn": `Empieza en {time}`,
+  "shift.elapsed": `{done} de {total}`,
+  "shift.noTasks": `Aún sin tareas`,
+  "shift.pct": `{n}% completado`,
+  "shift.breakdown": `Detalle de tareas`,
+  "shift.noTasksYet": `Hoy no se le ha dado nada a esta persona.`,
+  "shift.estimated": `Previsto {time}`,
+  "shift.actual": `Real {time}`,
+  "shift.actualNone": `Real –`,
 };

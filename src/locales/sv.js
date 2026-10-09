@@ -567,4 +567,13 @@ export default {
   "imp.more": `Visa fler`,
   "imp.done": `Skift importerade: {n}`,
   "imp.donePartial": `Importerade: {n} · kunde inte sparas: {m}`,
+  "shift.startsIn": `Börjar om {time}`,
+  "shift.elapsed": `{done} av {total}`,
+  "shift.noTasks": `Inga uppgifter än`,
+  "shift.pct": `{n}% klart`,
+  "shift.breakdown": `Uppgifterna i detalj`,
+  "shift.noTasksYet": `Den här personen har inte fått något idag.`,
+  "shift.estimated": `Planerat {time}`,
+  "shift.actual": `Faktiskt {time}`,
+  "shift.actualNone": `Faktiskt –`,
 };

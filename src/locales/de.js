@@ -567,4 +567,13 @@ export default {
   "imp.more": `Mehr anzeigen`,
   "imp.done": `Schichten importiert: {n}`,
   "imp.donePartial": `Importiert: {n} · nicht gespeichert: {m}`,
+  "shift.startsIn": `Beginnt in {time}`,
+  "shift.elapsed": `{done} von {total}`,
+  "shift.noTasks": `Noch keine Aufgaben`,
+  "shift.pct": `{n} % erledigt`,
+  "shift.breakdown": `Aufgaben im Überblick`,
+  "shift.noTasksYet": `Heute wurde dieser Person noch nichts gegeben.`,
+  "shift.estimated": `Geplant {time}`,
+  "shift.actual": `Tatsächlich {time}`,
+  "shift.actualNone": `Tatsächlich –`,
 };
