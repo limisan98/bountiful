@@ -324,7 +324,7 @@ input[type="date"].input, input[type="time"].input { appearance: none; -webkit-a
 .arow-state { color: var(--ink-3); flex: none; }
 .arow-state.doing { color: #926400; }
 .arow-state.done { color: var(--brand-ink); }
-.arow.done .arow-name { color: var(--ink-2); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+.arow.done .arow-name { color: var(--ink-2); }
 .detail-top { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
 .detail-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .card { background: #fff; border-radius: var(--r-l); padding: 16px; box-shadow: var(--shadow-s); }
@@ -340,7 +340,7 @@ input[type="date"].input, input[type="time"].input { appearance: none; -webkit-a
 .check-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .check-text b { font-weight: 700; }
 .check-text span { color: var(--ink-2); font-size: 13px; }
-.check-row.on .check-text b { color: var(--ink-2); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+.check-row.on .check-text b { color: var(--ink-2); }
 .report { background: #fff; border-radius: var(--r-l); padding: 16px; display: flex; flex-direction: column; gap: 14px; box-shadow: var(--shadow-s); }
 .report-top { display: flex; gap: 12px; align-items: center; color: var(--brand-ink); }
 .report-top div { display: flex; flex-direction: column; }
@@ -1237,7 +1237,7 @@ select.input { appearance: auto; padding-right: 12px; }
 .my-body { all: unset; box-sizing: border-box; flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 18px 18px 18px 0; cursor: pointer; }
 .my-body:focus-visible { outline: 4px solid var(--mint); outline-offset: -4px; border-radius: 20px; }
 .my-name { font-size: 21px; font-weight: 800; line-height: 1.2; overflow-wrap: anywhere; }
-.my-task.done .my-name { text-decoration: line-through; text-decoration-thickness: 2px; color: var(--st-done-ink); }
+.my-task.done .my-name { color: var(--st-done-ink); }
 .my-day { font-size: 13px; font-weight: 800; color: var(--prio-high-ink); text-transform: capitalize; }
 .my-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
 .my-meta .chip { font-size: 14px; }

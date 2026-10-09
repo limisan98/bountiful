@@ -57,8 +57,6 @@ export function CustodianHome() {
     const tk = s.tasks[a.task_id];
     const area = areaOf(tk.area_id);
     const isDone = a.status === 'done';
-    const steps = (tk.steps || []).length;
-    const stepsDone = (a.steps_done || []).filter((i) => i < steps).length;
     return html`<article class=${'my-task ' + a.status + ' prio-' + priorityOf(tk)} key=${a.id}>
       <button type="button" class="my-check" role="checkbox" aria-checked=${isDone} disabled=${busy === a.id} aria-label=${t('my.markDone', { name: itemName(a) })} onClick=${() => tick(a)}>
         <${Icon} name="check" size=${34} />
@@ -69,8 +67,6 @@ export function CustodianHome() {
         <span class="my-meta">
           ${area ? html`<span class="chip tint" style=${colorStyle(area.color)}><${Icon} name=${area.icon || 'home'} size=${16} />${areaName(area)}</span>` : null}
           ${a.status === 'doing' ? html`<span class="chip status-chip doing"><${Icon} name="hourglass" size=${15} />${t('status.doing')}</span>` : null}
-          <span class="my-when"><${Icon} name="clock" size=${16} />${hasTime(a) ? timeText(a) : t('my.anytime')} · ${dur(goalOf(a))}</span>
-          ${steps ? html`<span class="my-when"><${Icon} name="list-check" size=${16} />${stepsDone}/${steps}</span>` : null}
           ${priorityOf(tk) === 'high' ? html`<${PriorityChip} task=${tk} />` : null}
         </span>
         ${a.note ? html`<span class="my-note">${a.note}</span>` : null}
