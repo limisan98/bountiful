@@ -1,11 +1,20 @@
 import { html, useState, useMemo } from '../../assets/vendor/htm-preact.js';
 import { useStore, toast } from '../store.js';
 import { t, friendlyError } from '../i18n.js';
-import { Icon, Avatar, Sheet, Field, useSheetControl } from '../ui.js';
+import { Icon, Avatar, Sheet, Field, Segmented, useSheetControl } from '../ui.js';
 import { colorStyle } from '../color.js';
 import { areaName, presetsOfArea, presetSteps, taskForPreset, saveTask, planAssignments } from '../data.js';
 import { parseYmd, todayYmd, fmt, hhmm, toMin, dur } from '../time.js';
 import { dayPlanned, shiftOf, capacityOf, loadOf, crewPeople, shiftName, problemText } from '../shifts.js';
+
+// How often each area is normally cleaned (an area can appear in several groups). Edit here to move an area.
+const CADENCE = {
+  temple: ['daily', 'monthly'], visitors: ['daily', 'monthly'], hall: ['daily'], utensils: ['daily'],
+  cafe_visitors: ['daily', 'monthly'], cafe_missionaries: ['daily', 'monthly'], cafe_employees: ['daily', 'monthly'],
+  house1: ['daily'], house2: ['daily'], house3: ['daily'], house4: ['daily'],
+  laundry: ['weekly', 'monthly'], basement_gardener: ['weekly', 'monthly'], basement_techs: ['weekly', 'monthly'],
+  offices_supervisors: ['weekly'], offices_techs: ['weekly'], manager_office: ['weekly'], villa: ['weekly', 'monthly'],
+};
 
 const BLOCK_ICON = { '07:00': 'sun-high', '08:00': 'sun', '14:00': 'sunset', '18:30': 'moon' };
 const LEVEL_ICON = { 1: 'sparkles', 2: 'sparkles-2', 3: 'sparkles' };
@@ -19,6 +28,7 @@ export function QuickAssignSheet({ day, person: first, onClose }) {
   const [who, setWho] = useState(first || null);
   const [custom, setCustom] = useState(false);
   const [areaId, setAreaId] = useState(null);
+  const [cad, setCad] = useState('daily');
   const [level, setLevel] = useState(1);
   const [name, setName] = useState('');
   const [minutes, setMinutes] = useState(30);
@@ -39,7 +49,7 @@ export function QuickAssignSheet({ day, person: first, onClose }) {
       .map((x) => ({ ...x, live: live(x) }));
   }, [s.profiles, s.shiftPlan, s.contracts, day]);
 
-  const areas = s.areas.filter((a) => presetsOfArea(a.id).length);
+  const areas = s.areas.filter((a) => presetsOfArea(a.id).length && (CADENCE[a.key] || ['daily']).includes(cad));
   const levels = areaId ? presetsOfArea(areaId) : [];
   const preset = levels.find((p) => p.level === level) || levels[0] || null;
   const area = s.areas.find((a) => a.id === areaId);
@@ -112,8 +122,10 @@ export function QuickAssignSheet({ day, person: first, onClose }) {
       ${!custom ? html`
         <section class="qa-sec" aria-label=${t('quick.step2')}>
           ${stepHead(2, t('quick.step2'))}
+          <${Segmented} label=${t('quick.step2')} value=${cad} onChange=${(v) => { setCad(v); setAreaId(null); }}
+            options=${[{ value: 'daily', label: t('quick.daily') }, { value: 'weekly', label: t('quick.weekly') }, { value: 'monthly', label: t('quick.monthly') }]} />
           <div class="qa-areas">
-            ${areas.map((a) => html`<button type="button" key=${a.id} class=${'qa-area' + (areaId === a.id ? ' on' : '')} aria-pressed=${areaId === a.id} style=${colorStyle(a.color)} onClick=${() => { setAreaId(a.id); setLevel(1); }}>
+            ${areas.map((a) => html`<button type="button" key=${a.id} class=${'qa-area' + (areaId === a.id ? ' on' : '')} aria-pressed=${areaId === a.id} style=${colorStyle(a.color)} onClick=${() => { setAreaId(a.id); setLevel(cad === 'monthly' && presetsOfArea(a.id).some((p) => p.level === 2) ? 2 : 1); }}>
               <span class="qa-area-ic"><${Icon} name=${a.icon || 'home'} size=${22} /></span><span>${areaName(a)}</span></button>`)}
           </div>
         </section>
