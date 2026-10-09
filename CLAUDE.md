@@ -37,6 +37,7 @@ Data flow: `src/api.js` (all Supabase calls, plus `subscribe` for Realtime) → 
 | PWA (install + notification display) | `sw.js`, `manifest.webmanifest` |
 | Shift rules (JS twin of the DB rules), priorities | `src/shifts.js` (`problem()`, `capacityOf`, `PRIORITIES`) |
 | Shifts screen (on duty now + week plan), Logbook screen | `src/views/shifts.js`, `src/views/logbook.js` |
+| Teams Shifts Excel import (supervisor, Shifts → Week plan → "Import from Teams") | `src/xlsx.js` (zip+XML reader, no library), `src/teamsimport.js` (parser + name/shift matching), `src/views/shiftimport.js` (drop zone, review table), `importShiftPlan` in `data.js` |
 | "Larger text and buttons" switch (class `big-text` on `<html>`) | `src/access.js`, profile sheet |
 | Database scripts, in the order they were run | `supabase/001…013_*.sql` (all applied; 013 on 2026-10-09) |
 
@@ -62,6 +63,7 @@ Three roles: `custodian_supervisor` (the only supervisor; department custodian),
 - **Routines**: tasks have `priority` (high/medium/low, shown as icon + word + coloured stripe), `frequency` daily | weekdays (shown as "Weekly") | monthly (`month_day`), and `auto`. pg_cron job `bountiful-routines` (every 5 min) runs `generate_routines()`: at/after the start of the task's shift block it creates the unassigned task for the day (if not already there) and allocates it.
 - **Areas**: Temple interior, Visitors' center, Guesthouse, Cafeterias, plus Offices and Annex buildings; board has "By time | By area" (area checklist with progress + steps ticked).
 - **Logbook** (`logbook_entries`, crew only): handover notes per day and part of the day (morning/afternoon/evening); "needs follow-up" notes stay on top until ticked (`resolve_logbook`). No push notifications for it yet.
+- **Teams import**: writes `shift_plan` rows (not the `shifts` definitions). Reads the .xlsx in the browser, accepts the real Teams list export (one row per shift: name, start/end date+time) and grids (names down, days across; date headers or "Mo 5" + month picker). Matching is by name only (profiles have no email on the client); unknown names, unrecognised times, shifts that don't run that weekday and contract mismatches (4h↔part, 8h↔full) are shown for review and skipped until fixed. `imp.*` locale keys. No real Teams export was available when written, so adjust `parseSheet` if a real file doesn't read.
 - Accessibility: big touch targets, icon+word labels, "Larger text and buttons" switch in the profile.
 
 ## Database (Supabase)

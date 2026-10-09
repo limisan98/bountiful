@@ -88,7 +88,7 @@ export function useSheetControl() {
   return useRef({ ref, close: () => ref.current && ref.current() }).current;
 }
 
-export function Sheet({ title, onClose, children, kicker, control }) {
+export function Sheet({ title, onClose, children, kicker, control, wide }) {
   const [out, setOut] = useState(false);
   const me = useRef({}).current;
   const closing = useRef(false);
@@ -115,7 +115,7 @@ export function Sheet({ title, onClose, children, kicker, control }) {
   return html`<${SheetCtx.Provider} value=${close}>
     <div class=${'sheet-root' + (out ? ' out' : '')} role="dialog" aria-modal="true" aria-label=${title}>
       <div class="scrim" onClick=${close}></div>
-      <div class="sheet">
+      <div class=${'sheet' + (wide ? ' wide' : '')}>
         <div class="sheet-grab"></div>
         <div class="sheet-head">
           <div class="sheet-titles">${kicker ? html`<span class="kicker">${kicker}</span>` : null}<h2>${title}</h2></div>

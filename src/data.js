@@ -269,6 +269,22 @@ export async function copyShiftWeek(fromMonday, days = 7) {
   set({ shiftPlan: { ...state.shiftPlan, ...byId(made) } });
   return made.length;
 }
+// Teams import: write many planned shifts at once. All together first; if the database refuses one, row by row so the rest still go in.
+export async function importShiftPlan(rows) {
+  let made = [];
+  const failed = [];
+  try { made = await api.setShifts(rows); }
+  catch (_) {
+    for (const r of rows) {
+      try { made.push(...(await api.setShifts([r]))); } catch (ex) { failed.push({ row: r, error: ex }); }
+    }
+  }
+  const replaced = new Set(made.map((m) => m.user_id + '|' + m.day));
+  const shiftPlan = Object.fromEntries(Object.entries(state.shiftPlan).filter(([, p]) => !replaced.has(p.user_id + '|' + p.day)));
+  made.forEach((m) => { shiftPlan[m.id] = m; });
+  set({ shiftPlan });
+  return { saved: made.length, failed };
+}
 export async function setContract(user, minutes) {
   await api.setContract(user, minutes);
   const today = ymd(new Date());

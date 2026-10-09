@@ -1090,3 +1090,57 @@ html.big-text .arow { padding-top: 16px; padding-bottom: 16px; }
 /* task rows: let the little labels (priority, steps, time) wrap instead of being cut off */
 .arow-sub { flex-wrap: wrap; white-space: normal; overflow: visible; row-gap: 4px; }
 .arow-name { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+/* ---- Teams Shifts import ---- */
+.sheet.wide { max-width: 1040px; }
+.drop-zone { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 36px 20px; border: 3px dashed #BFD9D1; border-radius: var(--r-xl); background: #fff; text-align: center; transition: background-color var(--d2) var(--ease), border-color var(--d2) var(--ease), transform var(--d2) var(--ease); }
+.drop-zone.over { background: var(--brand-soft); border-color: var(--mint); transform: scale(1.015); }
+.drop-zone b { font-size: 19px; }
+.drop-zone .btn { width: auto; min-width: 220px; }
+.drop-ic { width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand-ink); }
+.imp-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.imp-stat { background: #fff; border-radius: var(--r-l); padding: 12px 8px; text-align: center; box-shadow: var(--shadow-s); display: flex; flex-direction: column; gap: 2px; }
+.imp-stat b { font-size: 26px; font-weight: 800; line-height: 1.1; }
+.imp-stat span { font-size: 12.5px; color: var(--ink-2); font-weight: 700; }
+.imp-stat.ok { background: var(--st-done); } .imp-stat.ok b, .imp-stat.ok span { color: var(--st-done-ink); }
+.imp-stat.bad { background: var(--prio-high-bg); } .imp-stat.bad b, .imp-stat.bad span { color: var(--prio-high-ink); }
+.imp-fix .section-title { margin-bottom: 10px; }
+.imp-fix-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: #fff; border-radius: var(--r-l); padding: 12px 14px; box-shadow: var(--shadow-s); }
+.imp-fix-row .input { width: auto; min-width: 200px; flex: 1; max-width: 320px; }
+.imp-who { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.imp-who small { display: block; color: var(--ink-3); font-size: 11.5px; }
+.imp-q { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--prio-high-bg); color: var(--prio-high-ink); font-weight: 800; flex: none; }
+.imp-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; font-size: 14px; }
+.imp-table th { text-align: left; font-size: 12px; color: var(--ink-2); font-weight: 700; padding: 0 12px; }
+.imp-table td { background: #fff; padding: 10px 12px; vertical-align: middle; }
+.imp-table td:first-child { border-radius: 18px 0 0 18px; } .imp-table td:last-child { border-radius: 0 18px 18px 0; }
+.imp-row.review td { background: #FFF4DD; }
+.imp-row.skip td { opacity: .5; }
+.imp-shift { display: flex; flex-direction: column; } .imp-shift small, .imp-note { color: var(--ink-2); font-size: 12px; }
+.imp-issues { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip.imp-bad { background: var(--prio-high-bg); color: var(--prio-high-ink); box-shadow: none; }
+.imp-issues .input.slim { width: auto; min-width: 170px; height: 40px; }
+.imp-skip { min-height: 34px; padding: 4px 12px; }
+.imp-foot { display: flex; flex-direction: column; gap: 6px; position: sticky; bottom: -30px; background: linear-gradient(to top, var(--bg) 80%, transparent); padding: 18px 0 8px; margin-top: 4px; }
+.imp-foot p { margin: 0; }
+.imp-file { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.imp-file b { overflow-wrap: anywhere; }
+select.input { appearance: auto; padding-right: 12px; }
+@media (max-width: 760px) {
+  .imp-table, .imp-table tbody { display: block; }
+  .imp-table thead { display: none; }
+  .imp-table tr { display: flex; flex-direction: column; gap: 6px; background: #fff; border-radius: var(--r-l); padding: 12px 14px; margin-bottom: 10px; box-shadow: var(--shadow-s); }
+  .imp-row.review { background: #FFF4DD; }
+  .imp-table td { background: transparent !important; padding: 0; border-radius: 0 !important; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+  .imp-table td::before { content: attr(data-l); font-size: 12px; font-weight: 700; color: var(--ink-3); flex: none; }
+  .imp-table td > * { text-align: right; }
+}
+.imp-table .imp-who { flex-wrap: nowrap; }
+.imp-table .imp-who .avatar { flex: none; }
+@media (max-width: 760px) {
+  .imp-table td:last-child { flex-direction: column; align-items: stretch; }
+  .imp-table td:last-child::before { display: none; }
+  .imp-table td:last-child > * { text-align: left; }
+  .imp-issues { flex-direction: column; align-items: flex-start; }
+  .imp-issues .input.slim { width: 100%; min-width: 0; }
+}

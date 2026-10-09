@@ -5,6 +5,7 @@ import { Icon, Avatar, Segmented, Sheet, Empty, useSheetControl } from '../ui.js
 import { isSupervisor } from '../roles.js';
 import { assignmentsOn, ensureMonth, setShiftCell, copyShiftWeek, setContract, autoAllocate } from '../data.js';
 import { ymd, parseYmd, addDays, startOfWeek, monthKey, todayYmd, fmt, hhmm, toMin, dur, weekdayNames, isoWeekday } from '../time.js';
+import { ImportSheet } from './shiftimport.js';
 import { BLOCKS, shiftList, shiftOf, planOf, dayPlanned, contractOf, capacityOf, loadOf, goalOf, currentBlock, shiftName, crewPeople, contractLabel, problem } from '../shifts.js';
 
 const BLOCK_ICON = { '07:00': 'sun-high', '08:00': 'sun', '14:00': 'sunset', '18:30': 'moon' };
@@ -106,6 +107,7 @@ function WeekPlan({ sup }) {
   const [pick, setPick] = useState(null);        // { person, day }
   const [contract, setContractFor] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [importing, setImporting] = useState(false);
   const days = Array.from({ length: 7 }, (_, i) => addDays(cursor, i));
   const names = weekdayNames('short');
   const today = todayYmd();
@@ -132,7 +134,8 @@ function WeekPlan({ sup }) {
         <button class="icon-btn big" aria-label=${t('shift.nextWeek')} onClick=${() => setCursor(addDays(cursor, 7))}><${Icon} name="caret-right" size=${22} /></button>
       </div>
     </div>
-    ${sup ? html`<div class="chips"><button class="pick" disabled=${busy} onClick=${copy}><${Icon} name="copy" size=${18} />${t('shift.copyWeek')}</button></div>
+    ${sup ? html`<div class="chips"><button class="pick" disabled=${busy} onClick=${copy}><${Icon} name="copy" size=${18} />${t('shift.copyWeek')}</button>
+      <button class="pick" onClick=${() => setImporting(true)}><${Icon} name="arrow-badge-down" size=${18} />${t('imp.button')}</button></div>
       <p class="field-hint">${t('shift.tapHint')}</p>` : null}
 
     <section class="shift-legend" aria-label=${t('shift.legend')}>
@@ -164,6 +167,7 @@ function WeekPlan({ sup }) {
       ${!people.length ? html`<${Empty} icon="user" text=${t('shift.noCrew')} />` : null}
     </div>
 
+    ${importing ? html`<${ImportSheet} onClose=${() => setImporting(false)} />` : null}
     ${pick ? html`<${ShiftPicker} person=${pick.person} day=${pick.day} onClose=${() => setPick(null)} />` : null}
     ${contract ? html`<${ContractSheet} person=${contract} onClose=${() => setContractFor(null)} />` : null}
   </div>`;
