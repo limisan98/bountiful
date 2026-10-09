@@ -676,4 +676,5 @@ Boden wischen`,
   "rec.send": `Reinigungsanfrage an den Supervisor senden`,
   "rec.sendN": `Reinigungsanfrage an den Supervisor senden ({n})`,
   "rec.myRequests": `Anfragen für diesen Tag`,
+  "nav.menu": `Menü`,
 };

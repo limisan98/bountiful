@@ -6,7 +6,6 @@ import { DateField } from '../pickers.js';
 import { assignmentsOn, ensureMonth, askRoomCleaning } from '../data.js';
 import { todayYmd, addDays, ymd, parseYmd, monthKey, fmt } from '../time.js';
 import { AssignmentRow, AssignmentSheet } from './assign.js';
-import { MoreLinks } from './more.js';
 
 const FLOWS = [{ key: 'checkout', icon: 'sparkles-2', time: '10:00' }, { key: 'checkin', icon: 'key', time: '14:00' }];
 
@@ -120,7 +119,6 @@ export function ReceptionHome() {
       <div class="list tight">${mine.map((a) => html`<${AssignmentRow} key=${a.id} a=${a} onOpen=${setOpen} showPerson=${true} />`)}</div>
     </section>` : null}
 
-    <${MoreLinks} routes=${['tasks', 'calendar', 'meetings', 'team']} />
     ${open ? html`<${AssignmentSheet} id=${open} onClose=${() => setOpen(null)} />` : null}
   </div>`;
 }

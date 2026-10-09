@@ -6,6 +6,7 @@ import { state, set, useStore } from './store.js';
 import { initLang, setLang, t } from './i18n.js';
 import { Icon, Avatar, Toast } from './ui.js';
 import { LogoMark } from './logo.js';
+import { MenuSheet } from './views/more.js';
 import { isSupervisor, roleInfo } from './roles.js';
 import { loadCore, startLive, stopLive, resetData, inCrew, refresh } from './data.js';
 import { AuthScreen } from './views/auth.js';
@@ -31,7 +32,7 @@ const NAV = [
   { route: 'meetings', icon: 'calendar-month', label: 'nav.meetings', desk: true }, // in the desktop sidebar; on phones reachable from Home
   { route: 'reports', icon: 'clipboard-data', label: 'nav.reports', only: 'sup', desk: true }, // in the desktop sidebar; on phones reachable from Home
   { route: 'shifts', icon: 'clock', label: 'nav.shifts', only: 'sup', desk: true }, // who is on duty + week plan (supervisor only)
-  { route: 'logbook', icon: 'book', label: 'nav.logbook', only: 'crew', desk: true }, // shared handover book
+  { route: 'logbook', icon: 'book', label: 'nav.logbook', only: 'sup', desk: true }, // shared handover book (supervisor reads it; the crew writes notes from their home screen)
 ];
 
 function currentRoute() {
@@ -45,6 +46,7 @@ function Shell() {
   const me = s.profile;
   const sup = isSupervisor(me);
   const [route, setRoute] = useState(currentRoute());
+  const [menu, setMenu] = useState(false);
 
   useEffect(() => {
     const onHash = () => { setRoute(currentRoute()); window.scrollTo(0, 0); };
@@ -58,11 +60,13 @@ function Shell() {
   const greet = hour < 12 ? 'greet.morning' : hour < 18 ? 'greet.afternoon' : 'greet.evening';
   // Each kind of person gets only the few screens they need; everything else is one tap away under "More" on their home screen.
   const kind = sup ? 'sup' : inCrew(me) ? 'crew' : 'rec';
-  const LITE = { crew: ['home', 'chat', 'logbook'], rec: ['home', 'tasks'] };
+  const LITE = { crew: ['home', 'chat'], rec: ['home', 'tasks'] };
+  const MENU = { crew: ['tasks', 'calendar', 'meetings', 'team'], rec: ['calendar', 'meetings', 'team'] };
   const dock = kind === 'sup' ? NAV.filter((n) => (n.dock || n.desk) && allowed(n))
     : LITE[kind].map((r) => NAV.find((n) => n.route === r)).filter((n) => n && allowed(n))
-      .map((n) => (n.route === 'home' ? { ...n, icon: kind === 'crew' ? 'list-check' : 'bed', label: kind === 'crew' ? 'nav.myTasks' : 'nav.rooms', desk: false } : { ...n, desk: false }));
+      .map((n) => (n.route === 'home' ? { ...n, icon: kind === 'crew' ? 'home' : 'bed', label: kind === 'crew' ? 'nav.myTasks' : 'nav.rooms', desk: false } : { ...n, desk: false }));
   const phoneDock = dock.filter((n) => !n.desk);
+  const dockN = phoneDock.length + (kind !== 'sup' ? 1 : 0); // the burger tab counts as a slot
   const idx = phoneDock.findIndex((n) => n.route === active);
 
   let view;
@@ -75,13 +79,14 @@ function Shell() {
   else if (active === 'shifts') view = html`<${ShiftsView} />`;
   else if (active === 'logbook') view = html`<${LogbookView} />`;
 
-  const nav = html`<nav class="dock" aria-label="Main" style=${`--n:${phoneDock.length};--i:${Math.max(idx, 0)}`}>
+  const nav = html`<nav class="dock" aria-label="Main" style=${`--n:${dockN};--i:${Math.max(idx, 0)}`}>
     <div class="dock-brand"><${LogoMark} size=${40} /><b>Bountiful</b></div>
     <span class=${'dock-ind' + (idx < 0 ? ' none' : '')}></span>
     ${dock.map((n) => html`<a key=${n.route} href=${'#/' + n.route} class=${(active === n.route ? 'on' : '') + (n.desk ? ' desk-only' : '')}
       aria-label=${t(n.label)} aria-current=${active === n.route ? 'page' : undefined}><${Icon} name=${n.icon} size=${26} /><span class="dock-label">${t(n.label)}</span></a>`)}
+    ${kind !== 'sup' ? html`<a href="#/menu" role="button" aria-label=${t('nav.menu')} aria-haspopup="dialog" onClick=${(e) => { e.preventDefault(); setMenu(true); }}><${Icon} name="menu-2" size=${26} /><span class="dock-label">${t('nav.menu')}</span></a>` : null}
   </nav>`;
-  const profile = html`${s.sheet === 'profile' ? html`<${ProfileSheet} onClose=${() => set({ sheet: null })} />` : null}${s.person ? html`<${PersonSheet} id=${s.person} onClose=${() => set({ person: null })} />` : null}`;
+  const profile = html`${menu ? html`<${MenuSheet} routes=${MENU[kind]} onClose=${() => setMenu(false)} />` : null}${s.sheet === 'profile' ? html`<${ProfileSheet} onClose=${() => set({ sheet: null })} />` : null}${s.person ? html`<${PersonSheet} id=${s.person} onClose=${() => set({ person: null })} />` : null}`;
 
   if (active === 'chat') {
     return html`<div class="shell chat-shell"><${ChatView} />${nav}${profile}</div>`;

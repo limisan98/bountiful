@@ -676,4 +676,5 @@ Wipe the floor`,
   "rec.send": `Send cleaning request to Supervisor`,
   "rec.sendN": `Send cleaning request to Supervisor ({n})`,
   "rec.myRequests": `Requests for this day`,
+  "nav.menu": `Menu`,
 };

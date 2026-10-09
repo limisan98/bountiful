@@ -676,4 +676,5 @@ Torka golvet`,
   "rec.send": `Skicka städförfrågan till arbetsledaren`,
   "rec.sendN": `Skicka städförfrågan till arbetsledaren ({n})`,
   "rec.myRequests": `Förfrågningar för den här dagen`,
+  "nav.menu": `Meny`,
 };

@@ -676,4 +676,5 @@ Fregar el suelo`,
   "rec.send": `Enviar solicitud de limpieza al supervisor`,
   "rec.sendN": `Enviar solicitud de limpieza al supervisor ({n})`,
   "rec.myRequests": `Solicitudes de este día`,
+  "nav.menu": `Menú`,
 };

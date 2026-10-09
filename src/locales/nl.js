@@ -676,4 +676,5 @@ Vloer dweilen`,
   "rec.send": `Schoonmaakverzoek naar de supervisor sturen`,
   "rec.sendN": `Schoonmaakverzoek naar de supervisor sturen ({n})`,
   "rec.myRequests": `Verzoeken voor deze dag`,
+  "nav.menu": `Menu`,
 };

@@ -1357,3 +1357,6 @@ select.input { appearance: auto; padding-right: 12px; }
 /* sheets can be pulled down to close */
 .sheet-grab { height: 5px; padding: 0; box-sizing: content-box; border-top: 12px solid transparent; border-bottom: 12px solid transparent; background-clip: padding-box; margin-top: 0; cursor: grab; touch-action: none; }
 .sheet-head { touch-action: none; }
+
+.menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.menu-grid .more-link { min-height: 72px; font-size: 16px; background: #fff; box-shadow: var(--shadow-s); }

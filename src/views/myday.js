@@ -9,7 +9,6 @@ import { shiftOf, shiftName, goalOf, priorityOf } from '../shifts.js';
 import { AssignmentSheet } from './assign.js';
 import { PriorityChip } from './tasks.js';
 import { WriteSheet, defaultLogBlock } from './logbook.js';
-import { MoreLinks } from './more.js';
 
 // The custodian's whole app in one screen: today's tasks as big check buttons, and a handover note one tap away.
 export function CustodianHome() {
@@ -31,7 +30,6 @@ export function CustodianHome() {
   const todo = mine.filter((a) => a.status !== 'done');
   const done = mine.filter((a) => a.status === 'done');
   const pct = mine.length ? Math.round((done.length / mine.length) * 100) : 0;
-  const followUps = Object.values(s.logbook).filter((e) => e.follow_up && !e.resolved_at).length;
   const shift = shiftOf(me.id, today);
 
   async function tick(a) {
@@ -101,11 +99,9 @@ export function CustodianHome() {
     ${done.length ? html`<section class="my-sec"><h3 class="section-title">${t('my.doneHeader')}<span class="count">${done.length}</span></h3>
       <div class="my-list">${done.map((a) => card(a))}</div></section>` : null}
 
-    <${MoreLinks} routes=${['tasks', 'calendar', 'meetings', 'team']} />
 
     <div class="my-foot">
       <button type="button" class="btn big-btn" onClick=${() => setWriting(true)}><${Icon} name="writing" size=${26} />${t('my.handover')}</button>
-      <a class="my-read" href="#/logbook"><${Icon} name="book" size=${20} />${t('my.readNotes')}${followUps ? html`<span class="count">${followUps}</span>` : null}</a>
     </div>
 
     ${undo ? html`<div class="my-undo" role="status"><span>${t('my.undoDone', { name: undo.name })}</span><button type="button" onClick=${undoLast}>${t('my.undo')}</button></div>` : null}

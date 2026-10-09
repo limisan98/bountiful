@@ -676,4 +676,5 @@ Limpar o chão`,
   "rec.send": `Enviar pedido de limpeza ao supervisor`,
   "rec.sendN": `Enviar pedido de limpeza ao supervisor ({n})`,
   "rec.myRequests": `Pedidos deste dia`,
+  "nav.menu": `Menu`,
 };
