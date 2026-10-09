@@ -8,6 +8,7 @@ import { squarePhoto } from '../image.js';
 import { NotificationsSheet } from './notifications.js';
 import { addDays, startOfWeek, todayYmd, ymd, dur } from '../time.js';
 import { colorStyle } from '../color.js';
+import { bigTextOn, setBigText } from '../access.js';
 
 // Where each period starts (today / this week / this quarter / this year)
 function periodStart(period) {
@@ -29,6 +30,7 @@ export function ProfileSheet({ onClose }) {
   const [pwOpen, setPwOpen] = useState(false);
   const [pw, setPw] = useState('');
   const [notif, setNotif] = useState(false);
+  const [big, setBig] = useState(bigTextOn);
   const fileRef = useRef(null);
   const email = s.session && s.session.user && s.session.user.email;
 
@@ -102,6 +104,11 @@ export function ProfileSheet({ onClose }) {
       <span class="field-label">${t('profile.language')}</span>
       <${LangMenu} align="left" onPick=${(code) => { api.saveLanguage(code).then(() => enablePush()).catch(() => {}); }} />
     </div>
+
+    <button type="button" class="switch-row" onClick=${() => { setBigText(!big); setBig(!big); }}>
+      <span><b>${t('profile.bigText')}</b><br /><span class="muted small-text">${t('profile.bigTextHint')}</span></span>
+      <span class=${'switch' + (big ? ' on' : '')} role="switch" aria-checked=${big}><span class="knob"></span></span>
+    </button>
 
     <div class="field">
       <span class="field-label">${t('profile.activity')}</span>

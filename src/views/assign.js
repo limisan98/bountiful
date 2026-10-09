@@ -5,11 +5,12 @@ import { Icon, Avatar, TaskBadge, Segmented, Field, Sheet, PersonLine, Empty, us
 import { isSupervisor, roleInfo } from '../roles.js';
 import { colorStyle } from '../color.js';
 import { startAssignment, saveSteps, finishAssignment, reopenAssignment, removeAssignment, editAssignment, planAssignments,
-  ensureMonth, areaOf, areaName, activePeople, itemName, loadComments, addComment, removeComment, editRoomRequest, giveTasks } from '../data.js';
+  ensureMonth, areaOf, areaName, activePeople, itemName, loadComments, addComment, removeComment, editRoomRequest, giveTasks, distribute } from '../data.js';
 import { api } from '../api.js';
 import { hhmm, toMin, fromMin, dur, hasTime, timeText, taskGoal, fmt, parseYmd, ymd, addDays, isoWeekday, appliesOn, monthKey, todayYmd } from '../time.js';
 import { DateField, TimeField } from '../pickers.js';
-import { TaskEditor, freqText } from './tasks.js';
+import { TaskEditor, freqText, PriorityChip } from './tasks.js';
+import { problem, problemText, priorityOf, PRIORITIES, capacityOf, loadOf, contractLabel, contractOf, shiftOf, dayPlanned, goalOf } from '../shifts.js';
 import { DEPARTMENTS, ROLE_ORDER } from '../config.js';
 import { TimerSheet, LiveClock } from './timer.js';
 
@@ -23,18 +24,18 @@ export function AssignmentRow({ a, onOpen, showPerson, selectable, selected, onT
   const who = s.profiles[a.assignee];
   const person = a.assignee
     ? (who ? html`<span class="arow-person"><${Avatar} profile=${who} size=${22} ring=${false} /><span class="arow-who">${who.display_name}</span></span>` : null)
-    : html`<span class="arow-person waiting"><${Icon} name="user-question" size=${16} /><span class="arow-who">${t('task.waiting')}</span></span>`;
+    : html`<span class="arow-person waiting"><${Icon} name="help-circle" size=${16} /><span class="arow-who">${t('task.waiting')}</span></span>`;
   const body = html`<${TaskBadge} icon=${tk.icon} color=${tk.color} size=${46} />
     <span class="arow-main">
       <span class="arow-name">${itemName(a)}</span>
       ${showPerson ? person : null}
-      <span class="arow-sub">${hasTime(a) ? html`<${Icon} name="clock" size=${13} />${timeText(a)}` : null}
+      <span class="arow-sub"><${PriorityChip} task=${tk} />${(tk.steps || []).length ? html`<span class="steps-chip"><${Icon} name="list-check" size=${13} />${(a.steps_done || []).filter((i) => i < tk.steps.length).length}/${tk.steps.length}</span>` : null}${hasTime(a) ? html`<${Icon} name="clock" size=${13} />${timeText(a)}` : null}
         ${a.note ? html`${hasTime(a) ? html`<span class="dot-sep">·</span>` : null}<span class="arow-note">${a.note}</span>` : null}</span>
     </span>
     <span class=${'arow-state ' + a.status}><${Icon} name=${STATUS_ICON[a.status]} size=${20} /></span>`;
   return html`<div class=${'arow-wrap ' + a.status + (selected ? ' selected' : '')} key=${a.id}>
     ${selectable ? html`<button type="button" class=${'room-check' + (selected ? ' on' : '')} aria-pressed=${!!selected} aria-label=${t('task.select')} onClick=${onToggle}><${Icon} name="check" size=${16} /></button>` : null}
-    <button class=${'arow ' + a.status} onClick=${() => onOpen(a.id)} style=${colorStyle(tk.color)}>${body}</button>
+    <button class=${'arow ' + a.status + ' prio-' + priorityOf(tk)} onClick=${() => onOpen(a.id)} style=${colorStyle(tk.color)}>${body}</button>
     ${extra || null}
   </div>`;
 }
@@ -95,6 +96,7 @@ function DetailBody({ id, onClose, openTimer }) {
     <div class="detail-top" style=${colorStyle(tk.color)}>
       <${TaskBadge} icon=${tk.icon} color=${tk.color} size=${72} />
       <div class="detail-chips">
+        <${PriorityChip} task=${tk} />
         <span class=${'chip status-chip ' + a.status}><${Icon} name=${STATUS_ICON[a.status]} size=${15} />${t('status.' + a.status)}</span>
         ${area ? html`<span class="chip tint" style=${colorStyle(area.color)}><${Icon} name=${area.icon} size=${15} />${areaName(area)}</span>` : null}
         ${hasTime(a) ? html`<span class="chip"><${Icon} name="clock" size=${15} />${timeText(a)}</span>` : null}
@@ -109,7 +111,7 @@ function DetailBody({ id, onClose, openTimer }) {
     </button>` : null}
 
     ${who ? html`<div class="card slim"><${PersonLine} profile=${who} size=${44} /></div>`
-      : html`<div class="card slim waiting-card"><${Icon} name="user-question" size=${24} /><span>${t('task.waitingLong')}</span></div>`}
+      : html`<div class="card slim waiting-card"><${Icon} name="help-circle" size=${24} /><span>${t('task.waitingLong')}</span></div>`}
 
     ${a.note ? html`<div class="note-card"><${Icon} name="message-circle" size=${20} /><p>${a.note}</p></div>` : null}
     ${tk.description ? html`<div class="field"><span class="field-label">${t('task.description')}</span><p class="body-text">${tk.description}</p></div>` : null}
@@ -155,7 +157,7 @@ function DetailBody({ id, onClose, openTimer }) {
 
     ${sup && !finishing ? html`<div class="stack-form sup-actions">
       ${!mine && a.status === 'done' ? html`<button class="btn ghost" disabled=${busy} onClick=${() => run(() => reopenAssignment(id), t('act.reopened'))}>${t('act.reopen')}</button>` : null}
-      ${a.status !== 'done' ? html`<button class="btn soft" onClick=${() => setGiving(true)}><${Icon} name="users" size=${18} />${a.assignee ? t('task.giveElse') : t('task.give')}</button>` : null}
+      ${a.status !== 'done' ? html`<button class="btn soft" onClick=${() => setGiving(true)}><${Icon} name="user" size=${18} />${a.assignee ? t('task.giveElse') : t('task.give')}</button>` : null}
       <div class="row-btns">
         <button class="btn soft" onClick=${() => setEditing(true)}><${Icon} name="pencil" size=${18} />${t('act.edit')}</button>
         <button class=${'btn danger' + (sure ? ' sure' : '')} disabled=${busy} onClick=${del}>
@@ -246,24 +248,34 @@ export function GiveSheet({ ids, onClose, onDone }) {
   const load = (id) => Object.values(s.assignments).filter((a) => a.day === day && a.assignee === id && a.status !== 'done').length;
   const anyAssigned = items.some((a) => a.assignee);
   const toggle = (id) => setPeople((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+  // how many of the chosen tasks this person cannot take (no shift that day / time does not fit / over their capacity)
+  const issues = (pid) => items.filter((a) => problem(pid, a.day, a, a.id)).length;
+  const firstIssue = (pid) => { const a = items.find((x) => problem(pid, x.day, x, x.id)); return a ? problem(pid, a.day, a, a.id) : null; };
 
   async function go(list) {
     if (busy) return;
     setBusy(true);
     try {
-      await giveTasks(ids, list, share && list.length > 1 && ids.length > 1);
-      toast(list.length ? t('task.given', { n: ids.length }) : t('task.takenBack'));
-      onDone();
-      ctl.close();
+      const r = await giveTasks(ids, list, share && list.length > 1 && ids.length > 1);
+      if (!list.length) toast(t('task.takenBack'));
+      else if (r.skipped) toast(t('task.givenSome', { n: r.placed, m: r.skipped }), r.placed ? 'ok' : 'bad');
+      else toast(t('task.given', { n: r.placed }));
+      if (r.placed || !list.length) { onDone(); ctl.close(); } else setBusy(false);
     } catch (ex) { toast(friendlyError(ex), 'bad'); setBusy(false); }
   }
   return html`<${Sheet} title=${t('task.giveTitle')} kicker=${t('rooms.selected', { n: ids.length })} onClose=${onClose} control=${ctl}>
     <p class="muted small-text">${t('task.giveHint')}</p>
     <div class="list tight">
-      ${crew.map((p) => html`<button type="button" class=${'person pick-person' + (people.includes(p.id) ? ' on' : '')} key=${p.id} aria-pressed=${people.includes(p.id)} onClick=${() => toggle(p.id)}>
-        <${PersonLine} profile=${p} size=${44} extra=${load(p.id) ? html`<span class="count">${t('rooms.load', { n: load(p.id) })}</span>` : null} />
+      ${crew.map((p) => {
+        const bad = issues(p.id);
+        const fi = firstIssue(p.id);
+        const sh = shiftOf(p.id, day);
+        return html`<button type="button" class=${'person pick-person' + (people.includes(p.id) ? ' on' : '') + (bad === items.length && bad ? ' blocked' : '')} key=${p.id} aria-pressed=${people.includes(p.id)} disabled=${bad === items.length && bad > 0 && !people.includes(p.id)} onClick=${() => toggle(p.id)}>
+        <span class="give-col"><${PersonLine} profile=${p} size=${44} /><span class="give-extra">
+          ${dayPlanned(day) ? html`<span class="muted small-text">${sh ? `${hhmm(sh.start_time)}–${hhmm(sh.end_time)} · ${contractLabel(contractOf(p.id))} · ${t('shift.load', { load: dur(loadOf(p.id, day)), cap: dur(capacityOf(p.id, day)) })}` : t('shift.off')}</span>` : load(p.id) ? html`<span class="count">${t('rooms.load', { n: load(p.id) })}</span>` : null}
+          ${bad ? html`<span class="pp-note"><${Icon} name="alert-triangle" size=${12} />${bad === items.length ? problemText(fi) : t('task.cannotN', { n: bad })}</span>` : null}</span></span>
         <span class=${'room-check' + (people.includes(p.id) ? ' on' : '')}><${Icon} name="check" size=${16} /></span>
-      </button>`)}
+      </button>`; })}
       ${!crew.length ? html`<p class="muted">${t('rooms.noCrew')}</p>` : null}
     </div>
     ${people.length > 1 && ids.length > 1 ? html`<${Segmented} value=${share ? 'share' : 'each'} onChange=${(v) => setShare(v === 'share')} options=${[
@@ -379,6 +391,9 @@ export function AssignSheet({ day, edit, onClose, presetTask }) {
     setPeople((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   };
   const timeOk = !timed || toMin(end) > toMin(start);
+  // can this person take it? (works that day, the time fits their shift, and still has room in their day: 4 h or 8 h contract)
+  const cand = { task_id: taskId, start_time: timed && timeOk ? start : null, end_time: timed && timeOk ? end : null };
+  const probOf = (pid) => (taskId && roleInfo(s.profiles[pid].role).department === 'custodian' ? problem(pid, date || initialDay, cand, edit ? edit.id : undefined) : null);
   const valid = taskId && date && timeOk && (isRoom ? (edit ? title.trim() : rooms.length) : people.length);
 
   async function save(e) {
@@ -390,6 +405,7 @@ export function AssignSheet({ day, edit, onClose, presetTask }) {
       if (edit) {
         await ensureMonth(monthKey(parseYmd(date)));
         const who = people[0] || null;
+        if (who && who !== edit.assignee && probOf(who)) { toast(problemText(probOf(who)), 'bad'); setBusy(false); return; }
         const patch = { day: date, ...times, note: note.trim() };
         if (edit.kind === 'room') patch.title = title.trim().slice(0, 40);
         if (who !== edit.assignee) { patch.assignee = who; patch.status = 'todo'; patch.started_at = null; patch.steps_done = []; }
@@ -403,24 +419,27 @@ export function AssignSheet({ day, edit, onClose, presetTask }) {
         const base = { task_id: taskId, kind: isRoom ? 'room' : 'task', note: note.trim(), ...times };
         const rows = [];
         let again = 0;
+        let skipped = 0, left = 0;
+        const okPeople = people.filter((p) => !probOf(p));
+        skipped = people.length - okPeople.length;
         if (isRoom) {
-          // every room number is its own task; with people chosen, each of them gets the room (or share them out)
-          rooms.forEach((r) => {
-            const who = people.length ? people : [null];
-            who.forEach((p) => rows.push({ ...base, assignee: p, day: ymd(d), title: r }));
-          });
+          // every room number is its own task. With people chosen the rooms are shared out between them (most room left first)
+          rooms.forEach((r) => rows.push({ ...base, assignee: null, day: ymd(d), title: r }));
         } else {
           const have = new Map(Object.values(s.assignments).filter((x) => x.task_id === taskId && x.assignee).map((x) => [x.assignee + x.day, x]));
           const remind = [];
-          days.forEach((x) => people.forEach((p) => {
+          days.forEach((x) => okPeople.forEach((p) => {
             const old = have.get(p + ymd(x));
             if (old) { if (old.status !== 'done') remind.push(old.id); again += 1; } // already planned: remind them instead of silently skipping
             else rows.push({ ...base, assignee: p, day: ymd(x), title: '' });
           }));
           for (const id of remind) await api.renotifyAssignment(id).catch(() => {});
         }
-        if (rows.length) await planAssignments(rows);
-        toast(rows.length ? t('assign.planned', { n: rows.length }) + (again ? ' · ' + t('assign.reminded', { n: again }) : '') : again ? t('assign.reminded', { n: again }) : t('assign.nothing'));
+        let made = [];
+        if (rows.length) made = await planAssignments(rows);
+        if (isRoom && okPeople.length && made.length) left = (await distribute(made.map((x) => x.id), okPeople)).left;
+        const extra = (again ? ' · ' + t('assign.reminded', { n: again }) : '') + (skipped ? ' · ' + t('assign.skippedRules', { n: skipped }) : '') + (left ? ' · ' + t('assign.leftWaiting', { n: left }) : '');
+        toast(rows.length ? t('assign.planned', { n: rows.length }) + extra : again ? t('assign.reminded', { n: again }) + extra : skipped ? t('assign.skippedRules', { n: skipped }) : t('assign.nothing'), rows.length || again ? 'ok' : 'bad');
         if (rows.length || again) close();
       }
     } catch (ex) { toast(friendlyError(ex), 'bad'); }
@@ -452,17 +471,22 @@ export function AssignSheet({ day, edit, onClose, presetTask }) {
       ${isRoom && edit ? html`<${Field} label=${t('rooms.roomName')}><input class="input" type="text" maxlength="40" required value=${title} onInput=${(e) => setTitle(e.target.value)} /><//>` : null}
 
       <div class="field"><span class="field-label">${t('assign.who')}${isRoom ? html`<span class="muted"> · ${t('assign.whoOptional')}</span>` : null}</span>
-        ${lastTime.length ? html`<button type="button" class="pick" onClick=${() => setPeople(lastTime)}><${Icon} name="history" size=${16} />${t('assign.sameAsLast')}</button>` : null}
+        ${lastTime.length ? html`<button type="button" class="pick" onClick=${() => setPeople(lastTime)}><${Icon} name="clock" size=${16} />${t('assign.sameAsLast')}</button>` : null}
         ${DEPARTMENTS.map((dep) => {
           const list = team.filter((p) => roleInfo(p.role).department === dep).sort((x, y) => ROLE_ORDER.indexOf(x.role) - ROLE_ORDER.indexOf(y.role));
           if (!list.length) return null;
           return html`<div key=${dep}><span class="mini-label">${t('dept.' + dep)}</span>
-            <div class="people-pick">${list.map((p) => html`<button type="button" key=${p.id} class=${'pp' + (people.includes(p.id) ? ' on' : '')}
-              style=${`--c:${roleInfo(p.role).color}`} onClick=${() => togglePerson(p.id)}>
-              <${Avatar} profile=${p} size=${30} ring=${false} /><span>${p.display_name.split(' ')[0]}</span>
-              <${Icon} name="check" size=${14} class="pp-tick" /></button>`)}</div></div>`;
+            <div class="people-pick">${list.map((p) => {
+              const pr = probOf(p.id);
+              return html`<button type="button" key=${p.id} class=${'pp' + (people.includes(p.id) ? ' on' : '') + (pr ? ' blocked' : '')}
+                style=${`--c:${roleInfo(p.role).color}`} disabled=${!!pr && !people.includes(p.id)} onClick=${() => togglePerson(p.id)}>
+                <${Avatar} profile=${p} size=${30} ring=${false} /><span>${p.display_name.split(' ')[0]}</span>
+                ${pr ? html`<small class="pp-note"><${Icon} name="alert-triangle" size=${12} />${problemText(pr)}</small>` : null}
+                <${Icon} name="check" size=${14} class="pp-tick" /></button>`;
+            })}</div></div>`;
         })}
-        ${people.length > 1 ? html`<span class="field-hint pop">${t('assign.manyHint')}</span>` : null}
+        ${people.length > 1 && isRoom ? html`<span class="field-hint pop">${t('assign.shareRooms')}</span>` : people.length > 1 ? html`<span class="field-hint pop">${t('assign.manyHint')}</span>` : null}
+        ${taskId && dayPlanned(date || initialDay) ? html`<span class="field-hint">${t('assign.shiftRules')}</span>` : null}
       </div>
 
       <${Field} label=${t('assign.date')}><${DateField} value=${date} label=${t('assign.date')} onChange=${setDate} /><//>

@@ -5,8 +5,9 @@ import { Icon, RoleChip, Avatar, Empty, TaskBadge } from '../ui.js';
 import { isSupervisor, departmentOf } from '../roles.js';
 import { colorStyle } from '../color.js';
 import { assignmentsOn, inCrew, itemName } from '../data.js';
-import { todayYmd, addDays, ymd, parseYmd, dur, taskGoal, fmt, timeKey } from '../time.js';
+import { todayYmd, addDays, ymd, parseYmd, dur, taskGoal, fmt, timeKey, hhmm } from '../time.js';
 import { AssignmentRow, AssignmentSheet } from './assign.js';
+import { shiftOf, capacityOf, loadOf, shiftName, dayPlanned, contractOf, contractLabel } from '../shifts.js';
 
 const TILES = [
   { route: 'calendar', icon: 'calendar-event', color: '#86E3CE', title: 'nav.calendar', sub: 'tile.calendar' },
@@ -15,7 +16,8 @@ const TILES = [
   { route: 'meetings', icon: 'calendar-month', color: '#FA897B', title: 'nav.meetings', sub: 'tile.meetings' },
   { route: 'chat', icon: 'messages', color: '#CCABD8', title: 'nav.chat', sub: 'tile.chat', only: 'crew' },
   { route: 'team', icon: 'id', color: '#FA897B', title: 'nav.team', sub: 'tile.team' },
-  { route: 'shifts', icon: 'clock', color: '#FFDD94', title: 'nav.shifts', sub: 'tile.shifts', soon: true },
+  { route: 'shifts', icon: 'clock', color: '#FFDD94', title: 'nav.shifts', sub: 'tile.shifts', only: 'crew' },
+  { route: 'logbook', icon: 'book', color: '#CCABD8', title: 'nav.logbook', sub: 'tile.logbook', only: 'crew' },
 ];
 
 export function HomeView() {
@@ -48,6 +50,7 @@ export function HomeView() {
     .map((r) => ({ r, a: s.assignments[r.assignment_id] })).filter((x) => x.a && x.a.day >= since && s.tasks[x.a.task_id])
     .sort((x, y) => y.r.completed_at.localeCompare(x.r.completed_at)).slice(0, 6) : [];
 
+  const myShift = inCrew(me) ? shiftOf(me.id, today) : null;
   const tiles = TILES.filter((x) => !x.only || (x.only === 'crew' ? inCrew(me) : sup));
 
   return html`<div class="stack home">
@@ -58,6 +61,15 @@ export function HomeView() {
       <p class="hero-date">${now.toLocaleDateString(loc, { day: 'numeric', month: 'long' })}</p>
       <${RoleChip} role=${me.role} />
     </section>
+
+    ${myShift ? html`<a class="shift-today rise" href="#/shifts">
+      <span class="shift-today-ic"><${Icon} name="clock" size=${26} /></span>
+      <span class="shift-today-main"><small>${t('home.yourShift')}</small>
+        <b>${shiftName(myShift)} · ${hhmm(myShift.start_time)}–${hhmm(myShift.end_time)}</b>
+        <span>${t('shift.load', { load: dur(loadOf(me.id, today)), cap: dur(capacityOf(me.id, today)) })} · ${contractLabel(contractOf(me.id))}</span></span>
+      <${Icon} name="caret-right" size=${18} />
+    </a>` : inCrew(me) && !sup && dayPlanned(today) ? html`<div class="shift-today off rise"><span class="shift-today-ic"><${Icon} name="moon" size=${26} /></span>
+      <span class="shift-today-main"><b>${t('home.noShift')}</b></span></div>` : null}
 
     <div class="home-cols">
       <div class="col">

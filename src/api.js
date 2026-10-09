@@ -147,10 +147,35 @@ const real = {
   async addComment(assignmentId, body) { return ok(await sb.from('assignment_comments').insert({ assignment_id: assignmentId, body }).select().single()); },
   async deleteComment(id) { ok(await sb.from('assignment_comments').delete().eq('id', id)); },
 
+  // ---- shifts, contracts, the shift plan ----
+  async loadShifts() { return ok(await sb.from('shifts').select('*').order('sort')); },
+  async loadContracts() { return ok(await sb.from('staff_contracts').select('*')); },
+  async loadShiftPlan(from, to) { return ok(await sb.from('shift_plan').select('*').gte('day', from).lte('day', to)); },
+  async setShift(user, day, shiftId) {
+    if (!shiftId) { ok(await sb.from('shift_plan').delete().eq('user_id', user).eq('day', day)); return null; }
+    return ok(await sb.from('shift_plan').upsert({ user_id: user, day, shift_id: shiftId }, { onConflict: 'user_id,day' }).select().single());
+  },
+  async setShifts(rows) { return ok(await sb.from('shift_plan').upsert(rows, { onConflict: 'user_id,day' }).select()); },
+  async setContract(user, minutes) { await rpc('set_contract', { p_user: user, p_minutes: minutes }); },
+  async allocateWaiting(day, ids) {
+    const { data, error } = await sb.rpc('allocate_waiting', { p_day: day, p_ids: ids || null, p_only_auto: false });
+    if (error) throw error;
+    return data;
+  },
+
+  // ---- handover logbook ----
+  async loadLogbook(from, to) { return ok(await sb.from('logbook_entries').select('*').gte('day', from).lte('day', to).order('created_at')); },
+  async addLogEntry(row) { return ok(await sb.from('logbook_entries').insert(row).select().single()); },
+  async resolveLog(id, done) {
+    await rpc('resolve_logbook', { p_id: id, p_done: done });
+    return ok(await sb.from('logbook_entries').select('*').eq('id', id).single());
+  },
+  async deleteLogEntry(id) { ok(await sb.from('logbook_entries').delete().eq('id', id)); },
+
   // ---- live updates: `handler(table, eventType, newRow, oldRow)` ----
   subscribe(handler) {
     const ch = sb.channel('bountiful-live');
-    ['profiles', 'roles', 'areas', 'tasks', 'assignments', 'assignment_reports', 'messages', 'assignment_comments', 'custodian_reports', 'task_invites', 'meeting_requests'].forEach((table) => {
+    ['profiles', 'roles', 'areas', 'tasks', 'assignments', 'assignment_reports', 'messages', 'assignment_comments', 'custodian_reports', 'task_invites', 'meeting_requests', 'shift_plan', 'staff_contracts', 'logbook_entries'].forEach((table) => {
       ch.on('postgres_changes', { event: '*', schema: 'public', table }, (p) => handler(table, p.eventType, p.new, p.old));
     });
     ch.subscribe();

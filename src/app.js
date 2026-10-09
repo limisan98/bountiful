@@ -1,9 +1,10 @@
 import { enablePush } from './notify.js';
+import { initAccess } from './access.js';
 import { html, render, useEffect, useState } from '../assets/vendor/htm-preact.js';
 import { sb, api } from './api.js';
 import { state, set, useStore } from './store.js';
 import { initLang, setLang, t } from './i18n.js';
-import { Icon, Avatar, Toast, ComingSoon } from './ui.js';
+import { Icon, Avatar, Toast } from './ui.js';
 import { LogoMark } from './logo.js';
 import { isSupervisor, roleInfo } from './roles.js';
 import { loadCore, startLive, stopLive, resetData, inCrew, refresh } from './data.js';
@@ -15,6 +16,8 @@ import { TeamView } from './views/team.js';
 import { TasksView } from './views/board.js';
 import { ReportsView } from './views/reports.js';
 import { MeetingsView } from './views/meetings.js';
+import { ShiftsView } from './views/shifts.js';
+import { LogbookView } from './views/logbook.js';
 import { ProfileSheet } from './views/profile.js';
 import { PersonSheet } from './views/person.js';
 
@@ -27,7 +30,8 @@ const NAV = [
   { route: 'team', icon: 'id', label: 'nav.team', dock: true },
   { route: 'meetings', icon: 'calendar-month', label: 'nav.meetings', desk: true }, // in the desktop sidebar; on phones reachable from Home
   { route: 'reports', icon: 'clipboard-data', label: 'nav.reports', only: 'sup', desk: true }, // in the desktop sidebar; on phones reachable from Home
-  { route: 'shifts', icon: 'clock', label: 'nav.shifts' }, // coming soon: reachable from Home, not in the dock yet
+  { route: 'shifts', icon: 'clock', label: 'nav.shifts', only: 'crew', desk: true }, // who is on duty + week plan (custodian team)
+  { route: 'logbook', icon: 'book', label: 'nav.logbook', only: 'crew', desk: true }, // shared handover book
 ];
 
 function currentRoute() {
@@ -63,7 +67,8 @@ function Shell() {
   else if (active === 'tasks') view = html`<${TasksView} />`;
   else if (active === 'reports') view = html`<${ReportsView} />`;
   else if (active === 'meetings') view = html`<${MeetingsView} />`;
-  else if (active === 'shifts') view = html`<${ShiftsSoon} />`;
+  else if (active === 'shifts') view = html`<${ShiftsView} />`;
+  else if (active === 'logbook') view = html`<${LogbookView} />`;
 
   const nav = html`<nav class="dock" aria-label="Main" style=${`--n:${phoneDock.length};--i:${Math.max(idx, 0)}`}>
     <div class="dock-brand"><${LogoMark} size=${40} /><b>Bountiful</b></div>
@@ -88,11 +93,6 @@ function Shell() {
     ${nav}
     ${profile}
   </div>`;
-}
-
-function ShiftsSoon() {
-  return html`<div class="stack"><a class="back-link" href="#/home"><${Icon} name="caret-left" size=${18} />${t('nav.home')}</a>
-    <${ComingSoon} icon="clock" color="#FFDD94" title=${t('nav.shifts')} /></div>`;
 }
 
 function Paused() {
@@ -161,6 +161,7 @@ async function applySession(session) {
 
 async function boot() {
   initLang();
+  initAccess();
   // no pinch-zoom on iPhones either (the page itself is already built to fit every screen)
   document.addEventListener('gesturestart', (e) => e.preventDefault());
   const root = document.getElementById('app');

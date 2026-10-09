@@ -51,6 +51,9 @@ export function friendlyError(e) {
   if (msg.includes('database error saving new user') || msg.includes('not on the bountiful list')) return t('err.notListed');
   if (msg.includes('already registered') || msg.includes('already been registered')) return t('err.exists');
   if (msg.includes('password should be') || msg.includes('weak password')) return t('err.weak');
+  if (msg.includes('has no shift')) return t('err.noShift');
+  if (msg.includes('does not fit the time')) return t('err.window');
+  if (msg.includes('over the daily capacity')) return t('err.capacity');
   if (msg.includes('rate limit') || msg.includes('too many')) return t('err.rate');
   if (msg.includes('row-level security') || msg.includes('permission denied') || msg.includes('only a supervisor') || msg.includes('cannot change')) return t('err.perm');
   if (e && (e.code === '23505' || msg.includes('duplicate key'))) return t('err.duplicate');

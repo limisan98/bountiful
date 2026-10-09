@@ -5,30 +5,35 @@ import { addMonths, monthKey, lastOfMonth, toMin, timeKey, ymd, addDays } from '
 import { departmentOf, isSupervisor } from './roles.js';
 import { t } from './i18n.js';
 import { notifyLive } from './notify.js';
+import { problem, ratioOf, byImportance } from './shifts.js';
 
 const byId = (rows, key = 'id') => Object.fromEntries(rows.map((r) => [r[key], r]));
 const months = new Set();
 
 export function resetData() {
   months.clear();
-  set({ roles: {}, areas: [], tasks: {}, assignments: {}, reports: {}, messages: {}, chatOpen: null, person: null, comments: {}, digests: {}, invites: {}, meetings: {}, settings: {} });
+  set({ roles: {}, areas: [], tasks: {}, assignments: {}, reports: {}, messages: {}, chatOpen: null, person: null, comments: {}, shifts: {}, shiftPlan: {}, contracts: {}, logbook: {}, digests: {}, invites: {}, meetings: {}, settings: {} });
 }
 
 // ---- loading ----
 export async function loadCore() {
   const me = state.profile;
-  const [roles, areas, tasks, digests, invites, meetings, recent, settings] = await Promise.all([
+  const [roles, areas, tasks, digests, invites, meetings, recent, settings, shifts, contracts, logs] = await Promise.all([
     api.loadRoles(), api.loadAreas(), api.loadTasks(),
     isSupervisor(me) ? api.loadDigests() : [],
     departmentOf(me) === 'custodian' ? api.loadInvites(addDays(new Date(), -60).toISOString()) : [],
     api.loadMeetings(ymd(addDays(new Date(), -30))),
     inCrew(me) ? api.loadRecentMessages(300) : [],
     api.loadSettings().catch(() => ({})),
+    api.loadShifts().catch(() => []),
+    api.loadContracts().catch(() => []),
+    inCrew(me) ? api.loadLogbook(ymd(addDays(new Date(), -7)), ymd(addDays(new Date(), 1))).catch(() => []) : [],
   ]);
   const messages = {};
   recent.forEach((m) => { (messages[m.channel] = messages[m.channel] || { list: [], more: true, loaded: false }).list.push(m); });
   Object.values(messages).forEach((c) => c.list.reverse());
-  set({ roles: byId(roles), areas, tasks: byId(tasks), digests: byId(digests), invites: byId(invites), meetings: byId(meetings), settings, messages, chatSeen: loadSeen(messages) });
+  set({ roles: byId(roles), areas, tasks: byId(tasks), digests: byId(digests), invites: byId(invites), meetings: byId(meetings), settings, messages, chatSeen: loadSeen(messages),
+    shifts: byId(shifts), contracts: byId(contracts, 'user_id'), logbook: byId(logs) });
   const now = new Date();
   await Promise.all([monthKey(now), monthKey(addMonths(now, -1)), monthKey(addMonths(now, 1))].map(ensureMonth));
 }
@@ -38,8 +43,8 @@ export async function ensureMonth(key) {
   months.add(key);
   try {
     const from = key + '-01', to = lastOfMonth(key);
-    const [a, r] = await Promise.all([api.loadAssignments(from, to), api.loadReports(from, to)]);
-    set({ assignments: { ...state.assignments, ...byId(a) }, reports: { ...state.reports, ...byId(r, 'assignment_id') } });
+    const [a, r, sp] = await Promise.all([api.loadAssignments(from, to), api.loadReports(from, to), api.loadShiftPlan(from, to).catch(() => [])]);
+    set({ assignments: { ...state.assignments, ...byId(a) }, reports: { ...state.reports, ...byId(r, 'assignment_id') }, shiftPlan: { ...state.shiftPlan, ...byId(sp) } });
   } catch (e) { months.delete(key); throw e; }
 }
 
@@ -198,20 +203,28 @@ export async function giveTasks(ids, people, share) {
   const items = ids.map((id) => state.assignments[id]).filter((a) => a && a.status !== 'done');
   if (!people.length) {
     for (const a of items) await editAssignment(a.id, { assignee: null, status: 'todo', started_at: null, steps_done: [] });
-    return;
+    return { placed: items.length, skipped: 0 };
   }
-  const updates = [], copies = [];
-  items.forEach((a, i) => {
-    const who = share ? [people[i % people.length]] : people;
-    who.forEach((p, k) => {
-      if (k === 0) updates.push([a, p]);
-      else copies.push({ task_id: a.task_id, assignee: p, day: a.day, start_time: a.start_time, end_time: a.end_time, note: a.note, kind: a.kind, title: a.title, requested_by: a.requested_by });
-    });
-  });
-  for (const [a, p] of updates) {
-    await editAssignment(a.id, a.assignee === p ? { assignee: p } : { assignee: p, status: 'todo', started_at: null, steps_done: [] });
+  if (share && people.length > 1 && items.length > 1) {
+    const r = await distribute(items.map((a) => a.id), people);
+    return { placed: r.placed, skipped: r.left };
   }
-  if (copies.length) await planAssignments(copies);
+  // everybody chosen gets the task: the first person takes the row, the others get a copy (only when the shift rules allow it)
+  let placed = 0, skipped = 0;
+  for (const a of items) {
+    let first = true;
+    for (const p of people) {
+      if (problem(p, a.day, a, a.id)) { skipped += 1; continue; }
+      if (first) {
+        await editAssignment(a.id, a.assignee === p ? { assignee: p } : { assignee: p, status: 'todo', started_at: null, steps_done: [] });
+        first = false;
+      } else {
+        await planAssignments([{ task_id: a.task_id, assignee: p, day: a.day, start_time: a.start_time, end_time: a.end_time, note: a.note, kind: a.kind, title: a.title, requested_by: a.requested_by }]);
+      }
+      placed += 1;
+    }
+  }
+  return { placed, skipped };
 }
 export async function askRooms(day, rooms, note) {
   const made = await api.requestRooms(day, rooms, note);
@@ -237,6 +250,72 @@ export async function removeComment(assignmentId, id) {
   set({ comments: { ...state.comments, [assignmentId]: (state.comments[assignmentId] || []).filter((c) => c.id !== id) } });
 }
 
+// ---- shifts ----
+export async function setShiftCell(user, day, shiftId) {
+  const row = await api.setShift(user, day, shiftId);
+  const shiftPlan = Object.fromEntries(Object.entries(state.shiftPlan).filter(([, p]) => !(p.user_id === user && p.day === day)));
+  if (row) shiftPlan[row.id] = row;
+  set({ shiftPlan });
+}
+export async function copyShiftWeek(fromMonday, days = 7) {
+  // repeat last week's shifts on the same weekdays of the week after (keeps what is already planned there)
+  const from = ymd(fromMonday), to = ymd(addDays(fromMonday, days - 1));
+  const have = new Set(Object.values(state.shiftPlan).map((p) => p.user_id + p.day));
+  const rows = Object.values(state.shiftPlan).filter((p) => p.day >= from && p.day <= to)
+    .map((p) => ({ user_id: p.user_id, day: ymd(addDays(new Date(p.day + 'T00:00:00'), 7)), shift_id: p.shift_id }))
+    .filter((r) => !have.has(r.user_id + r.day));
+  if (!rows.length) return 0;
+  const made = await api.setShifts(rows);
+  set({ shiftPlan: { ...state.shiftPlan, ...byId(made) } });
+  return made.length;
+}
+export async function setContract(user, minutes) {
+  await api.setContract(user, minutes);
+  const today = ymd(new Date());
+  const shiftPlan = Object.fromEntries(Object.entries(state.shiftPlan).filter(([, p]) => {
+    if (p.user_id !== user || p.day < today) return true;
+    const s = state.shifts[p.shift_id];
+    return s && (s.kind === 'part') === (minutes === 240);
+  }));
+  set({ contracts: { ...state.contracts, [user]: { user_id: user, minutes } }, shiftPlan });
+}
+
+// Give a group of tasks to the people (who can take them) with the most room left: the most important first, never outside
+// a shift and never over anyone's capacity. Returns how many were placed and how many are still waiting.
+export async function distribute(ids, peopleIds) {
+  const items = ids.map((id) => state.assignments[id]).filter((a) => a && a.status !== 'done').sort(byImportance);
+  let placed = 0;
+  for (const a of items) {
+    const can = peopleIds.filter((p) => !problem(p, a.day, a, a.id))
+      .sort((p, q) => ratioOf(p, a.day) - ratioOf(q, a.day) || (state.profiles[p].display_name || '').localeCompare(state.profiles[q].display_name || ''));
+    if (!can.length) continue;
+    const p = can[0];
+    await editAssignment(a.id, a.assignee === p ? { assignee: p } : { assignee: p, status: 'todo', started_at: null, steps_done: [] });
+    placed += 1;
+  }
+  return { placed, left: items.length - placed };
+}
+// The supervisor's "Give out the waiting tasks": the database does it (same rules as the shift guard)
+export async function autoAllocate(day) {
+  const placed = await api.allocateWaiting(day, null);
+  const rows = await api.loadAssignments(day, day);
+  set({ assignments: { ...state.assignments, ...byId(rows) } });
+  return placed;
+}
+
+// ---- the handover logbook ----
+export const logbookOn = (day) => Object.values(state.logbook).filter((e) => e.day === day).sort((a, b) => a.created_at.localeCompare(b.created_at));
+export async function ensureLogbook(from, to) {
+  const rows = await api.loadLogbook(from, to);
+  set({ logbook: { ...state.logbook, ...byId(rows) } });
+}
+export async function addLogEntry(row) { const e = await api.addLogEntry(row); set({ logbook: { ...state.logbook, [e.id]: e } }); }
+export async function resolveLogEntry(id, done) { const e = await api.resolveLog(id, done); set({ logbook: { ...state.logbook, [e.id]: e } }); }
+export async function removeLogEntry(id) {
+  await api.deleteLogEntry(id);
+  const logbook = { ...state.logbook }; delete logbook[id]; set({ logbook });
+}
+
 // Come back up to date (after the phone slept, or the connection dropped): reload what is on screen
 let refreshing = false;
 export async function refresh() {
@@ -245,12 +324,17 @@ export async function refresh() {
   try {
     const parts = await Promise.all([...months].map(async (k) => {
       const from = k + '-01', to = lastOfMonth(k);
-      const [a, r] = await Promise.all([api.loadAssignments(from, to), api.loadReports(from, to)]);
-      return { a, r };
+      const [a, r, sp] = await Promise.all([api.loadAssignments(from, to), api.loadReports(from, to), api.loadShiftPlan(from, to).catch(() => [])]);
+      return { a, r, sp };
     }));
-    const assignments = {}, reports = {};
-    parts.forEach((p) => { p.a.forEach((x) => { assignments[x.id] = x; }); p.r.forEach((x) => { reports[x.assignment_id] = x; }); });
-    set({ assignments, reports, tasks: byId(await api.loadTasks()) });
+    const assignments = {}, reports = {}, shiftPlan = {};
+    parts.forEach((p) => { p.a.forEach((x) => { assignments[x.id] = x; }); p.r.forEach((x) => { reports[x.assignment_id] = x; }); p.sp.forEach((x) => { shiftPlan[x.id] = x; }); });
+    const patch = { assignments, reports, shiftPlan, tasks: byId(await api.loadTasks()) };
+    if (inCrew(state.profile)) {
+      const logs = await api.loadLogbook(ymd(addDays(new Date(), -7)), ymd(addDays(new Date(), 1)));
+      patch.logbook = { ...state.logbook, ...byId(logs) };
+    }
+    set(patch);
   } catch (_) { /* try again next time */ } finally { refreshing = false; }
 }
 
@@ -298,6 +382,19 @@ export function startLive() {
       const aid = rec.assignment_id;
       if (del) { if (aid && state.comments[aid]) set({ comments: { ...state.comments, [aid]: state.comments[aid].filter((c) => c.id !== id) } }); }
       else if (state.comments[aid]) set({ comments: { ...state.comments, [aid]: mergeComments(state.comments[aid], [row]) } });
+    } else if (table === 'shift_plan') {
+      const shiftPlan = { ...state.shiftPlan };
+      if (del) delete shiftPlan[id]; else shiftPlan[id] = row;
+      set({ shiftPlan });
+    } else if (table === 'staff_contracts') {
+      const contracts = { ...state.contracts };
+      const uid = rec.user_id;
+      if (del) { if (uid) delete contracts[uid]; } else contracts[uid] = row;
+      set({ contracts });
+    } else if (table === 'logbook_entries') {
+      const logbook = { ...state.logbook };
+      if (del) delete logbook[id]; else logbook[id] = row;
+      set({ logbook });
     } else if (table === 'messages') {
       if (del) { dropMessage(id); return; }
       const cur = chat(row.channel);

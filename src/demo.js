@@ -4,7 +4,7 @@ import { state, set } from './store.js';
 import { useDemoApi } from './api.js';
 import { loadCore, startLive } from './data.js';
 import { ROLE_DEFAULTS } from './config.js';
-import { ymd, addDays, isoWeekday, toMin, fromMin, todayYmd } from './time.js';
+import { ymd, addDays, isoWeekday, toMin, fromMin, todayYmd, taskGoal } from './time.js';
 
 let n = 0;
 const uid = () => 'demo-' + (++n) + '-' + Math.random().toString(16).slice(2, 8);
@@ -30,10 +30,12 @@ const areas = [
   { id: 'a2', key: 'guesthouse', name: null, icon: 'bed', color: '#86E3CE', sort: 2 },
   { id: 'a3', key: 'visitors', name: null, icon: 'compass', color: '#FFDD94', sort: 3 },
   { id: 'a4', key: 'cafeterias', name: null, icon: 'tools-kitchen-2', color: '#FA897B', sort: 4 },
+  { id: 'a5', key: 'offices', name: null, icon: 'briefcase', color: '#D0E6A5', sort: 5 },
+  { id: 'a6', key: 'annex', name: null, icon: 'home', color: '#FA897B', sort: 6 },
 ];
 const mk = (name, icon, color, area_id, s, e, frequency, weekdays, steps, description = '') => ({
   id: uid(), name, icon, color, area_id, start_time: s, end_time: e, frequency, weekdays, description,
-  steps: steps.map((x) => ({ title: x[0], description: x[1] || '' })), deleted: false, kind: 'task', goal_minutes: null, created_at: iso(-60, 9),
+  steps: steps.map((x) => ({ title: x[0], description: x[1] || '' })), deleted: false, kind: 'task', goal_minutes: null, priority: 'medium', auto: false, month_day: null, created_at: iso(-60, 9),
 });
 const tasks = [
   mk('Temple floors', 'sparkles', '#86E3CE', 'a1', '07:00', '11:00', 'daily', [],
@@ -47,7 +49,8 @@ const tasks = [
   mk('Next-day room list', 'clipboard-list', '#CCABD8', 'a2', '16:00', '17:00', 'daily', [], [['Check tomorrow’s arrivals'], ['Send the list to the custodians']]),
 ];
 
-tasks[0].goal_minutes = 180; // (the supervisor can set a goal; tasks without one use their time window)
+tasks[0].goal_minutes = 180;
+tasks[0].priority = 'high'; tasks[0].auto = true; tasks[3].priority = 'low'; tasks[4].priority = 'low'; tasks[5].priority = 'high'; tasks[5].auto = true; // (the supervisor can set a goal; tasks without one use their time window)
 
 const assignments = [], reports = [];
 const crew = ['d2', 'd3', 'd4'];
@@ -186,6 +189,59 @@ const fresh = (id) => ({ assignment: assignments.find((a) => a.id === id), repor
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const goalOf = (a) => { const tk = tasks.find((x) => x.id === a.task_id); return (tk && tk.goal_minutes) || (a.start_time ? toMin(a.end_time) - toMin(a.start_time) : toMin(tk.end_time) - toMin(tk.start_time)) || 30; };
 
+
+// ---- shifts, contracts, the shift plan and the handover logbook ----
+const shifts = [
+  ['morning_full', 'full', '07:00', '07:00', '15:30', [1, 2, 3, 4, 5, 6, 7], 480],
+  ['morning_part_a', 'part', '08:00', '08:00', '12:00', [1, 2, 3, 4, 5, 6, 7], 240],
+  ['morning_part_b', 'part', '08:00', '09:00', '13:00', [1, 2, 3, 4, 5, 6, 7], 240],
+  ['afternoon_full', 'full', '14:00', '14:00', '22:30', [1, 2, 3, 4, 6, 7], 480],
+  ['afternoon_full_fri', 'full', '14:00', '14:30', '23:00', [5], 480],
+  ['evening_part', 'part', '18:30', '18:30', '22:30', [1, 2, 3, 4, 5, 6, 7], 240],
+].map(([key, kind, block, s, e, weekdays, cap], i) => ({ id: 'sh-' + key, key, kind, block, start_time: s + ':00', end_time: e + ':00', weekdays, capacity_minutes: cap, sort: i + 1 }));
+const contracts = [{ user_id: 'd1', minutes: 480 }, { user_id: 'd2', minutes: 480 }, { user_id: 'd3', minutes: 480 }, { user_id: 'd4', minutes: 240 }];
+const shiftPlan = [];
+{
+  // everybody on the crew gets the shift that fits their tasks best (4-hour people: short shifts, 8-hour people: long ones)
+  for (let off = -2; off <= 12; off++) {
+    const d = addDays(now(), off), k = ymd(d), dow = isoWeekday(d);
+    ['d1', 'd2', 'd3', 'd4'].forEach((uidd, pi) => {
+      if (uidd === 'd1' && dow > 5) return;
+      const mine = assignments.filter((a) => a.assignee === uidd && a.day === k && a.start_time);
+      const kind = contracts.find((c) => c.user_id === uidd).minutes === 240 ? 'part' : 'full';
+      const ok = shifts.filter((x) => x.kind === kind && x.weekdays.includes(dow));
+      let best = null, bestScore = -1;
+      ok.forEach((x) => {
+        const score = mine.reduce((n, a) => n + Math.max(0, Math.min(toMin(a.end_time), toMin(x.end_time)) - Math.max(toMin(a.start_time), toMin(x.start_time))), 0);
+        if (score > bestScore || (score === bestScore && !mine.length && (pi + off) % 2 === 0)) { best = x; bestScore = score; }
+      });
+      if (!mine.length && kind === 'full') best = ok.find((x) => x.block === ((pi + off + 20) % 2 ? '14:00' : '07:00')) || best;
+      if (best) shiftPlan.push({ id: uid(), user_id: uidd, day: k, shift_id: best.id, created_by: 'd1', created_at: iso(-3, 9) });
+    });
+  }
+}
+{
+  // the demo follows the rules too: a day that is more than someone's capacity (4 h = 240, 8 h = 480) gives its extra tasks back to "waiting"
+  const goal = (a) => { const tk = tasks.find((x) => x.id === a.task_id); return taskGoal(tk, a); };
+  const held = new Set(invites.map((i) => i.assignment_id));
+  shiftPlan.forEach((pl) => {
+    const sh = shifts.find((x) => x.id === pl.shift_id), cap = Math.min(contracts.find((c) => c.user_id === pl.user_id).minutes, sh.capacity_minutes);
+    const day = assignments.filter((a) => a.assignee === pl.user_id && a.day === pl.day);
+    let load = day.reduce((n, a) => n + goal(a), 0);
+    day.filter((a) => a.status === 'todo' && !held.has(a.id)).sort((a, b) => goal(b) - goal(a)).forEach((a) => {
+      if (load > cap) { a.assignee = null; load -= goal(a); }
+    });
+  });
+}
+const logbook = [];
+{
+  const mkLog = (off, block, who, body, extra = {}) => logbook.push({ id: uid(), day: ymd(addDays(now(), off)), block, body, area_id: null, follow_up: false, resolved_by: null, resolved_at: null, author: who, created_at: iso(off, block === 'morning' ? 11 : block === 'afternoon' ? 17 : 21, 10), ...extra });
+  mkLog(-1, 'evening', 'd4', 'The chapel carpet by the side door is wet. A fan is running, please check it in the morning.', { follow_up: true, area_id: 'a1' });
+  mkLog(-1, 'afternoon', 'd2', 'Visitors center: the brochure stand is almost empty. New ones are in the supply room.', { area_id: 'a3' });
+  mkLog(0, 'morning', 'd3', 'Temple floors are finished. We ran out of neutral cleaner, one bottle left in the cart.', { area_id: 'a1', follow_up: true });
+  mkLog(0, 'morning', 'd2', 'Office door key is back at the front desk.', { area_id: 'a5' });
+}
+
 const demoApi = {
   async listAllowlist() {
     return [
@@ -312,6 +368,48 @@ const demoApi = {
     taskComments.push(row); return clone(row);
   },
   async deleteComment(id) { const i = taskComments.findIndex((c) => c.id === id); if (i >= 0) taskComments.splice(i, 1); },
+  async loadShifts() { return clone(shifts); },
+  async loadContracts() { return clone(contracts); },
+  async loadShiftPlan(from, to) { return clone(shiftPlan.filter((p) => p.day >= from && p.day <= to)); },
+  async setShift(user, day, shiftId) {
+    const i = shiftPlan.findIndex((p) => p.user_id === user && p.day === day);
+    if (i >= 0) shiftPlan.splice(i, 1);
+    if (!shiftId) return null;
+    const row = { id: uid(), user_id: user, day, shift_id: shiftId, created_by: state.profile.id, created_at: new Date().toISOString() };
+    shiftPlan.push(row); return clone(row);
+  },
+  async setShifts(rows) {
+    const made = rows.map((r) => ({ id: uid(), created_by: state.profile.id, created_at: new Date().toISOString(), ...r }));
+    made.forEach((r) => { const i = shiftPlan.findIndex((p) => p.user_id === r.user_id && p.day === r.day); if (i >= 0) shiftPlan.splice(i, 1); shiftPlan.push(r); });
+    return clone(made);
+  },
+  async setContract(user, minutes) {
+    const c = contracts.find((x) => x.user_id === user);
+    if (c) c.minutes = minutes; else contracts.push({ user_id: user, minutes });
+    const today = ymd(now());
+    for (let i = shiftPlan.length - 1; i >= 0; i--) {
+      const p = shiftPlan[i], sh = shifts.find((x) => x.id === p.shift_id);
+      if (p.user_id === user && p.day >= today && (sh.kind === 'part') !== (minutes === 240)) shiftPlan.splice(i, 1);
+    }
+  },
+  async allocateWaiting(day) {
+    const { distribute } = await import('./data.js');
+    const { crewPeople } = await import('./shifts.js');
+    const ids = assignments.filter((a) => a.day === day && !a.assignee && a.status !== 'done').map((a) => a.id);
+    const r = await distribute(ids, crewPeople().map((p) => p.id));
+    return r.placed;
+  },
+  async loadLogbook(from, to) { return clone(logbook.filter((e) => e.day >= from && e.day <= to)); },
+  async addLogEntry(row) {
+    const e = { id: uid(), area_id: null, follow_up: false, resolved_by: null, resolved_at: null, author: state.profile.id, created_at: new Date().toISOString(), ...row };
+    logbook.push(e); return clone(e);
+  },
+  async resolveLog(id, done) {
+    const e = logbook.find((x) => x.id === id);
+    e.resolved_by = done ? state.profile.id : null; e.resolved_at = done ? new Date().toISOString() : null;
+    return clone(e);
+  },
+  async deleteLogEntry(id) { const i = logbook.findIndex((x) => x.id === id); if (i >= 0) logbook.splice(i, 1); },
   async loadMyStats(since) {
     const mine = Object.fromEntries(assignments.filter((a) => a.assignee === state.profile.id && a.day >= since).map((a) => [a.id, a]));
     return reports.filter((r) => mine[r.assignment_id]).map((r) => ({ day: mine[r.assignment_id].day, minutes: r.minutes_spent }));

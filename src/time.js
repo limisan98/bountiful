@@ -32,6 +32,7 @@ export function dur(min) {
 export function appliesOn(task, date) {
   if (!task) return false;
   if (task.frequency === 'daily') return true;
+  if (task.frequency === 'monthly') return date.getDate() === Math.min(task.month_day || 1, new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate());
   return (task.weekdays || []).includes(isoWeekday(date));
 }
 

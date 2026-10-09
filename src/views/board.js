@@ -2,8 +2,10 @@ import { html, useState, useEffect } from '../../assets/vendor/htm-preact.js';
 import { useStore, toast } from '../store.js';
 import { t, friendlyError } from '../i18n.js';
 import { Icon, Segmented, Field, Sheet, Empty, useSheetControl } from '../ui.js';
+import { colorStyle } from '../color.js';
 import { isSupervisor, departmentOf } from '../roles.js';
-import { assignmentsOn, askRooms, ensureMonth, startAssignment } from '../data.js';
+import { assignmentsOn, askRooms, ensureMonth, startAssignment, autoAllocate, areaOf, areaName } from '../data.js';
+import { dayPlanned, byImportance } from '../shifts.js';
 import { DateField } from '../pickers.js';
 import { ymd, parseYmd, addDays, todayYmd, fmt, monthKey } from '../time.js';
 import { AssignmentRow, AssignmentSheet, AssignSheet, GiveSheet } from './assign.js';
@@ -46,6 +48,8 @@ function Board({ sup, rec }) {
   const [giving, setGiving] = useState(false);
   const [goals, setGoals] = useState(false);
   const [open, setOpen] = useState(null); // { id, timer }
+  const [group, setGroup] = useState('time'); // 'time' | 'area' (area checklists)
+  const [alloc, setAlloc] = useState(false);
 
   useEffect(() => { ensureMonth(monthKey(parseYmd(day))).catch((e) => toast(friendlyError(e), 'bad')); }, [day]);
 
@@ -55,8 +59,33 @@ function Board({ sup, rec }) {
   const go = (n) => { setDay(ymd(addDays(date, n))); setSel([]); };
   const label = day === todayYmd() ? t('chat.today') : day === ymd(addDays(new Date(), 1)) ? t('rooms.tomorrow') : fmt(date, { weekday: 'long' });
   const toggle = (id) => setSel(sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id]);
-  const waiting = list.filter((a) => !a.assignee);
+  const waiting = list.filter((a) => !a.assignee).sort(byImportance);
   const planned = list.filter((a) => a.assignee);
+  async function giveOut() {
+    setAlloc(true);
+    try {
+      const n = await autoAllocate(day);
+      toast(n ? t('shift.allocated', { n }) : t('shift.allocatedNone'), n ? 'ok' : 'bad');
+    } catch (ex) { toast(friendlyError(ex), 'bad'); }
+    setAlloc(false);
+  }
+  // area checklists: every area with its tasks, how many are done and how many steps are ticked
+  const areaGroups = (() => {
+    const map = new Map();
+    list.forEach((a) => {
+      const tk = s.tasks[a.task_id];
+      const key = tk.area_id && areaOf(tk.area_id) ? tk.area_id : 'none';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(a);
+    });
+    const order = [...s.areas.map((x) => x.id), 'none'];
+    return order.filter((k) => map.has(k)).map((k) => {
+      const rows = map.get(k).sort(byImportance);
+      const steps = rows.reduce((n, a) => n + (s.tasks[a.task_id].steps || []).length, 0);
+      const ticked = rows.reduce((n, a) => n + (a.status === 'done' ? (s.tasks[a.task_id].steps || []).length : (a.steps_done || []).filter((i) => i < (s.tasks[a.task_id].steps || []).length).length), 0);
+      return { key: k, area: k === 'none' ? null : areaOf(k), rows, done: rows.filter((a) => a.status === 'done').length, steps, ticked };
+    });
+  })();
   const done = list.filter((a) => a.status === 'done').length;
   const chosen = sel.filter((id) => s.assignments[id] && s.assignments[id].day === day);
 
@@ -87,12 +116,20 @@ function Board({ sup, rec }) {
       <button class=${'pick' + (who === 'mine' ? ' on' : '')} onClick=${() => setWho('mine')}><${Icon} name="star" size=${16} />${t('cal.mine')}</button>
       ${sup ? html`<button class="pick ghost" onClick=${() => setGoals(true)}><${Icon} name="alarm" size=${16} />${t('goals.title')}</button>` : null}
     </div></div>`}
+    ${list.length ? html`<${Segmented} value=${group} onChange=${setGroup} label=${t('board.group')} options=${[
+      { value: 'time', label: t('board.byTime'), icon: 'clock' }, { value: 'area', label: t('board.byArea'), icon: 'home' }]} />` : null}
 
     <${DayOverview} day=${day} who=${who} sup=${sup} rec=${rec} onPick=${(d) => { setDay(d); setSel([]); }} />
 
     ${!list.length ? html`<${Empty} icon="list-check" text=${rec ? t('board.noneRec') : t('board.none')} />` : null}
 
-    ${waiting.length ? html`<section class="rise">
+    ${sup && waiting.length ? html`<div class="card waiting-give">
+      <p><b>${t('shift.waitingN', { n: waiting.length })}</b><br /><span class="muted">${dayPlanned(day) ? t('shift.waitingHint') : t('board.noShiftsHint')}</span></p>
+      ${dayPlanned(day) ? html`<button class="btn" disabled=${alloc} onClick=${giveOut}><${Icon} name="bolt" size=${22} />${t('shift.giveOut')}</button>`
+        : html`<a class="btn soft" href="#/shifts"><${Icon} name="clock" size=${20} />${t('shift.planNow')}</a>`}
+    </div>` : null}
+
+    ${group === 'time' ? html`${waiting.length ? html`<section class="rise">
       <h3 class="section-title">${t('rooms.waiting')}<span class="count">${waiting.length}</span></h3>
       ${sup ? html`<p class="field-hint">${t('board.selectHint')}</p>` : null}
       <div class="list tight">${waiting.map(row)}</div>
@@ -101,7 +138,14 @@ function Board({ sup, rec }) {
     ${planned.length ? html`<section class="rise">
       ${waiting.length ? html`<h3 class="section-title">${t('tasks.title')}<span class="count">${planned.length}</span></h3>` : null}
       <div class="list tight">${planned.map(row)}</div>
-    </section>` : null}
+    </section>` : null}`
+    : areaGroups.map((g) => html`<section class="rise area-group" key=${g.key} style=${g.area ? colorStyle(g.area.color) : ''}>
+      <h3 class="section-title">${g.area ? html`<span class="title-ic" style=${colorStyle(g.area.color)}><${Icon} name=${g.area.icon} size=${16} /></span>${areaName(g.area)}` : t('tasks.noArea')}
+        <span class="count">${g.done}/${g.rows.length}</span></h3>
+      <div class="progress slim" role="img" aria-label=${t('board.areaProgress', { done: g.done, total: g.rows.length })}><i style=${`width:${Math.round((g.done / g.rows.length) * 100)}%`}></i></div>
+      ${g.steps ? html`<p class="field-hint">${t('board.stepsTicked', { done: g.ticked, total: g.steps })}</p>` : null}
+      <div class="list tight">${g.rows.map(row)}</div>
+    </section>`)}
 
     ${sup || rec ? html`<button class="fab float pop" aria-label=${sup ? t('assign.title') : t('rooms.add')} onClick=${() => setAdding(true)}><${Icon} name="plus" size=${26} /></button>` : null}
 

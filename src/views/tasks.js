@@ -7,9 +7,17 @@ import { saveTask, archiveTask, areaName, areaOf } from '../data.js';
 import { TASK_ICONS, PALETTE } from '../config.js';
 import { hhmm, toMin, dur, taskGoal, weekdayNames, todayYmd, addDays, parseYmd, ymd } from '../time.js';
 import { colorStyle } from '../color.js';
+import { PRIORITIES, priorityOf } from '../shifts.js';
+
+// the small High / Medium / Low label: always icon + word (never colour alone)
+export function PriorityChip({ task }) {
+  const p = priorityOf(task);
+  return html`<span class=${'chip prio ' + p}><${Icon} name=${PRIORITIES[p].icon} size=${14} />${t('prio.' + p)}</span>`;
+}
 
 export function freqText(task) {
   if (task.frequency === 'daily') return t('task.everyDay');
+  if (task.frequency === 'monthly') return t('task.monthDay', { n: task.month_day || 1 });
   const names = weekdayNames('short');
   const days = [...(task.weekdays || [])].sort((a, b) => a - b);
   return days.length ? days.map((d) => names[d - 1]).join(', ') : t('task.noDays');
@@ -41,6 +49,7 @@ export function LibraryView() {
             <span class="person-name">${x.name}</span>
             <span class="person-mail">${windowText(x)} · ${goalText(x)}</span>
             ${x.kind === 'room' ? null : html`<span class="person-mail">${freqText(x)}</span>`}
+            <span class="chips tight-chips"><${PriorityChip} task=${x} />${x.auto ? html`<span class="chip auto-chip"><${Icon} name="bolt" size=${14} />${t('task.autoShort')}</span>` : null}</span>
           </span>
           <${Icon} name="pencil" size=${18} class="chev" />
         </button>`)}
@@ -60,15 +69,16 @@ export function TaskEditor({ task, onClose, onSaved }) {
     start_time: hhmm(task.start_time), end_time: hhmm(task.end_time), frequency: task.frequency, weekdays: task.weekdays || [],
     steps: (task.steps || []).map((x) => ({ title: x.title || '', description: x.description || '' })),
     goal: task.goal_minutes || '', kind: task.kind || 'task',
+    priority: priorityOf(task), auto: !!task.auto, month_day: task.month_day || 1,
   } : {
     name: '', description: '', icon: 'sparkles', color: PALETTE[0], area_id: s.areas[0] ? s.areas[0].id : null,
-    start_time: '09:00', end_time: '10:00', frequency: 'daily', weekdays: [1, 2, 3, 4, 5], steps: [], goal: '', kind: 'task',
+    start_time: '09:00', end_time: '10:00', frequency: 'daily', weekdays: [1, 2, 3, 4, 5], steps: [], goal: '', kind: 'task', priority: 'medium', auto: false, month_day: 1,
   });
   const [busy, setBusy] = useState(false);
   const [sure, setSure] = useState(false);
   const up = (patch) => setF((x) => ({ ...x, ...patch }));
   const room = f.kind === 'room';
-  const valid = f.name.trim() && (room || (toMin(f.end_time) > toMin(f.start_time) && (f.frequency === 'daily' || f.weekdays.length)));
+  const valid = f.name.trim() && (room || (toMin(f.end_time) > toMin(f.start_time) && (f.frequency !== 'weekdays' || f.weekdays.length)));
 
   // Templates: anything planned before (even tasks that were removed since). Typing a name suggests matching ones.
   const past = (() => {
@@ -85,6 +95,7 @@ export function TaskEditor({ task, onClose, onSaved }) {
       start_time: hhmm(x.start_time), end_time: hhmm(x.end_time), frequency: x.frequency, weekdays: x.weekdays || [],
       steps: (x.steps || []).map((st) => ({ title: st.title || '', description: st.description || '' })),
       goal: x.goal_minutes || '', kind: x.kind || 'task',
+      priority: priorityOf(x), auto: !!x.auto, month_day: x.month_day || 1,
     });
     setShowAll(false);
   };
@@ -108,7 +119,8 @@ export function TaskEditor({ task, onClose, onSaved }) {
         start_time: room ? '08:00' : f.start_time, end_time: room ? '17:00' : f.end_time,
         goal_minutes: Number(f.goal) > 0 ? Math.min(1440, Math.round(Number(f.goal))) : null,
         frequency: room ? 'weekdays' : f.frequency,
-        weekdays: room || f.frequency === 'daily' ? [] : f.weekdays,
+        weekdays: room || f.frequency !== 'weekdays' ? [] : f.weekdays,
+        priority: f.priority, auto: room ? false : f.auto, month_day: !room && f.frequency === 'monthly' ? f.month_day : null,
         steps: f.steps.map((x) => ({ title: x.title.trim(), description: x.description.trim() })).filter((x) => x.title),
       });
       toast(t('tasks.saved'));
@@ -183,14 +195,36 @@ export function TaskEditor({ task, onClose, onSaved }) {
         <span class="field-hint">${t('task.goalHint')}</span>
       </div>
 
+      <div class="field"><span class="field-label">${t('task.priority')}</span>
+        <div class="prio-pick" role="radiogroup" aria-label=${t('task.priority')}>
+          ${Object.keys(PRIORITIES).map((p) => html`<button type="button" key=${p} role="radio" aria-checked=${f.priority === p} class=${'prio-opt ' + p + (f.priority === p ? ' on' : '')} onClick=${() => up({ priority: p })}>
+            <${Icon} name=${PRIORITIES[p].icon} size=${24} />${t('prio.' + p)}</button>`)}
+        </div>
+        <span class="field-hint">${t('task.priorityHint')}</span>
+      </div>
+
       ${room ? null : html`<div class="field"><span class="field-label">${t('task.frequency')}</span>
         <${Segmented} value=${f.frequency} onChange=${(v) => up({ frequency: v })} options=${[
-          { value: 'daily', label: t('task.everyDay') }, { value: 'weekdays', label: t('task.certainDays') }]} />
+          { value: 'daily', label: t('task.everyDay') }, { value: 'weekdays', label: t('task.weekly') }, { value: 'monthly', label: t('task.monthly') }]} />
         ${f.frequency === 'weekdays' ? html`<div class="days pop">
           ${names.map((n, i) => html`<button type="button" key=${i} class=${'day-opt' + (f.weekdays.includes(i + 1) ? ' on' : '')}
             onClick=${() => toggleDay(i + 1)}>${n}</button>`)}
         </div>` : null}
-      </div>`}
+        ${f.frequency === 'monthly' ? html`<div class="pop"><span class="mini-label">${t('task.monthOn')}</span>
+          <div class="stepper">
+            <button type="button" class="mini big" aria-label="-1" onClick=${() => up({ month_day: Math.max(1, f.month_day - 1) })}>−</button>
+            <label class="stepper-val"><input type="number" inputmode="numeric" min="1" max="31" value=${f.month_day}
+              onInput=${(e) => up({ month_day: Math.max(1, Math.min(31, Number(e.target.value) || 1)) })} /><span>${t('task.dayOfMonth')}</span></label>
+            <button type="button" class="mini big" aria-label="+1" onClick=${() => up({ month_day: Math.min(31, f.month_day + 1) })}>+</button>
+          </div>
+          ${f.month_day > 28 ? html`<span class="field-hint">${t('task.monthShort')}</span>` : null}
+        </div>` : null}
+      </div>
+
+      <button type="button" class="switch-row" onClick=${() => up({ auto: !f.auto })}>
+        <span><b>${t('task.auto')}</b><br /><span class="muted small-text">${t('task.autoHint')}</span></span>
+        <span class=${'switch' + (f.auto ? ' on' : '')} role="switch" aria-checked=${f.auto}><span class="knob"></span></span>
+      </button>`}
 
       <div class="field"><span class="field-label">${t('task.steps')}</span>
         <div class="steps-edit">
