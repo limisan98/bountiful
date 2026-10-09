@@ -10,6 +10,7 @@ import { DateField } from '../pickers.js';
 import { ymd, parseYmd, addDays, todayYmd, fmt, monthKey } from '../time.js';
 import { AssignmentRow, AssignmentSheet, AssignSheet, GiveSheet } from './assign.js';
 import { LibraryView, TimeGoals } from './tasks.js';
+import { QuickAssignSheet } from './quick.js';
 
 // The Tasks tab: every task and every room to clean, day by day.
 // Supervisors plan tasks, give them to people (one or several) and keep the task library; custodians do their tasks;
@@ -45,6 +46,7 @@ function Board({ sup, rec }) {
   });
   const [sel, setSel] = useState([]);
   const [adding, setAdding] = useState(false);
+  const [quick, setQuick] = useState(false);
   const [giving, setGiving] = useState(false);
   const [goals, setGoals] = useState(false);
   const [open, setOpen] = useState(null); // { id, timer }
@@ -111,6 +113,8 @@ function Board({ sup, rec }) {
       </div>
     </div>
 
+    ${sup ? html`<button class="btn quick-btn" onClick=${() => setQuick(true)}><${Icon} name="bolt" size=${22} />${t('quick.button')}<span>${t('quick.buttonSub')}</span></button>` : null}
+
     ${rec ? null : html`<div class="cal-tools"><div class="chips">
       <button class=${'pick' + (who === 'all' ? ' on' : '')} onClick=${() => setWho('all')}><${Icon} name="user" size=${16} />${t('cal.everyone')}</button>
       <button class=${'pick' + (who === 'mine' ? ' on' : '')} onClick=${() => setWho('mine')}><${Icon} name="star" size=${16} />${t('cal.mine')}</button>
@@ -155,6 +159,7 @@ function Board({ sup, rec }) {
       <button class="btn small auto" onClick=${() => setGiving(true)}><${Icon} name="user" size=${16} />${t('rooms.giveTo')}</button>
     </div>` : null}
 
+    ${quick && sup ? html`<${QuickAssignSheet} day=${day} onClose=${() => setQuick(false)} />` : null}
     ${adding && sup ? html`<${AssignSheet} day=${day} onClose=${() => setAdding(false)} />` : null}
     ${adding && rec ? html`<${AddRooms} day=${day} onDay=${setDay} onClose=${() => setAdding(false)} />` : null}
     ${giving ? html`<${GiveSheet} ids=${chosen} onClose=${() => setGiving(false)} onDone=${() => setSel([])} />` : null}

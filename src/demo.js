@@ -4,6 +4,7 @@ import { state, set } from './store.js';
 import { useDemoApi } from './api.js';
 import { loadCore, startLive } from './data.js';
 import { ROLE_DEFAULTS } from './config.js';
+import { DEMO_AREAS, DEMO_PRESETS } from './demo-presets.js';
 import { ymd, addDays, isoWeekday, toMin, fromMin, todayYmd, taskGoal } from './time.js';
 
 let n = 0;
@@ -33,6 +34,8 @@ const areas = [
   { id: 'a5', key: 'offices', name: null, icon: 'briefcase', color: '#D0E6A5', sort: 5 },
   { id: 'a6', key: 'annex', name: null, icon: 'home', color: '#FA897B', sort: 6 },
 ];
+DEMO_AREAS.forEach((a, i) => areas.push({ id: 'a' + (7 + i), name: null, ...a }));
+const presets = DEMO_PRESETS.map((p, i) => ({ id: 'p' + (i + 1), area_id: areas.find((a) => a.key === p.area).id, level: p.level, goal_minutes: p.goal_minutes, steps: p.steps }));
 const mk = (name, icon, color, area_id, s, e, frequency, weekdays, steps, description = '') => ({
   id: uid(), name, icon, color, area_id, start_time: s, end_time: e, frequency, weekdays, description,
   steps: steps.map((x) => ({ title: x[0], description: x[1] || '' })), deleted: false, kind: 'task', goal_minutes: null, priority: 'medium', auto: false, month_day: null, created_at: iso(-60, 9),
@@ -265,6 +268,7 @@ const demoApi = {
   async loadRoles() { return clone(roles); },
   async updateRole(id, patch) { Object.assign(roles.find((r) => r.id === id), patch); return clone(roles.find((r) => r.id === id)); },
   async loadAreas() { return clone(areas); },
+  async loadPresets() { return clone(presets); },
   async loadTasks() { return clone(tasks); },
   async saveTask(task) {
     if (task.id) { const row = tasks.find((x) => x.id === task.id); Object.assign(row, task); return clone(row); }

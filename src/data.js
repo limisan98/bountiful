@@ -12,14 +12,14 @@ const months = new Set();
 
 export function resetData() {
   months.clear();
-  set({ roles: {}, areas: [], tasks: {}, assignments: {}, reports: {}, messages: {}, chatOpen: null, person: null, comments: {}, shifts: {}, shiftPlan: {}, contracts: {}, logbook: {}, digests: {}, invites: {}, meetings: {}, settings: {} });
+  set({ roles: {}, areas: [], tasks: {}, presets: {}, assignments: {}, reports: {}, messages: {}, chatOpen: null, person: null, comments: {}, shifts: {}, shiftPlan: {}, contracts: {}, logbook: {}, digests: {}, invites: {}, meetings: {}, settings: {} });
 }
 
 // ---- loading ----
 export async function loadCore() {
   const me = state.profile;
-  const [roles, areas, tasks, digests, invites, meetings, recent, settings, shifts, contracts, logs] = await Promise.all([
-    api.loadRoles(), api.loadAreas(), api.loadTasks(),
+  const [roles, areas, tasks, presets, digests, invites, meetings, recent, settings, shifts, contracts, logs] = await Promise.all([
+    api.loadRoles(), api.loadAreas(), api.loadTasks(), api.loadPresets().catch(() => []),
     isSupervisor(me) ? api.loadDigests() : [],
     departmentOf(me) === 'custodian' ? api.loadInvites(addDays(new Date(), -60).toISOString()) : [],
     api.loadMeetings(ymd(addDays(new Date(), -30))),
@@ -32,7 +32,7 @@ export async function loadCore() {
   const messages = {};
   recent.forEach((m) => { (messages[m.channel] = messages[m.channel] || { list: [], more: true, loaded: false }).list.push(m); });
   Object.values(messages).forEach((c) => c.list.reverse());
-  set({ roles: byId(roles), areas, tasks: byId(tasks), digests: byId(digests), invites: byId(invites), meetings: byId(meetings), settings, messages, chatSeen: loadSeen(messages),
+  set({ roles: byId(roles), areas, tasks: byId(tasks), presets: byId(presets), digests: byId(digests), invites: byId(invites), meetings: byId(meetings), settings, messages, chatSeen: loadSeen(messages),
     shifts: byId(shifts), contracts: byId(contracts, 'user_id'), logbook: byId(logs) });
   const now = new Date();
   await Promise.all([monthKey(now), monthKey(addMonths(now, -1)), monthKey(addMonths(now, 1))].map(ensureMonth));
@@ -192,6 +192,25 @@ export async function answerMeeting(id, accept, reply) { putMeeting(await api.an
 export async function cancelMeeting(id) { putMeeting(await api.cancelMeeting(id)); }
 
 // ---- the name of a planned task: "Room cleaning · 12" (rooms carry their room number in the title) ----
+// ---- ready-made area checklists ("presets", supabase/014): one per area and cleaning depth ----
+export const presetsOfArea = (areaId) => Object.values(state.presets).filter((p) => p.area_id === areaId).sort((a, b) => a.level - b.level);
+export const presetLang = (p) => (p.steps && p.steps[state.lang] ? state.lang : 'en');
+export const presetSteps = (p) => (p.steps && p.steps[presetLang(p)]) || [];
+export const presetName = (p) => areaName(areaOf(p.area_id)) + ' · ' + t('preset.level' + p.level);
+// The first time a preset is used it becomes a normal library task (so timers, goals, reports and shift rules just work).
+// After that the same library task is used again. One per language, because the checklist is saved in the supervisor's language.
+export async function taskForPreset(p) {
+  const lang = presetLang(p);
+  const have = Object.values(state.tasks).find((x) => x.preset_id === p.id && x.preset_lang === lang && !x.deleted);
+  if (have) return have;
+  const area = areaOf(p.area_id);
+  return saveTask({
+    name: presetName(p), description: '', icon: area.icon || 'sparkles', color: area.color, area_id: area.id,
+    start_time: '07:00', end_time: '22:30', frequency: 'weekdays', weekdays: [], steps: presetSteps(p).map((x) => ({ title: x.title, description: '' })),
+    goal_minutes: p.goal_minutes, kind: 'task', priority: 'medium', auto: false, preset_id: p.id, preset_lang: lang,
+  });
+}
+
 export const itemName = (a) => {
   const tk = state.tasks[a.task_id];
   return (tk ? tk.name : '') + (a.title ? (tk ? ' · ' : '') + a.title : '');

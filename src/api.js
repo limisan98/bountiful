@@ -57,6 +57,7 @@ const real = {
 
   // ---- areas and tasks ----
   async loadAreas() { return ok(await sb.from('areas').select('*').order('sort')); },
+  async loadPresets() { return ok(await sb.from('task_presets').select('*')); },
   async loadTasks() { return ok(await sb.from('tasks').select('*').order('created_at')); },
   async saveTask(task) {
     const { id, ...rest } = task;

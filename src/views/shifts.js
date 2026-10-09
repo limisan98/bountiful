@@ -6,6 +6,7 @@ import { isSupervisor } from '../roles.js';
 import { assignmentsOn, areaOf, areaName, itemName, ensureMonth, setShiftCell, copyShiftWeek, setContract, autoAllocate } from '../data.js';
 import { ymd, parseYmd, addDays, startOfWeek, monthKey, todayYmd, fmt, hhmm, toMin, dur, weekdayNames, isoWeekday, timeKey, fmtTimeOfDay } from '../time.js';
 import { AssignmentSheet } from './assign.js';
+import { QuickAssignSheet } from './quick.js';
 import { ImportSheet } from './shiftimport.js';
 import { BLOCKS, shiftList, shiftOf, planOf, dayPlanned, contractOf, capacityOf, loadOf, goalOf, currentBlock, shiftName, crewPeople, contractLabel, problem } from '../shifts.js';
 
@@ -88,6 +89,7 @@ function OnDuty({ sup, goPlan }) {
 function DutyCard({ p, sh, day, now, sup }) {
   const s = useStore();
   const [open, setOpen] = useState(false);
+  const [give, setGive] = useState(false);
   const [view, setView] = useState(null); // assignment id shown in the details sheet
   const nowMin = now.getHours() * 60 + now.getMinutes();
   const start = toMin(sh.start_time), end = toMin(sh.end_time), len = end - start;
@@ -121,6 +123,8 @@ function DutyCard({ p, sh, day, now, sup }) {
       ${mine.length ? html`<ul>${mine.map((a) => html`<${DutyTask} key=${a.id} a=${a} now=${now} onOpen=${() => setView(a.id)} />`)}</ul>`
         : html`<p class="muted">${t('shift.noTasksYet')}</p>`}
     </div>` : null}
+    ${sup && state !== 'done' ? html`<div class="duty-act"><button type="button" class="btn small soft" onClick=${() => setGive(true)}><${Icon} name="bolt" size=${18} />${t('quick.giveTask')}</button></div>` : null}
+    ${give ? html`<${QuickAssignSheet} day=${day} person=${p.id} onClose=${() => setGive(false)} />` : null}
     ${view && s.assignments[view] ? html`<${AssignmentSheet} id=${view} onClose=${() => setView(null)} />` : null}
   </article>`;
 }
