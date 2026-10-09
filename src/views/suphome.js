@@ -48,9 +48,17 @@ export function SupervisorHome() {
   const updates = Object.values(s.reports).map((r) => ({ r, a: s.assignments[r.assignment_id] }))
     .filter((x) => x.a && x.a.day >= since && s.tasks[x.a.task_id]).sort((x, y) => y.r.completed_at.localeCompare(x.r.completed_at)).slice(0, 4);
 
-  const deg = (n) => (total ? (n / total) * 360 : 0);
-  const a1 = deg(stat.done), a2 = a1 + deg(stat.doing), a3 = a2 + deg(stat.todo);
-  const ring = total ? `conic-gradient(var(--mint) 0 ${a1}deg, var(--yellow) ${a1}deg ${a2}deg, var(--lavender) ${a2}deg ${a3}deg, var(--coral) ${a3}deg 360deg)` : 'var(--track)';
+  // progress ring drawn as round-ended arcs (palette colours only)
+  const R = 40, C = 2 * Math.PI * R, SW = 13, GAP = 5;
+  const parts = [[stat.done, 'var(--mint)'], [stat.doing, 'var(--yellow)'], [stat.todo, 'var(--lavender)'], [stat.waiting, 'var(--coral)']].filter(([n]) => n > 0);
+  let offset = 0;
+  const arcs = parts.map(([n, color]) => {
+    const part = (n / total) * C;
+    const len = parts.length === 1 ? 0.01 : Math.max(0.01, part - GAP - SW); // round caps add SW to each arc
+    const arc = html`<circle key=${color} cx="50" cy="50" r=${R} fill="none" stroke=${color} stroke-width=${SW} stroke-linecap="round" stroke-dasharray=${len + ' ' + C} stroke-dashoffset=${-(offset + (parts.length === 1 ? 0 : (GAP + SW) / 2))} />`;
+    offset += part;
+    return arc;
+  });
   const legend = [['done', t('status.done'), stat.done], ['doing', t('status.doing'), stat.doing], ['todo', t('status.todo'), stat.todo], ['waiting', t('sup.waiting'), stat.waiting]];
 
   return html`<div class="stack sup-home">
@@ -70,7 +78,7 @@ export function SupervisorHome() {
     <section class="rise sum-card" aria-label=${t('sup.progress')}>
       <h3 class="section-title">${t('sup.progress')}</h3>
       ${total ? html`<div class="sum-body">
-        <div class="sum-ring" role="img" aria-label=${t('sup.percent', { n: pct }) + ': ' + legend.map((l) => l[1] + ' ' + l[2]).join(', ')} style=${`--ring:${ring}`}><span><b>${pct}%</b><small>${t('status.done')}</small></span></div>
+        <div class="sum-ring" role="img" aria-label=${t('sup.percent', { n: pct }) + ': ' + legend.map((l) => l[1] + ' ' + l[2]).join(', ')} ><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r=${R} fill="none" stroke="var(--track)" stroke-width=${SW} />${arcs}</svg><span><b>${pct}%</b><small>${t('status.done')}</small></span></div>
         <ul class="ring-legend">${legend.map(([k, label, n]) => html`<li key=${k}><i class=${'lg-' + k}></i><span>${label}</span><b>${n}</b></li>`)}</ul>
       </div>` : html`<${Empty} icon="calendar-event" text=${t('home.teamEmpty')} />`}
     </section>

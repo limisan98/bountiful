@@ -101,6 +101,47 @@ export function Sheet({ title, onClose, children, kicker, control, wide }) {
   const latest = useRef(close);
   latest.current = close;
   if (control) control.ref.current = close;
+  const sheetEl = useRef(null);
+  // Swipe down (finger or mouse) on the top bar, or on the content when it is scrolled to the top, to close the sheet
+  const drag = useRef({ on: false, y: 0, t: 0, dy: 0, armed: false, v: 0 }).current;
+  const setPull = (dy, animate) => {
+    const el = sheetEl.current; if (!el) return;
+    el.style.animation = 'none';
+    el.style.transition = animate ? 'transform .22s cubic-bezier(.22,1,.36,1)' : 'none';
+    el.style.transform = dy ? `translateY(${dy}px)` : '';
+  };
+  const begin = (y, fromBody) => { drag.armed = true; drag.on = false; drag.y = y; drag.t = Date.now(); drag.dy = 0; drag.v = 0; drag.fromBody = fromBody; };
+  const move = (y, e) => {
+    if (!drag.armed) return;
+    const dy = y - drag.y;
+    if (!drag.on) {
+      const body = sheetEl.current && sheetEl.current.querySelector('.sheet-body');
+      if (dy > 8 && (!drag.fromBody || (body && body.scrollTop <= 0))) drag.on = true;
+      else if (dy < -8 || (drag.fromBody && body && body.scrollTop > 0)) { drag.armed = false; return; }
+      else return;
+    }
+    if (e && e.cancelable) e.preventDefault();
+    const now = Date.now(); drag.v = (dy - drag.dy) / Math.max(1, now - drag.t); drag.t = now; drag.dy = Math.max(0, dy);
+    setPull(drag.dy, false);
+  };
+  const end = () => {
+    if (!drag.armed) return;
+    const was = drag.on; drag.armed = false; drag.on = false;
+    if (!was) return;
+    if (drag.dy > 110 || drag.v > 0.6) {
+      closing.current = true; setOut(true); setPull(sheetEl.current ? sheetEl.current.offsetHeight : 600, true); setTimeout(onClose, 200);
+    } else setPull(0, true);
+  };
+  const touch = {
+    onTouchStart: (e) => { const hdr = e.target.closest('.sheet-grab, .sheet-head'); begin(e.touches[0].clientY, !hdr); },
+    onTouchMove: (e) => move(e.touches[0].clientY, e),
+    onTouchEnd: end, onTouchCancel: end,
+  };
+  const mouse = {
+    onPointerDown: (e) => { if (e.pointerType !== 'mouse' || e.target.closest('button')) return; e.currentTarget.setPointerCapture(e.pointerId); begin(e.clientY, false); },
+    onPointerMove: (e) => { if (e.pointerType === 'mouse') move(e.clientY, e); },
+    onPointerUp: (e) => { if (e.pointerType === 'mouse') end(); },
+  };
   useEffect(() => {
     stack.push(me);
     const onKey = (e) => { if (e.key === 'Escape' && stack[stack.length - 1] === me) latest.current(); };
@@ -115,9 +156,9 @@ export function Sheet({ title, onClose, children, kicker, control, wide }) {
   return html`<${SheetCtx.Provider} value=${close}>
     <div class=${'sheet-root' + (out ? ' out' : '')} role="dialog" aria-modal="true" aria-label=${title}>
       <div class="scrim" onClick=${close}></div>
-      <div class=${'sheet' + (wide ? ' wide' : '')}>
-        <div class="sheet-grab"></div>
-        <div class="sheet-head">
+      <div class=${'sheet' + (wide ? ' wide' : '')} ref=${sheetEl} ...${touch}>
+        <div class="sheet-grab" ...${mouse}></div>
+        <div class="sheet-head" ...${mouse}>
           <div class="sheet-titles">${kicker ? html`<span class="kicker">${kicker}</span>` : null}<h2>${title}</h2></div>
           <button class="icon-btn" aria-label=${t('common.close')} onClick=${close}><${Icon} name="x" size=${22} /></button>
         </div>
