@@ -50,7 +50,7 @@ export function SupervisorHome() {
 
   const deg = (n) => (total ? (n / total) * 360 : 0);
   const a1 = deg(stat.done), a2 = a1 + deg(stat.doing), a3 = a2 + deg(stat.todo);
-  const ring = total ? `conic-gradient(var(--st-done-ink) 0 ${a1}deg, #E5B100 ${a1}deg ${a2}deg, #B9C4C1 ${a2}deg ${a3}deg, var(--coral) ${a3}deg 360deg)` : 'var(--track)';
+  const ring = total ? `conic-gradient(var(--mint) 0 ${a1}deg, var(--yellow) ${a1}deg ${a2}deg, var(--lavender) ${a2}deg ${a3}deg, var(--coral) ${a3}deg 360deg)` : 'var(--track)';
   const legend = [['done', t('status.done'), stat.done], ['doing', t('status.doing'), stat.doing], ['todo', t('status.todo'), stat.todo], ['waiting', t('sup.waiting'), stat.waiting]];
 
   return html`<div class="stack sup-home">
