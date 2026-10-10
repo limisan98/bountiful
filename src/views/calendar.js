@@ -5,7 +5,7 @@ import { Icon, Avatar, Segmented, Sheet, Empty } from '../ui.js';
 import { isSupervisor } from '../roles.js';
 import { colorStyle } from '../color.js';
 import { STATUS_ICON_COLOR, badgeStatus } from '../ui.js';
-import { ensureMonth, itemName } from '../data.js';
+import { ensureMonth, itemName, areaOf, areaName } from '../data.js';
 import { ymd, parseYmd, addDays, addMonths, monthKey, monthGrid, startOfWeek, weekdayNames, fmt, todayYmd, toMin, hhmm, dur, taskGoal, hasTime, timeKey, pad } from '../time.js';
 import { AssignmentRow, AssignmentSheet, AssignSheet } from './assign.js';
 
@@ -119,20 +119,20 @@ export function CalendarView() {
   </div>`;
 }
 
-const HOUR = 60;            // pixels per hour in the day view
-const INK = '#1E2A28';
-
 // ---- One day, hour by hour ----
-export function DaySheet({ day, who: initialWho, onClose, onOpen, onAssign }) {
+export function DaySheet({ day: startDay, who: initialWho, onClose, onOpen, onAssign }) {
   const s = useStore();
   const me = s.profile;
   const sup = isSupervisor(me);
   const [who, setWho] = useState(initialWho || 'all');
+  const [day, setDay] = useState(startDay);
   const d = parseYmd(day);
+  useEffect(() => { ensureMonth(monthKey(parseYmd(day))).catch(() => {}); }, [day]);
+  const counts = {};
+  Object.values(s.assignments).forEach((a) => { if (s.tasks[a.task_id] && (who !== 'mine' || a.assignee === me.id)) counts[a.day] = (counts[a.day] || 0) + 1; });
   const all = Object.values(s.assignments).filter((a) => a.day === day && s.tasks[a.task_id])
     .sort((x, y) => timeKey(x) - timeKey(y));
   const list = who === 'mine' ? all.filter((a) => a.assignee === me.id) : all;
-  const timed = list.filter(hasTime), anytime = list.filter((a) => !hasTime(a));
 
   // totals: supervisors see everybody's planned time, everybody else only their own
   const totals = {};
@@ -144,6 +144,7 @@ export function DaySheet({ day, who: initialWho, onClose, onOpen, onAssign }) {
   const shown = Object.entries(totals).filter(([id]) => sup || id === me.id);
 
   return html`<${Sheet} title=${fmt(d, { weekday: 'long' })} kicker=${fmt(d, { day: 'numeric', month: 'long', year: 'numeric' })} onClose=${onClose}>
+    <${DateStrip} value=${day} onPick=${setDay} counts=${counts} />
     <div class="cal-tools">
       <div class="chips">
         <button class=${'pick' + (who === 'all' ? ' on' : '')} onClick=${() => setWho('all')}><${Icon} name="user" size=${16} />${t('cal.everyone')}</button>
@@ -159,61 +160,56 @@ export function DaySheet({ day, who: initialWho, onClose, onOpen, onAssign }) {
         <small>${dur(v.min)} · ${v.done}/${v.n}</small></span></span>`)}
     </div>` : null}
 
-    ${timed.length ? html`<${Timeline} list=${timed} day=${day} onOpen=${onOpen} />` : null}
-    ${anytime.length ? html`<div class="field"><span class="field-label">${t('cal.anytime')}<span class="count">${anytime.length}</span></span>
-      <div class="list tight">${anytime.map((a) => html`<${AssignmentRow} key=${a.id} a=${a} onOpen=${onOpen} showPerson=${true} />`)}</div></div>` : null}
+    ${list.length ? html`<${Schedule} list=${list} day=${day} onOpen=${onOpen} />` : null}
     ${!list.length ? html`<${Empty} icon="calendar-event" text=${t('cal.emptyDay')} />` : null}
   <//>`;
 }
 
-function layout(list) {
-  // blocks that overlap in time sit side by side
-  const items = list.map((a) => ({ a, s: toMin(a.start_time), e: toMin(a.end_time), lane: 0, lanes: 1 }));
-  let cluster = [], end = -1;
-  const flush = () => {
-    const ends = [];
-    cluster.forEach((it) => {
-      let l = ends.findIndex((x) => x <= it.s);
-      if (l < 0) { l = ends.length; ends.push(it.e); } else ends[l] = it.e;
-      it.lane = l;
-    });
-    cluster.forEach((it) => { it.lanes = ends.length; });
-    cluster = [];
-  };
-  items.forEach((it) => {
-    if (cluster.length && it.s >= end) { flush(); end = -1; }
-    cluster.push(it); end = Math.max(end, it.e);
-  });
-  flush();
-  return items;
-}
-
-function Timeline({ list, day, onOpen }) {
+// ---- Vertical timeline: one card per task, stacked in start-time order (never side by side) ----
+function Schedule({ list, day, onOpen }) {
   const s = useStore();
-  const items = layout(list);
-  const from = Math.min(6, Math.floor(Math.min(...items.map((i) => i.s)) / 60));
-  const to = Math.max(20, Math.ceil(Math.max(...items.map((i) => i.e)) / 60));
-  const hours = Array.from({ length: to - from + 1 }, (_, i) => from + i);
   const now = new Date();
   const nowMin = now.getHours() * 60 + now.getMinutes();
-  const isToday = day === todayYmd() && nowMin >= from * 60 && nowMin <= to * 60;
-  const px = (m) => ((m - from * 60) / 60) * HOUR;
+  const isToday = day === todayYmd();
+  const timed = list.filter(hasTime), anytime = list.filter((a) => !hasTime(a));
+  const stream = [...anytime, ...timed]; // "anytime" tasks first, then by start time (list is already sorted)
+  return html`<ol class="vt" aria-label=${t('cal.today')}>
+    ${stream.map((a, i) => {
+      const tk = s.tasks[a.task_id], who = s.profiles[a.assignee], area = areaOf(tk.area_id);
+      const st = badgeStatus(a);
+      const live = a.status === 'doing' || (isToday && hasTime(a) && a.status !== 'done' && toMin(a.start_time) <= nowMin && nowMin < toMin(a.end_time));
+      const sub = [area ? areaName(area) : '', a.note || ''].filter(Boolean).join(' · ');
+      return html`<li key=${a.id} class=${'vt-item ' + st + (live ? ' live' : '')} style=${`--sc:${STATUS_ICON_COLOR[st]}`}>
+        <span class="vt-node" aria-hidden="true"></span>
+        <button type="button" class="vt-card" onClick=${() => onOpen(a.id)}>
+          <span class="vt-top"><b class="vt-title">${itemName(a)}</b>
+            <span class="vt-time">${hasTime(a) ? hhmm(a.start_time) + ' – ' + hhmm(a.end_time) : t('cal.anytime')}</span></span>
+          ${sub ? html`<span class="vt-sub">${sub}</span>` : null}
+          <span class="vt-foot">
+            <span class="vt-who">${who ? html`<${Avatar} profile=${who} size=${30} ring=${false} /><span>${who.display_name.split(' ')[0]}</span>`
+              : html`<${Icon} name="help-circle" size=${20} /><span>${t('task.waiting')}</span>`}</span>
+            <span class=${'vt-pill ' + st}><${Icon} name=${a.status === 'done' ? 'circle-check' : a.status === 'doing' ? 'hourglass' : 'clock'} size=${15} />${t('status.' + a.status)}</span>
+          </span>
+        </button>
+      </li>`;
+    })}
+  </ol>`;
+}
 
-  return html`<div class="timeline" style=${`height:${(to - from) * HOUR + 20}px`}>
-    ${hours.map((h) => html`<div class="hour" key=${h} style=${`top:${(h - from) * HOUR}px`}><span>${pad(h)}:00</span></div>`)}
-    <div class="blocks">
-      ${items.map((it) => {
-        const a = it.a, tk = s.tasks[a.task_id], who = s.profiles[a.assignee];
-        const h = Math.max(30, px(it.e) - px(it.s) - 3);
-        const w = 100 / it.lanes;
-        return html`<button key=${a.id} class=${'block ' + a.status + (h < 52 ? ' tiny' : '')} onClick=${() => onOpen(a.id)}
-          style=${`${colorStyle(STATUS_ICON_COLOR[badgeStatus(a)])};top:${px(it.s)}px;height:${h}px;left:calc(${it.lane * w}% + 1px);width:calc(${w}% - 4px)`}>
-          <span class="block-ic"><${Icon} name=${a.status === 'done' ? 'circle-check' : tk.icon} size=${16} /></span>
-          <span class="block-main"><b>${itemName(a)}</b>
-            <small>${who ? html`<${Avatar} profile=${who} size=${16} ring=${false} />${who.display_name.split(' ')[0]} · ` : null}${hhmm(a.start_time)}–${hhmm(a.end_time)}</small></span>
-        </button>`;
-      })}
-    </div>
-    ${isToday ? html`<div class="now" style=${`top:${px(nowMin)}px`}><i></i></div>` : null}
+// ---- The week strip at the top of a day: tap a day to see its schedule ----
+function DateStrip({ value, onPick, counts }) {
+  const names = weekdayNames('short');
+  const start = startOfWeek(parseYmd(value));
+  const week = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  const today = todayYmd();
+  return html`<div class="ds" role="group" aria-label=${t('cal.week')}>
+    <button type="button" class="icon-btn ds-nav" aria-label="previous week" onClick=${() => onPick(ymd(addDays(parseYmd(value), -7)))}><${Icon} name="caret-left" size=${18} /></button>
+    <div class="ds-days">${week.map((d, i) => {
+      const k = ymd(d);
+      return html`<button type="button" key=${k} class=${'ds-day' + (k === value ? ' on' : '') + (k === today ? ' today' : '')} aria-pressed=${k === value}
+        aria-label=${fmt(d, { weekday: 'long', day: 'numeric', month: 'long' })} onClick=${() => onPick(k)}>
+        <small>${names[i]}</small><b>${d.getDate()}</b><i class=${counts[k] ? 'has' : ''}></i></button>`;
+    })}</div>
+    <button type="button" class="icon-btn ds-nav" aria-label="next week" onClick=${() => onPick(ymd(addDays(parseYmd(value), 7)))}><${Icon} name="caret-right" size=${18} /></button>
   </div>`;
 }
