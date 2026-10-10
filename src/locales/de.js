@@ -681,4 +681,5 @@ Boden wischen`,
   "quick.weekly": `Wöchentlich`,
   "quick.monthly": `Monatlich`,
   "floor.n": `Etage {n}`,
+  "rec.nowDone": `Zimmer {room} ist fertig`,
 };

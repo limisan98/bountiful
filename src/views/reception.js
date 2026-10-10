@@ -1,4 +1,4 @@
-import { html, useState, useEffect } from '../../assets/vendor/htm-preact.js';
+import { html, useState, useEffect, useRef } from '../../assets/vendor/htm-preact.js';
 import { useStore, toast } from '../store.js';
 import { t, friendlyError } from '../i18n.js';
 import { Icon, Segmented, Field } from '../ui.js';
@@ -35,6 +35,36 @@ export function ReceptionHome() {
     return !a ? null : a.status === 'done' ? 'done' : a.assignee ? 'assigned' : 'requested';
   };
   const free = (title) => !stateOf(title);
+
+  // A custodian just finished a room: show it right away (switch to its tab, tile turns green and moves to the top, smooth scroll to it)
+  const [fresh, setFresh] = useState(null);
+  const seen = useRef(null);
+  const doneNow = Object.values(s.assignments).filter((a) => a.kind === 'room' && a.day === day && a.status === 'done' && s.tasks[a.task_id] && s.tasks[a.task_id].room_flow)
+    .map((a) => s.tasks[a.task_id].room_flow + ':' + a.title);
+  const doneKey = doneNow.slice().sort().join('|');
+  useEffect(() => {
+    const prev = seen.current;
+    seen.current = { day, set: new Set(doneNow) };
+    if (!prev || prev.day !== day) return;
+    const fresh1 = doneNow.filter((k) => !prev.set.has(k));
+    if (!fresh1.length) return;
+    const [f, code] = [fresh1[0].split(':')[0], fresh1[0].slice(fresh1[0].indexOf(':') + 1)];
+    const room = s.guestRooms.find((r) => r.label === code);
+    setFlow(f); if (room) setHouse(room.house);
+    setFresh(f + ':' + code);
+    toast(t('rec.nowDone', { room: code }));
+  }, [doneKey, day]);
+  useEffect(() => {
+    if (!fresh) return;
+    const code = fresh.slice(fresh.indexOf(':') + 1);
+    const go = setTimeout(() => {
+      const el = document.querySelector('[data-room="' + code + '"]');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      else window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 80);
+    const off = setTimeout(() => setFresh(null), 4000);
+    return () => { clearTimeout(go); clearTimeout(off); };
+  }, [fresh]);
   const toggle = (title) => setPicked({ ...picked, [flow]: sel.includes(title) ? sel.filter((x) => x !== title) : [...sel, title] });
   const toggleGroup = (rooms) => {
     const ids = rooms.filter(free);
@@ -61,7 +91,8 @@ export function ReceptionHome() {
     setBusy(false);
   }
 
-  const mine = assignmentsOn(day).filter((a) => a.kind === 'room' && a.requested_by === s.profile.id && s.tasks[a.task_id]);
+  const mine = assignmentsOn(day).filter((a) => a.kind === 'room' && a.requested_by === s.profile.id && s.tasks[a.task_id])
+    .sort((x, y) => (x.status === 'done' ? 0 : 1) - (y.status === 'done' ? 0 : 1));
   const count = (k) => picked[k].length;
 
   return html`<div class="stack rec-page">
@@ -92,13 +123,13 @@ export function ReceptionHome() {
         <header><h3>${t('floor.n', { n: f })}</h3>
           <button type="button" class="pick" onClick=${() => toggleGroup(rooms)}>${t('rec.selectAll')}</button></header>
         <div class="rec-rooms">
-          ${rooms.map((code) => {
+          ${rooms.slice().sort((a, b) => (stateOf(a) === 'done' ? 0 : 1) - (stateOf(b) === 'done' ? 0 : 1)).map((code) => {
             const st = stateOf(code), on = sel.includes(code);
             return html`<button type="button" key=${code} role="checkbox" aria-checked=${on || !!st} disabled=${!!st || !task} aria-label=${t('house.n', { n: h }) + ', ' + t('floor.n', { n: f }) + ', ' + code}
-              class=${'rec-room' + (on ? ' on' : '') + (st ? ' ' + st : '')} onClick=${() => toggle(code)}>
+              data-room=${code} class=${'rec-room' + (on ? ' on' : '') + (st ? ' ' + st : '') + (fresh === flow + ':' + code ? ' fresh' : '')} onClick=${() => toggle(code)}>
               <span class="rec-box"><${Icon} name="check" size=${20} /></span>
               <b>${code}</b>
-              ${st ? html`<small>${t('rec.' + st)}</small>` : null}
+              ${st ? html`<small class=${'rec-badge ' + st}>${st === 'done' ? html`<${Icon} name="circle-check" size=${14} />` : null}${t('rec.' + st)}</small>` : null}
             </button>`;
           })}
         </div>

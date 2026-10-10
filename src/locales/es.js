@@ -681,4 +681,5 @@ Fregar el suelo`,
   "quick.weekly": `Semanal`,
   "quick.monthly": `Mensual`,
   "floor.n": `Planta {n}`,
+  "rec.nowDone": `La habitación {room} está lista`,
 };
