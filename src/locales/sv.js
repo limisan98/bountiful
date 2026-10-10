@@ -680,4 +680,5 @@ Torka golvet`,
   "quick.daily": `Dagligen`,
   "quick.weekly": `Varje vecka`,
   "quick.monthly": `Varje månad`,
+  "floor.n": `Våning {n}`,
 };

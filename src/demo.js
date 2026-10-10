@@ -35,7 +35,7 @@ const areas = [
   { id: 'a6', key: 'annex', name: null, icon: 'home', color: '#FA897B', sort: 6 },
 ];
 DEMO_AREAS.forEach((a, i) => areas.push({ id: 'a' + (7 + i), name: null, ...a }));
-const guestRooms = [1, 2, 3, 4].flatMap((h) => [1, 2, 3, 4, 5, 6].map((n) => ({ id: `g${h}${n}`, house: h, label: String(n), sort: h * 100 + n })));
+const guestRooms = [1, 2, 3, 4].flatMap((h) => [1, 2, 3].flatMap((f) => [1, 2, 3, 4, 5, 6].map((n) => ({ id: `g${h}${f}${n}`, house: h, floor: f, num: n, label: `${h}${f}${n}`, sort: h * 100 + f * 10 + n }))));
 const presets = DEMO_PRESETS.map((p, i) => ({ id: 'p' + (i + 1), area_id: areas.find((a) => a.key === p.area).id, level: p.level, goal_minutes: p.goal_minutes, steps: p.steps }));
 const mk = (name, icon, color, area_id, s, e, frequency, weekdays, steps, description = '') => ({
   id: uid(), name, icon, color, area_id, start_time: s, end_time: e, frequency, weekdays, description,
@@ -135,10 +135,10 @@ const meetings = [];
   tasks.push(outTask, inTask);
   const mkFlow = (day, tk, room, extra = {}) => assignments.push({ id: uid(), task_id: tk.id, assignee: null, day: ymd(addDays(now(), day)), start_time: tk.start_time, end_time: tk.end_time, note: '',
     status: 'todo', steps_done: [], started_at: null, completed_at: null, created_by: 'd5', created_at: iso(day, 8, 40), kind: 'room', title: room, requested_by: 'd5', ...extra });
-  mkFlow(0, outTask, 'House 1 · 2'); mkFlow(0, outTask, 'House 1 · 4'); mkFlow(0, outTask, 'House 3 · 1');
-  mkFlow(0, inTask, 'House 2 · 5', { note: 'Family of four' }); mkFlow(0, inTask, 'House 2 · 6');
-  mkFlow(0, outTask, 'House 4 · 3', { assignee: 'd2' });
-  mkFlow(1, inTask, 'House 1 · 1', { requested_by: 'd6', created_by: 'd6' });
+  mkFlow(0, outTask, '112'); mkFlow(0, outTask, '124'); mkFlow(0, outTask, '311');
+  mkFlow(0, inTask, '225', { note: 'Family of four' }); mkFlow(0, inTask, '236');
+  mkFlow(0, outTask, '423', { assignee: 'd2' });
+  mkFlow(1, inTask, '111', { requested_by: 'd6', created_by: 'd6' });
   taskComments.push({ id: uid(), assignment_id: assignments.find((a) => a.title === '7').id, author: 'd3', body: 'The bathroom tap is dripping.', created_at: iso(0, 10, 55) });
 }
 // task invitations between custodians (they also appear as messages in the custodians' chat)

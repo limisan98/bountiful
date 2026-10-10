@@ -24,9 +24,10 @@ export function ReceptionHome() {
   useEffect(() => { ensureMonth(monthKey(parseYmd(day))).catch(() => {}); }, [day]);
 
   const task = Object.values(s.tasks).find((x) => x.kind === 'room' && x.room_flow === flow && !x.deleted);
-  const titleOf = (house, label) => t('house.n', { n: house }) + ' · ' + label;
-  const houses = [1, 2, 3, 4].map((h) => ({ h, rooms: s.guestRooms.filter((r) => r.house === h).map((r) => ({ title: titleOf(h, r.label), label: r.label })) }));
-  const known = new Set(houses.flatMap((x) => x.rooms.map((r) => r.title)));
+  // room code = [House][Floor][Room], e.g. 322 = house 3, floor 2, room 2
+  const [house, setHouse] = useState(1);
+  const houses = [1, 2, 3, 4].map((h) => ({ h, floors: [1, 2, 3].map((f) => ({ f, rooms: s.guestRooms.filter((r) => r.house === h && r.floor === f).sort((x, y) => x.num - y.num).map((r) => r.label) })).filter((x) => x.rooms.length) }));
+  const known = new Set(s.guestRooms.map((r) => r.label));
   const sel = picked[flow];
   const asked = Object.values(s.assignments).filter((a) => a.kind === 'room' && a.day === day && task && a.task_id === task.id);
   const stateOf = (title) => {
@@ -35,8 +36,8 @@ export function ReceptionHome() {
   };
   const free = (title) => !stateOf(title);
   const toggle = (title) => setPicked({ ...picked, [flow]: sel.includes(title) ? sel.filter((x) => x !== title) : [...sel, title] });
-  const toggleHouse = (rooms) => {
-    const ids = rooms.map((r) => r.title).filter(free);
+  const toggleGroup = (rooms) => {
+    const ids = rooms.filter(free);
     const all = ids.length && ids.every((x) => sel.includes(x));
     setPicked({ ...picked, [flow]: all ? sel.filter((x) => !ids.includes(x)) : [...new Set([...sel, ...ids])] });
   };
@@ -81,22 +82,27 @@ export function ReceptionHome() {
 
     ${!task ? html`<div class="card slim note-soft"><${Icon} name="info-circle" size=${24} /><span>${t('rec.noFlow')}</span></div>` : null}
 
+    <${Segmented} value=${house} onChange=${setHouse} label=${t('rec.title')} options=${houses.map(({ h, floors }) => {
+      const n = floors.reduce((c, x) => c + x.rooms.filter((r) => sel.includes(r)).length, 0);
+      return { value: h, label: t('house.n', { n: h }) + (n ? ' (' + n + ')' : '') };
+    })} />
+
     <div class="rec-houses">
-      ${houses.map(({ h, rooms }) => html`<section class="rec-house" key=${h} aria-label=${t('house.n', { n: h })}>
-        <header><h3>${t('house.n', { n: h })}</h3>
-          <button type="button" class="pick" onClick=${() => toggleHouse(rooms)}>${t('rec.selectAll')}</button></header>
+      ${houses.filter((x) => x.h === house).map(({ h, floors }) => floors.map(({ f, rooms }) => html`<section class="rec-house" key=${h + '-' + f} aria-label=${t('house.n', { n: h }) + ', ' + t('floor.n', { n: f })}>
+        <header><h3>${t('floor.n', { n: f })}</h3>
+          <button type="button" class="pick" onClick=${() => toggleGroup(rooms)}>${t('rec.selectAll')}</button></header>
         <div class="rec-rooms">
-          ${rooms.map((r) => {
-            const st = stateOf(r.title), on = sel.includes(r.title);
-            return html`<button type="button" key=${r.title} role="checkbox" aria-checked=${on || !!st} disabled=${!!st || !task}
-              class=${'rec-room' + (on ? ' on' : '') + (st ? ' ' + st : '')} onClick=${() => toggle(r.title)}>
+          ${rooms.map((code) => {
+            const st = stateOf(code), on = sel.includes(code);
+            return html`<button type="button" key=${code} role="checkbox" aria-checked=${on || !!st} disabled=${!!st || !task} aria-label=${t('house.n', { n: h }) + ', ' + t('floor.n', { n: f }) + ', ' + code}
+              class=${'rec-room' + (on ? ' on' : '') + (st ? ' ' + st : '')} onClick=${() => toggle(code)}>
               <span class="rec-box"><${Icon} name="check" size=${20} /></span>
-              <b>${r.label}</b>
+              <b>${code}</b>
               ${st ? html`<small>${t('rec.' + st)}</small>` : null}
             </button>`;
           })}
         </div>
-      </section>`)}
+      </section>`))}
     </div>
 
     <form class="rec-other" onSubmit=${addOther}>

@@ -680,4 +680,5 @@ Limpar o chão`,
   "quick.daily": `Diário`,
   "quick.weekly": `Semanal`,
   "quick.monthly": `Mensal`,
+  "floor.n": `Andar {n}`,
 };

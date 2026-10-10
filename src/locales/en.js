@@ -680,4 +680,5 @@ Wipe the floor`,
   "quick.daily": `Daily`,
   "quick.weekly": `Weekly`,
   "quick.monthly": `Monthly`,
+  "floor.n": `Floor {n}`,
 };

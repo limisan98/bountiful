@@ -680,4 +680,5 @@ Vloer dweilen`,
   "quick.daily": `Dagelijks`,
   "quick.weekly": `Wekelijks`,
   "quick.monthly": `Maandelijks`,
+  "floor.n": `Verdieping {n}`,
 };

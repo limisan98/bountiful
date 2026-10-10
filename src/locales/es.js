@@ -680,4 +680,5 @@ Fregar el suelo`,
   "quick.daily": `Diario`,
   "quick.weekly": `Semanal`,
   "quick.monthly": `Mensual`,
+  "floor.n": `Planta {n}`,
 };
