@@ -433,7 +433,7 @@ input[type="date"].input, input[type="time"].input { appearance: none; -webkit-a
 .block-main small { display: flex; align-items: center; gap: 4px; font-size: 11.5px; opacity: .8; white-space: nowrap; overflow: hidden; }
 .block.tiny { padding: 4px 10px; align-items: center; }
 .block.tiny .block-main { flex-direction: row; align-items: center; gap: 8px; }
-.block.done { opacity: .78; }
+
 
 .now { position: absolute; left: 44px; right: 0; height: 2px; background: var(--coral); z-index: 3; pointer-events: none; }
 .now i { position: absolute; left: -5px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--coral); }
@@ -893,9 +893,6 @@ a, img, svg { -webkit-touch-callout: none; -webkit-user-drag: none; }
 .req-chip.todo { background: var(--st-todo); color: var(--st-todo-ink); }
 .req-chip.doing { background: var(--st-doing); color: var(--st-doing-ink); }
 .req-chip.done { background: var(--st-done); color: var(--st-done-ink); }
-.block.todo { box-shadow: inset 4px 0 0 #B9C3C0; }
-.block.doing { box-shadow: inset 4px 0 0 #F2B91C; }
-.block.done { box-shadow: inset 4px 0 0 #3DB767; opacity: 1; }
 
 
 /* ---- One task line with its extras: select tick, person, start button ---- */

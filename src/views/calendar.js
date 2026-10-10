@@ -4,6 +4,7 @@ import { t, friendlyError } from '../i18n.js';
 import { Icon, Avatar, Segmented, Sheet, Empty } from '../ui.js';
 import { isSupervisor } from '../roles.js';
 import { colorStyle } from '../color.js';
+import { STATUS_ICON_COLOR, badgeStatus } from '../ui.js';
 import { ensureMonth, itemName } from '../data.js';
 import { ymd, parseYmd, addDays, addMonths, monthKey, monthGrid, startOfWeek, weekdayNames, fmt, todayYmd, toMin, hhmm, dur, taskGoal, hasTime, timeKey, pad } from '../time.js';
 import { AssignmentRow, AssignmentSheet, AssignSheet } from './assign.js';
@@ -79,16 +80,18 @@ export function CalendarView() {
         ${grid.slice(0, rows * 7).map((d) => {
           const k = ymd(d);
           const list = days[k] || [];
+          // colours follow the status of the tasks (waiting = coral, not started = lavender, in progress = yellow, done = lime)
           const colors = [];
-          list.forEach((a) => { const tk = s.tasks[a.task_id]; if (tk && !colors.includes(tk.color)) colors.push(tk.color); });
-          const counts = {};
-          list.forEach((a) => { counts[a.task_id] = (counts[a.task_id] || 0) + 1; });
-          const groups = Object.entries(counts).map(([id, n]) => [s.tasks[id], n]).filter(([tk]) => tk);
+          list.forEach((a) => { if (!s.tasks[a.task_id]) return; const c = STATUS_ICON_COLOR[badgeStatus(a)]; if (!colors.includes(c)) colors.push(c); });
+          const counts = {}, sts = {};
+          list.forEach((a) => { counts[a.task_id] = (counts[a.task_id] || 0) + 1; (sts[a.task_id] = sts[a.task_id] || []).push(badgeStatus(a)); });
+          const worst = (arr) => ['waiting', 'todo', 'doing', 'done'].find((x) => arr.includes(x));
+          const groups = Object.entries(counts).map(([id, n]) => [s.tasks[id], n, STATUS_ICON_COLOR[worst(sts[id])]]).filter(([tk]) => tk);
           const out = d.getMonth() !== cursor.getMonth();
           return html`<button key=${k} class=${'day' + (out ? ' out' : '') + (k === today ? ' today' : '') + (list.length ? ' has' : '')}
             onClick=${() => setOpenDay(k)} aria-label=${fmt(d, { weekday: 'long', day: 'numeric', month: 'long' })}>
             <span class="day-n">${d.getDate()}</span>
-            <span class="day-chips">${groups.slice(0, 3).map(([tk, n]) => html`<i style=${`--c:${tk.color}`}>${tk.name}${n > 1 ? ' ×' + n : ''}</i>`)}${groups.length > 3 ? html`<b>+${groups.length - 3}</b>` : null}</span>
+            <span class="day-chips">${groups.slice(0, 3).map(([tk, n, col]) => html`<i style=${`--c:${col}`}>${tk.name}${n > 1 ? ' ×' + n : ''}</i>`)}${groups.length > 3 ? html`<b>+${groups.length - 3}</b>` : null}</span>
             <span class="dots">${colors.slice(0, 3).map((c) => html`<i style=${`--c:${c}`}></i>`)}${colors.length > 3 ? html`<b>+</b>` : null}</span>
           </button>`;
         })}
@@ -204,7 +207,7 @@ function Timeline({ list, day, onOpen }) {
         const h = Math.max(30, px(it.e) - px(it.s) - 3);
         const w = 100 / it.lanes;
         return html`<button key=${a.id} class=${'block ' + a.status + (h < 52 ? ' tiny' : '')} onClick=${() => onOpen(a.id)}
-          style=${`${colorStyle(tk.color)};top:${px(it.s)}px;height:${h}px;left:calc(${it.lane * w}% + 1px);width:calc(${w}% - 4px)`}>
+          style=${`${colorStyle(STATUS_ICON_COLOR[badgeStatus(a)])};top:${px(it.s)}px;height:${h}px;left:calc(${it.lane * w}% + 1px);width:calc(${w}% - 4px)`}>
           <span class="block-ic"><${Icon} name=${a.status === 'done' ? 'circle-check' : tk.icon} size=${16} /></span>
           <span class="block-main"><b>${itemName(a)}</b>
             <small>${who ? html`<${Avatar} profile=${who} size=${16} ring=${false} />${who.display_name.split(' ')[0]} · ` : null}${hhmm(a.start_time)}–${hhmm(a.end_time)}</small></span>
