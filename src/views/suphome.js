@@ -1,7 +1,7 @@
 import { html, useState, useEffect } from '../../assets/vendor/htm-preact.js';
 import { useStore, toast } from '../store.js';
 import { t, currentLocale, friendlyError } from '../i18n.js';
-import { Icon, Avatar, Empty, TaskBadge, Sheet } from '../ui.js';
+import { Icon, Avatar, Empty, TaskBadge, Sheet, badgeStatus } from '../ui.js';
 import { colorStyle } from '../color.js';
 import { isSupervisor } from '../roles.js';
 import { assignmentsOn, giveTasks, distribute, ensureMonth, itemName } from '../data.js';
@@ -94,7 +94,7 @@ export function SupervisorHome() {
       <div class="list tight">${updates.map(({ r, a }) => {
         const tk = s.tasks[a.task_id], who = s.profiles[a.assignee];
         return html`<button class="update" key=${a.id} onClick=${() => setOpen(a.id)} style=${colorStyle(tk.color)}>
-          <${TaskBadge} icon=${tk.icon} color=${tk.color} size=${40} />
+          <${TaskBadge} icon=${tk.icon} status=${badgeStatus(a)} size=${40} />
           <span class="update-main"><b>${itemName(a)}</b><small>${who ? who.display_name.split(' ')[0] : ''} · ${dur(r.minutes_spent)} <em class=${r.minutes_spent > r.goal_minutes ? 'over' : ''}>/ ${dur(r.goal_minutes)}</em></small></span>
         </button>`;
       })}</div></section>` : null}

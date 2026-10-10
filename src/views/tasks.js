@@ -2,7 +2,7 @@ import { html, useState } from '../../assets/vendor/htm-preact.js';
 import { TimeField } from '../pickers.js';
 import { useStore, toast } from '../store.js';
 import { t, friendlyError } from '../i18n.js';
-import { Icon, TaskBadge, Segmented, Field, Sheet, IconPicker, ColorPicker, Empty, useSheetControl } from '../ui.js';
+import { Icon, TaskBadge, Segmented, Field, Sheet, IconPicker, Empty, useSheetControl } from '../ui.js';
 import { saveTask, archiveTask, areaName, areaOf } from '../data.js';
 import { TASK_ICONS, PALETTE } from '../config.js';
 import { hhmm, toMin, dur, taskGoal, weekdayNames, todayYmd, addDays, parseYmd, ymd } from '../time.js';
@@ -44,7 +44,7 @@ export function LibraryView() {
         <span class="count">${g.items.length}</span></h3>
       <div class="list grid">
         ${g.items.map((x) => html`<button class="person task-row" key=${x.id} onClick=${() => setEditing(x)}>
-          <${TaskBadge} icon=${x.icon} color=${x.color} size=${50} />
+          <${TaskBadge} icon=${x.icon} size=${50} />
           <span class="person-main">
             <span class="person-name">${x.name}</span>
             <span class="person-mail">${windowText(x)} · ${goalText(x)}</span>
@@ -149,7 +149,7 @@ export function TaskEditor({ task, onClose, onSaved }) {
         <span class="field-hint">${t('tasks.templateHint')}</span></div>` : null}
 
       <div class="editor-head">
-        <${TaskBadge} icon=${f.icon} color=${f.color} size=${64} />
+        <${TaskBadge} icon=${f.icon} size=${64} />
         <${Field} label=${t('task.name')}><input class="input" value=${f.name} required maxlength="80" onInput=${(e) => up({ name: e.target.value })} /><//>
       </div>
       ${suggestions.length ? html`<div class="chips pop suggest"><span class="mini-label">${t('tasks.suggest')}</span>${suggestions.map((x) => html`<button type="button" key=${x.id} class="pick tpl" style=${colorStyle(x.color)} onClick=${() => useTemplate(x)}>
@@ -163,7 +163,6 @@ export function TaskEditor({ task, onClose, onSaved }) {
 
       <div class="field"><span class="field-label">${t('task.icon')}</span>
         <${IconPicker} value=${f.icon} onChange=${(v) => up({ icon: v })} icons=${TASK_ICONS} color=${f.color} /></div>
-      <div class="field"><span class="field-label">${t('task.color')}</span><${ColorPicker} value=${f.color} onChange=${(v) => up({ color: v })} /></div>
 
       <div class="field"><span class="field-label">${t('task.area')}</span>
         <div class="chips">
@@ -282,7 +281,7 @@ export function TimeGoals({ onClose }) {
   return html`<${Sheet} title=${t('goals.title')} onClose=${onClose} control=${ctl}>
     <p class="muted small-text">${t('goals.sub')}</p>
     <div class="list tight">
-      ${list.map((x) => html`<div class="goal-row" key=${x.id}><${TaskBadge} icon=${x.icon} color=${x.color} size=${42} />
+      ${list.map((x) => html`<div class="goal-row" key=${x.id}><${TaskBadge} icon=${x.icon} size=${42} />
         <span class="goal-main"><b>${x.name}</b><small>${windowText(x)}</small></span>${stepper(x.id)}</div>`)}
     </div>
     <button class="btn" disabled=${busy || !n} onClick=${save}><${Icon} name="check" size=${20} />${n ? t('goals.saveN', { n }) : t('team.save')}</button>

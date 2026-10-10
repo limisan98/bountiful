@@ -37,7 +37,7 @@ export function InviteCard({ inv, m, mine }) {
     <div class="inv-top"><span class="inv-ic"><${Icon} name="replace" size=${18} /></span>
       <span>${t('invite.title', { from: from ? from.display_name.split(' ')[0] : t('chat.former'), to: to ? to.display_name.split(' ')[0] : t('chat.former') })}</span></div>
     <div class="inv-task" style=${tk ? colorStyle(tk.color) : ''}>
-      ${tk ? html`<${TaskBadge} icon=${tk.icon} color=${tk.color} size=${44} />` : null}
+      ${tk ? html`<${TaskBadge} icon=${tk.icon} size=${44} />` : null}
       <span class="inv-task-main"><b>${tk ? tk.name : m.body}</b>${a ? html`<small>${dayText(a)}</small>` : null}</span>
     </div>
     ${inv.note ? html`<p class="inv-note">${inv.note}</p>` : null}
@@ -89,7 +89,7 @@ export function InviteSheet({ onClose }) {
         ${!mine.length ? html`<p class="muted small-text">${t('invite.noTasks')}</p>` : null}
         <div class="invite-tasks">${mine.map((a) => { const tk = s.tasks[a.task_id]; return html`<button type="button" key=${a.id} class=${'task-pick' + (asg === a.id ? ' on' : '')}
           style=${colorStyle(tk.color)} onClick=${() => setAsg(a.id)}>
-          <${TaskBadge} icon=${tk.icon} color=${tk.color} size=${40} />
+          <${TaskBadge} icon=${tk.icon} size=${40} />
           <span><b>${tk.name}</b><small>${dayText(a)}</small></span></button>`; })}</div>
       </div>
       <div class="field"><span class="field-label">${t('invite.pickPerson')}</span>

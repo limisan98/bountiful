@@ -47,8 +47,12 @@ export function RoleChip({ role, small }) {
 }
 
 // ---- A task's colored icon square ----
-export function TaskBadge({ icon, color, size = 46 }) {
-  return html`<span class="badge" style=${`--s:${size}px;${colorStyle(color)}`}><${Icon} name=${icon} size=${Math.round(size * 0.52)} /></span>`;
+// Task icon colour follows the STATUS (not chosen by anyone): waiting for a person = coral, not started = lavender, in progress = yellow, done = lime.
+// Without a status (task library, templates) the icon is the brand mint.
+const STATUS_ICON_COLOR = { waiting: '#FA897B', todo: '#CCABD8', doing: '#FFDD94', done: '#D0E6A5' };
+export const badgeStatus = (a) => (a ? (!a.assignee && a.status !== 'done' ? 'waiting' : a.status) : null);
+export function TaskBadge({ icon, status, size = 46 }) {
+  return html`<span class=${'badge' + (status ? ' st-' + status : '')} style=${`--s:${size}px;${colorStyle(STATUS_ICON_COLOR[status] || '#86E3CE')}`}><${Icon} name=${icon} size=${Math.round(size * 0.52)} /></span>`;
 }
 
 // ---- Segmented control: a row of pills with a sliding highlight ----

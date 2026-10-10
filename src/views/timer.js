@@ -45,7 +45,7 @@ export function TimerSheet({ title, icon, color, startedAt, goal, steps, stepsDo
           <circle class="bar" cx="110" cy="110" r=${R} stroke-dasharray=${C} stroke-dashoffset=${C * (1 - pct)} />
         </svg>
         <div class="timer-mid">
-          <${TaskBadge} icon=${icon} color=${color} size=${44} />
+          <${TaskBadge} icon=${icon} status="doing" size=${44} />
           <b class="timer-clock" role="timer">${clock(sec)}</b>
           <span class="timer-goal">${t('timer.goal', { time: dur(goal) })}</span>
         </div>

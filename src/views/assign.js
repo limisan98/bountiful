@@ -1,7 +1,7 @@
 import { html, useState, useEffect } from '../../assets/vendor/htm-preact.js';
 import { useStore, toast } from '../store.js';
 import { t, friendlyError } from '../i18n.js';
-import { Icon, Avatar, TaskBadge, Segmented, Field, Sheet, PersonLine, Empty, useSheetControl } from '../ui.js';
+import { Icon, Avatar, TaskBadge, badgeStatus, Segmented, Field, Sheet, PersonLine, Empty, useSheetControl } from '../ui.js';
 import { isSupervisor, roleInfo } from '../roles.js';
 import { colorStyle } from '../color.js';
 import { startAssignment, saveSteps, finishAssignment, reopenAssignment, removeAssignment, editAssignment, planAssignments,
@@ -25,7 +25,7 @@ export function AssignmentRow({ a, onOpen, showPerson, selectable, selected, onT
   const person = a.assignee
     ? (who ? html`<span class="arow-person"><${Avatar} profile=${who} size=${22} ring=${false} /><span class="arow-who">${who.display_name}</span></span>` : null)
     : html`<span class="arow-person waiting"><${Icon} name="help-circle" size=${16} /><span class="arow-who">${t('task.waiting')}</span></span>`;
-  const body = html`<${TaskBadge} icon=${tk.icon} color=${tk.color} size=${46} />
+  const body = html`<${TaskBadge} icon=${tk.icon} status=${badgeStatus(a)} size=${46} />
     <span class="arow-main">
       <span class="arow-name">${itemName(a)}</span>
       ${showPerson ? person : null}
@@ -93,7 +93,7 @@ function DetailBody({ id, onClose, openTimer }) {
 
   return html`<${Sheet} title=${itemName(a)} kicker=${fmt(date, { weekday: 'long', day: 'numeric', month: 'long' })} onClose=${onClose} control=${ctl}>
     <div class="detail-top" style=${colorStyle(tk.color)}>
-      <${TaskBadge} icon=${tk.icon} color=${tk.color} size=${72} />
+      <${TaskBadge} icon=${tk.icon} status=${badgeStatus(a)} size=${72} />
       <div class="detail-chips">
         <${PriorityChip} task=${tk} />
         <span class=${'chip status-chip ' + a.status}><${Icon} name=${STATUS_ICON[a.status]} size=${15} />${t('status.' + a.status)}</span>
@@ -447,7 +447,7 @@ export function AssignSheet({ day, edit, onClose, presetTask }) {
 
   const taskCard = (x) => html`<button type="button" key=${x.id} class=${'task-pick' + (taskId === x.id ? ' on' : '')} style=${colorStyle(x.color)}
     onClick=${() => pickTask(x)} disabled=${!!edit && taskId !== x.id}>
-    <${TaskBadge} icon=${x.icon} color=${x.color} size=${40} />
+    <${TaskBadge} icon=${x.icon} size=${40} />
     <span><b>${x.name}</b><small>${x.kind === 'room' ? t('task.roomKind') : hhmm(x.start_time) + '–' + hhmm(x.end_time)}</small></span>
   </button>`;
 
