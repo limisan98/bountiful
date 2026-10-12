@@ -682,4 +682,5 @@ Vloer dweilen`,
   "quick.monthly": `Maandelijks`,
   "floor.n": `Verdieping {n}`,
   "rec.nowDone": `Kamer {room} is klaar`,
+  "quick.routines": `Routines op {day}`,
 };

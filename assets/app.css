@@ -471,7 +471,8 @@ body:has(.chat-shell) #app { height: 100dvh; display: flex; flex-direction: colu
 .sheet-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 24px 4px; flex: none; }
 .sheet-titles { min-width: 0; }
 .sheet-head h2 { font-size: 21px; font-weight: 800; overflow-wrap: anywhere; }
-.kicker { display: block; font-size: 12.5px; font-weight: 600; color: var(--ink-2); text-transform: capitalize; }
+.kicker { display: block; font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+.qa-sub::first-letter { text-transform: uppercase; }
 .sheet-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 14px 24px 30px; display: flex; flex-direction: column; gap: 26px; overscroll-behavior: contain; }
 .sheet-body > * { flex-shrink: 0; } /* keeps buttons and cards from being squashed when the sheet is full */
 @media (min-width: 700px) { .sheet-root { align-items: center; } .sheet { border-radius: var(--r-xl); max-height: 88dvh; } .sheet-grab { display: none; } }
@@ -1383,3 +1384,9 @@ select.input { appearance: auto; padding-right: 12px; }
 .vt-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 4px; }
 .vt-who { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; min-width: 0; }
 .vt-pill { flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 99px; background: #fff; font-size: 13px; font-weight: 800; color: var(--ink); }
+
+/* ---------- quick assign: weekday routines (e.g. Monday temple blocks) ---------- */
+.qa-routines { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.qa-sub { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 14px; font-weight: 700; color: var(--ink-2); }
+.qa-sub::first-letter { text-transform: uppercase; }
+.qa-sub svg { color: var(--ink-3); }

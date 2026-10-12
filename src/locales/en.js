@@ -682,4 +682,5 @@ Wipe the floor`,
   "quick.monthly": `Monthly`,
   "floor.n": `Floor {n}`,
   "rec.nowDone": `Room {room} is done`,
+  "quick.routines": `{day} routines`,
 };

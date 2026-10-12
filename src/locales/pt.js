@@ -682,4 +682,5 @@ Limpar o chão`,
   "quick.monthly": `Mensal`,
   "floor.n": `Andar {n}`,
   "rec.nowDone": `O quarto {room} está pronto`,
+  "quick.routines": `Rotinas de {day}`,
 };

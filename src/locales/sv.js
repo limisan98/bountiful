@@ -682,4 +682,5 @@ Torka golvet`,
   "quick.monthly": `Varje månad`,
   "floor.n": `Våning {n}`,
   "rec.nowDone": `Rum {room} är klart`,
+  "quick.routines": `Rutiner på {day}`,
 };

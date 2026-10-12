@@ -193,10 +193,13 @@ export async function cancelMeeting(id) { putMeeting(await api.cancelMeeting(id)
 
 // ---- the name of a planned task: "Room cleaning · 12" (rooms carry their room number in the title) ----
 // ---- ready-made area checklists ("presets", supabase/014): one per area and cleaning depth ----
-export const presetsOfArea = (areaId) => Object.values(state.presets).filter((p) => p.area_id === areaId).sort((a, b) => a.level - b.level);
+export const presetsOfArea = (areaId) => Object.values(state.presets).filter((p) => p.area_id === areaId && !p.key).sort((a, b) => a.level - b.level);
+// named routines (supabase/017): only offered on their weekday (1 = Monday), e.g. the Temple interior blocks
+export const routinesOfArea = (areaId, weekday) => Object.values(state.presets).filter((p) => p.area_id === areaId && p.key && (!p.weekday || p.weekday === weekday)).sort((a, b) => a.sort - b.sort);
+export const routineName = (p) => (p.names && (p.names[state.lang] || p.names.en)) || p.key;
 export const presetLang = (p) => (p.steps && p.steps[state.lang] ? state.lang : 'en');
 export const presetSteps = (p) => (p.steps && p.steps[presetLang(p)]) || [];
-export const presetName = (p) => areaName(areaOf(p.area_id)) + ' · ' + t('preset.level' + p.level);
+export const presetName = (p) => p.key ? areaName(areaOf(p.area_id)) + ' · ' + routineName(p) : areaName(areaOf(p.area_id)) + ' · ' + t('preset.level' + p.level);
 // The first time a preset is used it becomes a normal library task (so timers, goals, reports and shift rules just work).
 // After that the same library task is used again. One per language, because the checklist is saved in the supervisor's language.
 export async function taskForPreset(p) {
@@ -206,7 +209,7 @@ export async function taskForPreset(p) {
   const area = areaOf(p.area_id);
   return saveTask({
     name: presetName(p), description: '', icon: area.icon || 'sparkles', color: area.color, area_id: area.id,
-    start_time: '07:00', end_time: '22:30', frequency: 'weekdays', weekdays: [], steps: presetSteps(p).map((x) => ({ title: x.title, description: '' })),
+    start_time: '07:00', end_time: '22:30', frequency: 'weekdays', weekdays: p.weekday ? [p.weekday] : [], steps: presetSteps(p).map((x) => ({ title: x.title, description: '' })),
     goal_minutes: p.goal_minutes, kind: 'task', priority: 'medium', auto: false, preset_id: p.id, preset_lang: lang,
   });
 }

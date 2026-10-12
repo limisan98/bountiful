@@ -5,6 +5,7 @@ import { useDemoApi } from './api.js';
 import { loadCore, startLive } from './data.js';
 import { ROLE_DEFAULTS } from './config.js';
 import { DEMO_AREAS, DEMO_PRESETS } from './demo-presets.js';
+import { DEMO_ROUTINES } from './demo-routines.js';
 import { ymd, addDays, isoWeekday, toMin, fromMin, todayYmd, taskGoal } from './time.js';
 
 let n = 0;
@@ -36,7 +37,7 @@ const areas = [
 ];
 DEMO_AREAS.forEach((a, i) => areas.push({ id: 'a' + (7 + i), name: null, ...a }));
 const guestRooms = [1, 2, 3, 4].flatMap((h) => [1, 2, 3].flatMap((f) => [1, 2, 3, 4, 5, 6].map((n) => ({ id: `g${h}${f}${n}`, house: h, floor: f, num: n, label: `${h}${f}${n}`, sort: h * 100 + f * 10 + n }))));
-const presets = DEMO_PRESETS.map((p, i) => ({ id: 'p' + (i + 1), area_id: areas.find((a) => a.key === p.area).id, level: p.level, goal_minutes: p.goal_minutes, steps: p.steps }));
+const presets = [...DEMO_PRESETS, ...DEMO_ROUTINES].map((p, i) => ({ id: 'p' + (i + 1), area_id: areas.find((a) => a.key === p.area).id, level: p.level, goal_minutes: p.goal_minutes, steps: p.steps, key: p.key || null, names: p.names || null, weekday: p.weekday || null, sort: p.sort || 0 }));
 const mk = (name, icon, color, area_id, s, e, frequency, weekdays, steps, description = '') => ({
   id: uid(), name, icon, color, area_id, start_time: s, end_time: e, frequency, weekdays, description,
   steps: steps.map((x) => ({ title: x[0], description: x[1] || '' })), deleted: false, kind: 'task', goal_minutes: null, priority: 'medium', auto: false, month_day: null, created_at: iso(-60, 9),

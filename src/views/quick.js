@@ -3,8 +3,8 @@ import { useStore, toast } from '../store.js';
 import { t, friendlyError } from '../i18n.js';
 import { Icon, Avatar, Sheet, Field, Segmented, useSheetControl } from '../ui.js';
 import { colorStyle } from '../color.js';
-import { areaName, presetsOfArea, presetSteps, taskForPreset, saveTask, planAssignments } from '../data.js';
-import { parseYmd, todayYmd, fmt, hhmm, toMin, dur } from '../time.js';
+import { areaName, presetsOfArea, routinesOfArea, routineName, presetSteps, taskForPreset, saveTask, planAssignments } from '../data.js';
+import { parseYmd, isoWeekday, todayYmd, fmt, hhmm, toMin, dur } from '../time.js';
 import { dayPlanned, shiftOf, capacityOf, loadOf, crewPeople, shiftName, problemText } from '../shifts.js';
 
 // How often each area is normally cleaned (an area can appear in several groups). Edit here to move an area.
@@ -30,6 +30,7 @@ export function QuickAssignSheet({ day, person: first, onClose }) {
   const [areaId, setAreaId] = useState(null);
   const [cad, setCad] = useState('daily');
   const [level, setLevel] = useState(1);
+  const [routineId, setRoutineId] = useState(null);
   const [name, setName] = useState('');
   const [minutes, setMinutes] = useState(30);
   const [where, setWhere] = useState(null);
@@ -51,7 +52,10 @@ export function QuickAssignSheet({ day, person: first, onClose }) {
 
   const areas = s.areas.filter((a) => presetsOfArea(a.id).length && (CADENCE[a.key] || ['daily']).includes(cad));
   const levels = areaId ? presetsOfArea(areaId) : [];
-  const preset = levels.find((p) => p.level === level) || levels[0] || null;
+  const routines = areaId ? routinesOfArea(areaId, isoWeekday(parseYmd(day))) : [];
+  const routine = routines.find((p) => p.id === routineId) || null;
+  const preset = routine || levels.find((p) => p.level === level) || levels[0] || null;
+  const presetLabel = (p) => p.key ? routineName(p) : t('preset.level' + p.level);
   const area = s.areas.find((a) => a.id === areaId);
   const goal = custom ? minutes : preset ? preset.goal_minutes : 0;
 
@@ -81,7 +85,7 @@ export function QuickAssignSheet({ day, person: first, onClose }) {
       } else tk = await taskForPreset(preset);
       await planAssignments([{ task_id: tk.id, assignee: who, day, start_time: null, end_time: null, note: '', kind: 'task', title: '' }]);
       setLast({ who: person.display_name.split(' ')[0], task: tk.name });
-      setAreaId(null); setLevel(1); setName(''); setLines(''); setWhere(null); setMinutes(30);
+      setAreaId(null); setRoutineId(null); setLevel(1); setName(''); setLines(''); setWhere(null); setMinutes(30);
     } catch (ex) { toast(friendlyError(ex), 'bad'); }
     setBusy(false);
   }
@@ -125,7 +129,7 @@ export function QuickAssignSheet({ day, person: first, onClose }) {
           <${Segmented} label=${t('quick.step2')} value=${cad} onChange=${(v) => { setCad(v); setAreaId(null); }}
             options=${[{ value: 'daily', label: t('quick.daily') }, { value: 'weekly', label: t('quick.weekly') }, { value: 'monthly', label: t('quick.monthly') }]} />
           <div class="qa-areas">
-            ${areas.map((a) => html`<button type="button" key=${a.id} class=${'qa-area' + (areaId === a.id ? ' on' : '')} aria-pressed=${areaId === a.id} style=${colorStyle(a.color)} onClick=${() => { setAreaId(a.id); setLevel(cad === 'monthly' && presetsOfArea(a.id).some((p) => p.level === 2) ? 2 : 1); }}>
+            ${areas.map((a) => html`<button type="button" key=${a.id} class=${'qa-area' + (areaId === a.id ? ' on' : '')} aria-pressed=${areaId === a.id} style=${colorStyle(a.color)} onClick=${() => { setAreaId(a.id); setRoutineId(null); setLevel(cad === 'monthly' && presetsOfArea(a.id).some((p) => p.level === 2) ? 2 : 1); }}>
               <span class="qa-area-ic"><${Icon} name=${a.icon || 'home'} size=${22} /></span><span>${areaName(a)}</span></button>`)}
           </div>
         </section>
@@ -133,12 +137,21 @@ export function QuickAssignSheet({ day, person: first, onClose }) {
         ${areaId ? html`<section class="qa-sec" aria-label=${t('quick.step3')}>
           ${stepHead(3, t('quick.step3'))}
           <div class="qa-levels" role="radiogroup" aria-label=${t('quick.step3')}>
-            ${levels.map((p) => html`<button type="button" role="radio" aria-checked=${preset && preset.level === p.level} key=${p.id} class=${'qa-level' + (preset && preset.level === p.level ? ' on' : '')} onClick=${() => setLevel(p.level)}>
+            ${levels.map((p) => html`<button type="button" role="radio" aria-checked=${!routine && preset && preset.level === p.level} key=${p.id} class=${'qa-level' + (!routine && preset && preset.level === p.level ? ' on' : '')} onClick=${() => { setRoutineId(null); setLevel(p.level); }}>
               <span class="qa-level-top"><${Icon} name=${LEVEL_ICON[p.level]} size=${22} /><b>${t('preset.level' + p.level)}</b></span>
               <span class="qa-level-hint">${t('quick.level' + p.level + 'Hint')}</span>
               <span class="qa-level-time"><${Icon} name="clock" size=${16} />${dur(p.goal_minutes)}</span>
             </button>`)}
           </div>
+          ${routines.length ? html`<div class="qa-routines">
+            <h4 class="qa-sub"><${Icon} name="calendar-event" size=${18} />${t('quick.routines', { day: fmt(parseYmd(day), { weekday: 'long' }) })}</h4>
+            <div class="qa-levels" role="radiogroup" aria-label=${t('quick.routines', { day: fmt(parseYmd(day), { weekday: 'long' }) })}>
+              ${routines.map((p) => html`<button type="button" role="radio" aria-checked=${routineId === p.id} key=${p.id} class=${'qa-level' + (routineId === p.id ? ' on' : '')} onClick=${() => setRoutineId(p.id)}>
+                <span class="qa-level-top"><${Icon} name="list-check" size=${22} /><b>${routineName(p)}</b></span>
+                <span class="qa-level-time"><${Icon} name="clock" size=${16} />${dur(p.goal_minutes)}</span>
+              </button>`)}
+            </div>
+          </div>` : null}
           ${preset ? html`<div class="qa-check">
             <p class="qa-check-head"><b>${t('quick.checklist')}</b><span>${t('quick.estimated', { time: dur(preset.goal_minutes) })} · ${t('quick.stepsN', { n: steps.length })}</span></p>
             <ol>${steps.map((x, i) => html`<li key=${i}><span class="qa-n sm">${i + 1}</span>${x.title}</li>`)}</ol>
@@ -170,7 +183,7 @@ export function QuickAssignSheet({ day, person: first, onClose }) {
       <div class="qa-foot">
         ${issue ? html`<p class="qa-warn" role="alert"><${Icon} name="alert-triangle" size=${18} />${problemText(issue)}</p>` : null}
         <div class="qa-sum">${stepHead(4, t('quick.step4'))}
-          <span>${person ? person.display_name : t('quick.pickWorker')}${goal && (custom ? name.trim() : preset) ? ' · ' + (custom ? name.trim() : area ? areaName(area) + ' · ' + t('preset.level' + preset.level) : '') + ' · ' + dur(goal) : ''}</span></div>
+          <span>${person ? person.display_name : t('quick.pickWorker')}${goal && (custom ? name.trim() : preset) ? ' · ' + (custom ? name.trim() : area ? areaName(area) + ' · ' + presetLabel(preset) : '') + ' · ' + dur(goal) : ''}</span></div>
         <button class="btn big-btn" type="button" disabled=${!ready} onClick=${assign}><${Icon} name="bolt" size=${22} />${t('quick.assignBtn')}</button>
         ${last ? html`<button class="btn soft" type="button" onClick=${() => ctl.close()}>${t('quick.finish')}</button>` : null}
       </div>
