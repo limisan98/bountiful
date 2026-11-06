@@ -27,7 +27,6 @@ export function WeeklyList({ day, compact }) {
   const sup = isSupervisor(me);
   const wk = weekStart();
   const lang = s.lang;
-  const [busy, setBusy] = useState(null);
   useEffect(() => { ensureWeekly(wk).catch(() => {}); }, [wk]);
 
   const d = WEEKLY.find((x) => x.day === day);
@@ -38,7 +37,6 @@ export function WeeklyList({ day, compact }) {
   const pct = items.length ? Math.round((done / items.length) * 100) : 0;
 
   async function tap(i) {
-    if (busy) return;
     const r = weeklyOf(wk, i);
     if (r && r.user_id !== me.id && !sup) {
       const p = s.profiles[r.user_id];
@@ -46,9 +44,7 @@ export function WeeklyList({ day, compact }) {
       return;
     }
     const next = !r ? 'doing' : r.status === 'doing' ? 'done' : null;
-    setBusy(i);
     try { await setWeeklyItem(wk, i, next); } catch (ex) { toast(friendlyError(ex), 'bad'); }
-    setBusy(null);
   }
 
   return html`<div class=${'weekly-list' + (compact ? ' compact' : '')}>
@@ -61,7 +57,7 @@ export function WeeklyList({ day, compact }) {
         const r = weeklyOf(wk, id(si, ii));
         const p = r ? s.profiles[r.user_id] : null;
         const st = r ? r.status : '';
-        return html`<button type="button" key=${ii} class=${'check-row weekly-row ' + st + (st === 'done' ? ' on' : '')} aria-pressed=${st === 'done'} disabled=${busy === id(si, ii)} onClick=${() => tap(id(si, ii))}>
+        return html`<button type="button" key=${ii} class=${'check-row weekly-row ' + st + (st === 'done' ? ' on' : '')} aria-pressed=${st === 'done'} onClick=${() => tap(id(si, ii))}>
           <span class="check-box">${st === 'doing' ? html`<${Icon} name="hourglass" size=${16} />` : html`<${Icon} name="check" size=${18} />`}</span>
           <span class="check-text"><b>${itemText(id(si, ii), txt, lang)}</b>
             ${r ? html`<span class="weekly-who"><${Avatar} profile=${p} name=${p ? p.display_name : ''} size=${22} ring=${false} />${p ? p.display_name.split(' ')[0] : ''} · ${r.status === 'done' ? t('status.done') : t('weekly.doing')}</span>` : null}

@@ -357,11 +357,18 @@ export async function ensureWeekly(week) {
 }
 // status null = clear the item
 export async function setWeeklyItem(week, item, status) {
-  await api.setWeekly(week, item, status);
-  const weekly = { ...state.weekly }, k = weeklyKey(week, item);
+  // show it at once, then save; if saving fails, put it back
+  const k = weeklyKey(week, item), before = state.weekly[k];
+  const weekly = { ...state.weekly };
   if (!status) delete weekly[k];
-  else weekly[k] = { week, item, status, user_id: (weekly[k] && weekly[k].user_id) || state.profile.id, updated_at: new Date().toISOString() };
+  else weekly[k] = { week, item, status, user_id: (before && before.user_id) || state.profile.id, updated_at: new Date().toISOString() };
   set({ weekly });
+  try { await api.setWeekly(week, item, status); } catch (ex) {
+    const back = { ...state.weekly };
+    if (before) back[k] = before; else delete back[k];
+    set({ weekly: back });
+    throw ex;
+  }
 }
 
 // ---- the handover logbook ----
