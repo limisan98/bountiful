@@ -66,8 +66,12 @@ export function RoomImportSheet({ onClose }) {
     try {
       let made = 0;
       for (const g of groups) {
-        const codes = g.items.filter((i) => !off[i.id]).map((i) => i.code);
-        if (codes.length) made += (await askRoomCleaning(g.day, g.flow, codes, '')).length;
+        // rooms with the same note go together (a note shows on the room's task)
+        const notes = [...new Set(g.items.filter((i) => !off[i.id]).map((i) => i.note || ''))];
+        for (const n of notes) {
+          const codes = g.items.filter((i) => !off[i.id] && (i.note || '') === n).map((i) => i.code);
+          if (codes.length) made += (await askRoomCleaning(g.day, g.flow, codes, n)).length;
+        }
       }
       toast(t('rimp.done', { n: made }) + (made < chosen.length ? ' · ' + t('rimp.dupes', { n: chosen.length - made }) : ''));
       ctl.close();
@@ -106,6 +110,7 @@ export function RoomImportSheet({ onClose }) {
         <div class="rimp-chips">${g.items.map((i) => html`<button type="button" key=${i.id} aria-pressed=${!off[i.id]}
           class=${'rimp-chip' + (off[i.id] ? ' off' : '') + (known.has(i.code) ? '' : ' unknown')} onClick=${() => setOff({ ...off, [i.id]: !off[i.id] })}>
           <${Icon} name=${off[i.id] ? 'x' : 'check'} size=${16} />${i.code}</button>`)}</div>
+        ${g.items.filter((i) => i.note && !off[i.id]).map((i) => html`<p class="rimp-note" key=${i.id}><b>${i.code}</b> ${i.note}</p>`)}
       </section>`)}
       ${items.some((i) => !known.has(i.code)) ? html`<p class="field-hint"><${Icon} name="alert-triangle" size=${14} /> ${t('rimp.unknownHint')}</p>` : null}
       <p class="field-hint">${t('rimp.tapHint')}</p>

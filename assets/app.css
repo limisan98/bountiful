@@ -1423,3 +1423,5 @@ select.input { appearance: auto; padding-right: 12px; }
 .rimp-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 46px; padding: 0 16px; border-radius: 99px; background: var(--brand-soft); color: var(--brand-ink); font-weight: 800; font-size: 17px; }
 .rimp-chip.unknown { background: color-mix(in srgb, var(--yellow) 45%, #fff); color: var(--ink); }
 .rimp-chip.off { background: var(--track); color: var(--ink-3); text-decoration: line-through; }
+.rimp-note { margin: 0; font-size: 14px; color: var(--ink-2); }
+.rimp-note b { color: var(--ink); margin-right: 4px; }

@@ -6,6 +6,7 @@ import { parseDateText, norm } from './teamsimport.js';
 const OUT = /check ?out|abreise|departure|salida|saida|vertrek|avresa|\bc\/o\b/;
 const IN = /check ?in|anreise|arrival|llegada|chegada|aankomst|ankomst|\bc\/i\b/;
 const DATE_RES = [/\d{4}-\d{1,2}-\d{1,2}/g, /\d{1,2}[./]\d{1,2}[./]\d{2,4}/g, /\d{1,2}\.\d{1,2}\./g, /\b\d{1,2}\.?\s+[A-Za-zÀ-ÿ]{3,}\.?(?:\s+\d{4})?/g];
+const SENT = /^\s*(sent|gesendet|date|datum|enviado|enviada|verzonden|skickat|enviada em)\b/i; // the date an email was sent is not the day of the list
 const TIME_RE = /\b\d{1,2}:\d{2}(?::\d{2})?\b/g;
 
 // A CSV / text table -> rows of cells (same shape as readXlsx)
@@ -49,7 +50,7 @@ function datesIn(line, dateOrder) {
 // rows: array of arrays of cells ({t,s,ymd?}) -> { items: [{id, code, day, flow}], sawDay, sawFlow }
 export function parseRooms(rows, { dateOrder = 'dmy' } = {}) {
   const items = []; const seen = new Set();
-  let curDay = null, curFlow = null, id = 0, sawDay = false, sawFlow = false;
+  let curDay = null, curFlow = null, id = 0, sawDay = false, sawFlow = false, last = null; // last = rooms of the latest line that had a (note)
   for (const cells of rows) {
     const parts = []; const cellDays = [];
     for (const c of cells || []) {
@@ -60,19 +61,27 @@ export function parseRooms(rows, { dateOrder = 'dmy' } = {}) {
     }
     const line = parts.join(' | ');
     const { found, rest } = datesIn(line, dateOrder);
-    const days = [...cellDays, ...found];
+    const days = SENT.test(line) ? [] : [...cellDays, ...found];
     const n = norm(line);
     const flow = OUT.test(n) && !(IN.test(n) && n.search(IN) < n.search(OUT)) ? 'checkout' : IN.test(n) ? 'checkin' : null;
     const codes = [...rest.matchAll(/(?<!\d[.,]?)[1-9]\d{2}(?![\d:]|[.,]\d)/g)].map((m) => m[0]);
     if (days.length) { curDay = days[0]; sawDay = true; }
     if (flow) { curFlow = flow; sawFlow = true; }
-    // a row with no room in it is a heading (it only sets the day / the type for the rows below)
+    // "313 (Stu)": what is in brackets next to a room is kept as a note for that room;
+    // plain lines right under such a room ("time not known, please ask") belong to the note too
+    const note = [...rest.matchAll(/\(([^)]{1,60})\)/g)].map((m) => m[1].trim()).filter(Boolean).join(', ');
+    const added = [];
     for (const code of codes) {
       const key = `${days[0] || curDay}|${flow || curFlow}|${code}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      items.push({ id: ++id, code, day: days[0] || curDay, flow: flow || curFlow });
+      const it = { id: ++id, code, day: days[0] || curDay, flow: flow || curFlow, note };
+      items.push(it); added.push(it);
     }
+    if (codes.length) last = note ? added : null;
+    else if (last && last.length && !days.length && !flow && line.trim()) {
+      last.forEach((it) => { it.note = (it.note ? it.note + (it.more ? ' ' : ' – ') : '') + line.trim(); it.more = true; if (it.note.length > 300) it.note = it.note.slice(0, 300); });
+    } else if (days.length || flow) last = null;
   }
   return { items, sawDay, sawFlow };
 }
