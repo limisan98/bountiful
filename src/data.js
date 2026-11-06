@@ -408,7 +408,7 @@ export function startLive() {
     const del = type === 'DELETE';
     try { notifyLive(table, type, row); } catch (_) { /* a notification problem must never break live updates */ }
     const rec = (del ? old : row) || {};
-    const id = table === 'assignment_reports' ? rec.assignment_id : rec.id;
+    const id = table === 'assignment_reports' ? rec.assignment_id : table === 'weekly_checks' ? weeklyKey(rec.week, rec.item) : rec.id; // the weekly checklist has no id column
     if (!id) return;
     if (table === 'profiles') {
       const profiles = { ...state.profiles };
