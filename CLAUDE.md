@@ -36,7 +36,7 @@ Data flow: `src/api.js` (all Supabase calls, plus `subscribe` for Realtime) → 
 | All CSS | `assets/app.css` (one file; sections are commented) |
 | PWA (install + notification display) | `sw.js`, `manifest.webmanifest` |
 | Shift rules (JS twin of the DB rules), priorities | `src/shifts.js` (`problem()`, `capacityOf`, `PRIORITIES`) |
-| Weekly checklist Mon–Sat (custodians + supervisor; shared in table `weekly_checks`, tap = Doing → Done → clear, shows who; text in English only) | `src/views/weekly.js` (`WeeklyView`, `WeeklyList`, `WeeklyToday` card on the custodian + supervisor homes), content `src/weeklydata.js`, `ensureWeekly/setWeeklyItem` in `data.js`, RPC `set_weekly_check`, `supabase/018` (applied 2026-11-06), route `#/weekly` |
+| Weekly checklist Mon–Sat (custodians + supervisor; shared in table `weekly_checks`, tap = Doing → Done → clear, shows who; text in all six languages) | `src/weeklytext.js` (translations, same order as `weeklydata.js`: if you add/remove a line, add/remove it in all 5 languages), `src/views/weekly.js` (`WeeklyView`, `WeeklyList`, `WeeklyToday` card on the custodian + supervisor homes), content `src/weeklydata.js`, `ensureWeekly/setWeeklyItem` in `data.js`, RPC `set_weekly_check`, `supabase/018` (applied 2026-11-06), route `#/weekly` |
 | Shifts screen (on duty now + week plan), Logbook screen | `src/views/shifts.js`, `src/views/logbook.js` |
 | Teams Shifts Excel import (supervisor, Shifts → Week plan → "Import from Teams") | `src/xlsx.js` (zip+XML reader, no library), `src/teamsimport.js` (parser + name/shift matching), `src/views/shiftimport.js` (drop zone, review table), `importShiftPlan` in `data.js` |
 | "Larger text and buttons" switch (class `big-text` on `<html>`) | `src/access.js`, profile sheet |
