@@ -1397,3 +1397,22 @@ select.input { appearance: auto; padding-right: 12px; }
 .weekly-sec { display: flex; flex-direction: column; gap: 10px; }
 .weekly-page .check-row { min-height: 56px; align-items: center; }
 .weekly-page .check-row.on .check-text b { text-decoration: line-through; }
+
+.weekly-prog { display: flex; align-items: center; gap: 12px; }
+.weekly-prog b { font-size: 14px; color: var(--ink-2); white-space: nowrap; }
+.weekly-prog .weekly-bar { flex: 1; }
+.weekly-list { display: flex; flex-direction: column; gap: 14px; }
+.weekly-sec-title { margin: 4px 0 0; font-size: 16px; font-weight: 800; }
+.weekly-row.doing { background: color-mix(in srgb, var(--yellow) 35%, #fff); }
+.weekly-row.doing .check-box { background: var(--yellow); border-color: var(--yellow); color: var(--ink); }
+.weekly-row.on { background: color-mix(in srgb, var(--lime) 35%, #fff); }
+.weekly-row.on .check-box { background: var(--mint); border-color: var(--mint); color: var(--ink); }
+.weekly-who { display: inline-flex; align-items: center; gap: 6px; font-size: 13px !important; color: var(--ink-2); font-weight: 600; }
+.weekly-card { background: #fff; border-radius: var(--r-l); box-shadow: var(--shadow-s); padding: 8px 12px 14px; display: flex; flex-direction: column; gap: 12px; }
+.weekly-card .check-row { background: var(--bg, #F6FAF8); box-shadow: none; }
+.weekly-card-head { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 60px; padding: 4px 8px; text-align: left; color: var(--ink-2); }
+.weekly-card-head > span:nth-child(2) { flex: 1; display: flex; flex-direction: column; }
+.weekly-card-head b { font-size: 17px; color: var(--ink); }
+.weekly-card-head small { font-size: 13px; text-transform: capitalize; }
+.weekly-card-ic { width: 44px; height: 44px; border-radius: 16px; background: var(--brand-soft); color: var(--brand-ink); display: grid; place-items: center; }
+.weekly-all { margin: 0 auto; }

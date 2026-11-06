@@ -8,6 +8,7 @@ import { todayYmd, addDays, ymd, parseYmd, fmt, dur, hasTime, timeText, timeKey,
 import { shiftOf, shiftName, goalOf, priorityOf } from '../shifts.js';
 import { AssignmentSheet } from './assign.js';
 import { PriorityChip } from './tasks.js';
+import { WeeklyToday } from './weekly.js';
 import { WriteSheet, defaultLogBlock } from './logbook.js';
 
 // The custodian's whole app in one screen: today's tasks as big check buttons, and a handover note one tap away.
@@ -85,6 +86,8 @@ export function CustodianHome() {
       <div class="progress"><i style=${`width:${pct}%`}></i></div>
       <b>${done.length === mine.length ? t('home.allDone') : t('home.progress', { done: done.length, total: mine.length })}</b>
     </div>` : null}
+
+    <${WeeklyToday} />
 
     ${earlier.length ? html`<section class="my-sec"><h3 class="section-title">${t('my.earlier')}<span class="count">${earlier.length}</span></h3>
       <div class="my-list">${earlier.map((a) => card(a, true))}</div></section>` : null}

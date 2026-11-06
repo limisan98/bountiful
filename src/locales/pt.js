@@ -687,4 +687,8 @@ Limpar o chão`,
   "weekly.sub": `Tarefas de limpeza de segunda a sábado`,
   "weekly.progress": `{done} de {total} feitas`,
   "weekly.reset": `Limpar este dia`,
+  "weekly.today": `Lista de hoje`,
+  "weekly.doing": `A fazer`,
+  "weekly.taken": `{name} está nesta tarefa`,
+  "weekly.week": `Semana toda`,
 };

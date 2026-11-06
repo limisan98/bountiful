@@ -1,7 +1,7 @@
 // Loading, live updates and the small "selectors" the screens use. All database calls go through api.js.
 import { api } from './api.js';
 import { state, set } from './store.js';
-import { addMonths, monthKey, lastOfMonth, toMin, timeKey, ymd, addDays } from './time.js';
+import { addMonths, monthKey, lastOfMonth, toMin, timeKey, ymd, addDays, startOfWeek } from './time.js';
 import { departmentOf, isSupervisor } from './roles.js';
 import { t } from './i18n.js';
 import { notifyLive } from './notify.js';
@@ -12,7 +12,7 @@ const months = new Set();
 
 export function resetData() {
   months.clear();
-  set({ roles: {}, areas: [], tasks: {}, presets: {}, guestRooms: [], assignments: {}, reports: {}, messages: {}, chatOpen: null, person: null, comments: {}, shifts: {}, shiftPlan: {}, contracts: {}, logbook: {}, digests: {}, invites: {}, meetings: {}, settings: {} });
+  set({ roles: {}, areas: [], tasks: {}, presets: {}, guestRooms: [], assignments: {}, reports: {}, messages: {}, chatOpen: null, person: null, comments: {}, shifts: {}, shiftPlan: {}, contracts: {}, logbook: {}, weekly: {}, digests: {}, invites: {}, meetings: {}, settings: {} });
 }
 
 // ---- loading ----
@@ -346,6 +346,24 @@ export async function autoAllocate(day) {
   return placed;
 }
 
+// ---- the weekly checklist: who is doing / has finished each item (shared by the custodian team) ----
+export const weeklyKey = (week, item) => week + '|' + item;
+export const weeklyOf = (week, item) => state.weekly[weeklyKey(week, item)] || null;
+export async function ensureWeekly(week) {
+  const rows = await api.loadWeekly(week);
+  const weekly = Object.fromEntries(Object.entries(state.weekly).filter(([, r]) => r.week !== week));
+  rows.forEach((r) => { weekly[weeklyKey(r.week, r.item)] = r; });
+  set({ weekly });
+}
+// status null = clear the item
+export async function setWeeklyItem(week, item, status) {
+  await api.setWeekly(week, item, status);
+  const weekly = { ...state.weekly }, k = weeklyKey(week, item);
+  if (!status) delete weekly[k];
+  else weekly[k] = { week, item, status, user_id: (weekly[k] && weekly[k].user_id) || state.profile.id, updated_at: new Date().toISOString() };
+  set({ weekly });
+}
+
 // ---- the handover logbook ----
 export const logbookOn = (day) => Object.values(state.logbook).filter((e) => e.day === day).sort((a, b) => a.created_at.localeCompare(b.created_at));
 export async function ensureLogbook(from, to) {
@@ -376,6 +394,7 @@ export async function refresh() {
     if (inCrew(state.profile)) {
       const logs = await api.loadLogbook(ymd(addDays(new Date(), -7)), ymd(addDays(new Date(), 1)));
       patch.logbook = { ...state.logbook, ...byId(logs) };
+      try { const wk = ymd(startOfWeek(new Date())); const rows = await api.loadWeekly(wk); patch.weekly = Object.fromEntries([...Object.entries(state.weekly).filter(([, r]) => r.week !== wk), ...rows.map((r) => [weeklyKey(r.week, r.item), r])]); } catch (_) { /* ignore */ }
     }
     set(patch);
   } catch (_) { /* try again next time */ } finally { refreshing = false; }
@@ -434,6 +453,10 @@ export function startLive() {
       const uid = rec.user_id;
       if (del) { if (uid) delete contracts[uid]; } else contracts[uid] = row;
       set({ contracts });
+    } else if (table === 'weekly_checks') {
+      const weekly = { ...state.weekly };
+      if (del) delete weekly[weeklyKey(rec.week, rec.item)]; else weekly[weeklyKey(row.week, row.item)] = row;
+      set({ weekly });
     } else if (table === 'logbook_entries') {
       const logbook = { ...state.logbook };
       if (del) delete logbook[id]; else logbook[id] = row;

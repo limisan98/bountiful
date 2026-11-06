@@ -687,4 +687,8 @@ Wipe the floor`,
   "weekly.sub": `Cleaning tasks from Monday to Saturday`,
   "weekly.progress": `{done} of {total} done`,
   "weekly.reset": `Clear this day`,
+  "weekly.today": `Today’s checklist`,
+  "weekly.doing": `Doing it`,
+  "weekly.taken": `{name} is on this item`,
+  "weekly.week": `Whole week`,
 };

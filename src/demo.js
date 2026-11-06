@@ -6,7 +6,7 @@ import { loadCore, startLive } from './data.js';
 import { ROLE_DEFAULTS } from './config.js';
 import { DEMO_AREAS, DEMO_PRESETS } from './demo-presets.js';
 import { DEMO_ROUTINES } from './demo-routines.js';
-import { ymd, addDays, isoWeekday, toMin, fromMin, todayYmd, taskGoal } from './time.js';
+import { startOfWeek, ymd, addDays, isoWeekday, toMin, fromMin, todayYmd, taskGoal } from './time.js';
 
 let n = 0;
 const uid = () => 'demo-' + (++n) + '-' + Math.random().toString(16).slice(2, 8);
@@ -253,6 +253,11 @@ const shiftPlan = [];
   });
 }
 const logbook = [];
+const weeklyRows = []; // weekly checklist ticks, with a few pretend ones for today
+{
+  const wk = ymd(startOfWeek(now())), d = Math.min(isoWeekday(now()), 6), at = new Date().toISOString();
+  weeklyRows.push({ week: wk, item: `${d}.0.0`, status: 'done', user_id: 'd2', updated_at: at }, { week: wk, item: `${d}.0.1`, status: 'doing', user_id: 'd3', updated_at: at });
+}
 {
   const mkLog = (off, block, who, body, extra = {}) => logbook.push({ id: uid(), day: ymd(addDays(now(), off)), block, body, area_id: null, follow_up: false, resolved_by: null, resolved_at: null, author: who, created_at: iso(off, block === 'morning' ? 11 : block === 'afternoon' ? 17 : 21, 10), ...extra });
   mkLog(-1, 'evening', 'd4', 'The chapel carpet by the side door is wet. A fan is running, please check it in the morning.', { follow_up: true, area_id: 'a1' });
@@ -436,6 +441,13 @@ const demoApi = {
     const e = logbook.find((x) => x.id === id);
     e.resolved_by = done ? state.profile.id : null; e.resolved_at = done ? new Date().toISOString() : null;
     return clone(e);
+  },
+  async loadWeekly(week) { return clone(weeklyRows.filter((r) => r.week === week)); },
+  async setWeekly(week, item, status) {
+    const i = weeklyRows.findIndex((r) => r.week === week && r.item === item);
+    if (!status) { if (i >= 0) weeklyRows.splice(i, 1); return; }
+    if (i >= 0) { weeklyRows[i].status = status; weeklyRows[i].updated_at = new Date().toISOString(); }
+    else weeklyRows.push({ week, item, status, user_id: state.profile.id, updated_at: new Date().toISOString() });
   },
   async deleteLogEntry(id) { const i = logbook.findIndex((x) => x.id === id); if (i >= 0) logbook.splice(i, 1); },
   async loadMyStats(since) {

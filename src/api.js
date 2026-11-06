@@ -173,12 +173,15 @@ const real = {
     await rpc('resolve_logbook', { p_id: id, p_done: done });
     return ok(await sb.from('logbook_entries').select('*').eq('id', id).single());
   },
+  // ---- weekly checklist (who is doing / finished each item) ----
+  async loadWeekly(week) { return ok(await sb.from('weekly_checks').select('*').eq('week', week)); },
+  async setWeekly(week, item, status) { await rpc('set_weekly_check', { p_week: week, p_item: item, p_status: status }); },
   async deleteLogEntry(id) { ok(await sb.from('logbook_entries').delete().eq('id', id)); },
 
   // ---- live updates: `handler(table, eventType, newRow, oldRow)` ----
   subscribe(handler) {
     const ch = sb.channel('bountiful-live');
-    ['profiles', 'roles', 'areas', 'tasks', 'assignments', 'assignment_reports', 'messages', 'assignment_comments', 'custodian_reports', 'task_invites', 'meeting_requests', 'shift_plan', 'staff_contracts', 'logbook_entries'].forEach((table) => {
+    ['profiles', 'roles', 'areas', 'tasks', 'assignments', 'assignment_reports', 'messages', 'assignment_comments', 'custodian_reports', 'task_invites', 'meeting_requests', 'shift_plan', 'staff_contracts', 'logbook_entries', 'weekly_checks'].forEach((table) => {
       ch.on('postgres_changes', { event: '*', schema: 'public', table }, (p) => handler(table, p.eventType, p.new, p.old));
     });
     ch.subscribe();

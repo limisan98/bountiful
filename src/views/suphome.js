@@ -10,6 +10,7 @@ import { dayPlanned, shiftOf, capacityOf, loadOf, goalOf, crewPeople, problem } 
 import { AssignmentSheet, AssignmentRow, GiveSheet } from './assign.js';
 import { QuickAssignSheet } from './quick.js';
 import { MoreLinks } from './more.js';
+import { WeeklyToday } from './weekly.js';
 
 const FLOW_TIME = { checkout: '10:00', checkin: '14:00' };
 
@@ -98,6 +99,8 @@ export function SupervisorHome() {
           <span class="update-main"><b>${itemName(a)}</b><small>${who ? who.display_name.split(' ')[0] : ''} · ${dur(r.minutes_spent)} <em class=${r.minutes_spent > r.goal_minutes ? 'over' : ''}>/ ${dur(r.goal_minutes)}</em></small></span>
         </button>`;
       })}</div></section>` : null}
+
+    <${WeeklyToday} />
 
     <${MoreLinks} routes=${['weekly', 'tasks', 'calendar', 'shifts', 'logbook', 'reports', 'meetings', 'team']} />
 

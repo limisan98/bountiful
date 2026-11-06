@@ -687,4 +687,8 @@ Torka golvet`,
   "weekly.sub": `Städuppgifter från måndag till lördag`,
   "weekly.progress": `{done} av {total} klara`,
   "weekly.reset": `Rensa den här dagen`,
+  "weekly.today": `Dagens lista`,
+  "weekly.doing": `Pågår`,
+  "weekly.taken": `{name} är på det här`,
+  "weekly.week": `Hela veckan`,
 };

@@ -687,4 +687,8 @@ Boden wischen`,
   "weekly.sub": `Reinigungsaufgaben von Montag bis Samstag`,
   "weekly.progress": `{done} von {total} erledigt`,
   "weekly.reset": `Diesen Tag zurücksetzen`,
+  "weekly.today": `Checkliste für heute`,
+  "weekly.doing": `In Arbeit`,
+  "weekly.taken": `{name} macht das schon`,
+  "weekly.week": `Ganze Woche`,
 };

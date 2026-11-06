@@ -687,4 +687,8 @@ Fregar el suelo`,
   "weekly.sub": `Tareas de limpieza de lunes a sábado`,
   "weekly.progress": `{done} de {total} hechas`,
   "weekly.reset": `Borrar este día`,
+  "weekly.today": `Lista de hoy`,
+  "weekly.doing": `Haciéndolo`,
+  "weekly.taken": `{name} está con esta tarea`,
+  "weekly.week": `Toda la semana`,
 };

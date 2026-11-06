@@ -687,4 +687,8 @@ Vloer dweilen`,
   "weekly.sub": `Schoonmaaktaken van maandag tot zaterdag`,
   "weekly.progress": `{done} van {total} klaar`,
   "weekly.reset": `Deze dag wissen`,
+  "weekly.today": `Lijst van vandaag`,
+  "weekly.doing": `Bezig`,
+  "weekly.taken": `{name} is hiermee bezig`,
+  "weekly.week": `Hele week`,
 };
