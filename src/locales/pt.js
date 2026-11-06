@@ -683,4 +683,8 @@ Limpar o chão`,
   "floor.n": `Andar {n}`,
   "rec.nowDone": `O quarto {room} está pronto`,
   "quick.routines": `Rotinas de {day}`,
+  "nav.weekly": `Lista semanal`,
+  "weekly.sub": `Tarefas de limpeza de segunda a sábado`,
+  "weekly.progress": `{done} de {total} feitas`,
+  "weekly.reset": `Limpar este dia`,
 };

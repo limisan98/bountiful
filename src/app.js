@@ -18,6 +18,7 @@ import { TasksView } from './views/board.js';
 import { ReportsView } from './views/reports.js';
 import { MeetingsView } from './views/meetings.js';
 import { ShiftsView } from './views/shifts.js';
+import { WeeklyView } from './views/weekly.js';
 import { LogbookView } from './views/logbook.js';
 import { ProfileSheet } from './views/profile.js';
 import { PersonSheet } from './views/person.js';
@@ -31,6 +32,7 @@ const NAV = [
   { route: 'team', icon: 'id', label: 'nav.team', dock: true },
   { route: 'meetings', icon: 'calendar-month', label: 'nav.meetings', desk: true }, // in the desktop sidebar; on phones reachable from Home
   { route: 'reports', icon: 'clipboard-data', label: 'nav.reports', only: 'sup', desk: true }, // in the desktop sidebar; on phones reachable from Home
+  { route: 'weekly', icon: 'clipboard-check', label: 'nav.weekly', only: 'crew', desk: true }, // Mon–Sat cleaning checklist (custodians + supervisor)
   { route: 'shifts', icon: 'clock', label: 'nav.shifts', only: 'sup', desk: true }, // who is on duty + week plan (supervisor only)
   { route: 'logbook', icon: 'book', label: 'nav.logbook', only: 'sup', desk: true }, // shared handover book (supervisor reads it; the crew writes notes from their home screen)
 ];
@@ -61,7 +63,7 @@ function Shell() {
   // Each kind of person gets only the few screens they need; everything else is one tap away under "More" on their home screen.
   const kind = sup ? 'sup' : inCrew(me) ? 'crew' : 'rec';
   const LITE = { crew: ['home', 'chat'], rec: ['home', 'tasks'] };
-  const MENU = { crew: ['tasks', 'calendar', 'meetings', 'team'], rec: ['calendar', 'meetings', 'team'] };
+  const MENU = { crew: ['weekly', 'tasks', 'calendar', 'meetings', 'team'], rec: ['calendar', 'meetings', 'team'] };
   const dock = kind === 'sup' ? NAV.filter((n) => (n.dock || n.desk) && allowed(n))
     : LITE[kind].map((r) => NAV.find((n) => n.route === r)).filter((n) => n && allowed(n))
       .map((n) => (n.route === 'home' ? { ...n, icon: kind === 'crew' ? 'home' : 'bed', label: kind === 'crew' ? 'nav.myTasks' : 'nav.rooms', desk: false } : { ...n, desk: false }));
@@ -78,6 +80,7 @@ function Shell() {
   else if (active === 'meetings') view = html`<${MeetingsView} />`;
   else if (active === 'shifts') view = html`<${ShiftsView} />`;
   else if (active === 'logbook') view = html`<${LogbookView} />`;
+  else if (active === 'weekly') view = html`<${WeeklyView} />`;
 
   const nav = html`<nav class="dock" aria-label="Main" style=${`--n:${dockN};--i:${Math.max(idx, 0)}`}>
     <div class="dock-brand"><${LogoMark} size=${40} /><b>Bountiful</b></div>

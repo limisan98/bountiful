@@ -683,4 +683,8 @@ Torka golvet`,
   "floor.n": `Våning {n}`,
   "rec.nowDone": `Rum {room} är klart`,
   "quick.routines": `Rutiner på {day}`,
+  "nav.weekly": `Veckolista`,
+  "weekly.sub": `Städuppgifter från måndag till lördag`,
+  "weekly.progress": `{done} av {total} klara`,
+  "weekly.reset": `Rensa den här dagen`,
 };

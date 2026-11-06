@@ -683,4 +683,8 @@ Wipe the floor`,
   "floor.n": `Floor {n}`,
   "rec.nowDone": `Room {room} is done`,
   "quick.routines": `{day} routines`,
+  "nav.weekly": `Weekly checklist`,
+  "weekly.sub": `Cleaning tasks from Monday to Saturday`,
+  "weekly.progress": `{done} of {total} done`,
+  "weekly.reset": `Clear this day`,
 };

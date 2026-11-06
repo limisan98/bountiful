@@ -683,4 +683,8 @@ Boden wischen`,
   "floor.n": `Etage {n}`,
   "rec.nowDone": `Zimmer {room} ist fertig`,
   "quick.routines": `Routinen am {day}`,
+  "nav.weekly": `Wochen-Checkliste`,
+  "weekly.sub": `Reinigungsaufgaben von Montag bis Samstag`,
+  "weekly.progress": `{done} von {total} erledigt`,
+  "weekly.reset": `Diesen Tag zurücksetzen`,
 };

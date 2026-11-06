@@ -683,4 +683,8 @@ Fregar el suelo`,
   "floor.n": `Planta {n}`,
   "rec.nowDone": `La habitación {room} está lista`,
   "quick.routines": `Rutinas del {day}`,
+  "nav.weekly": `Lista semanal`,
+  "weekly.sub": `Tareas de limpieza de lunes a sábado`,
+  "weekly.progress": `{done} de {total} hechas`,
+  "weekly.reset": `Borrar este día`,
 };

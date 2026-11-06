@@ -1,0 +1,78 @@
+// The weekly cleaning checklist (Monday to Saturday), from the "Weekly checklists" document.
+// Text is English (the document's language). Each day: sections with an optional title and a list of items.
+export const WEEKLY = [
+  { day: 1, sections: [
+    { title: 'Temple', items: [
+      'Clean the entire temple',
+      'Baseboards, complete bathrooms (don’t forget tile grooves, and the tops of doors and mirrors)',
+      'Clean doors',
+      'Dust furniture',
+      'Clean the stalls/cubicles inside, outside, and on top',
+      'Arrange the books on the benches in the chapel',
+      'Clean frames, chairs, tables',
+      'Clean the main door of the temple inside and outside',
+      'Clean the stained glass windows (carefully, because they are fragile)',
+      'Don’t forget to clean the veil rods (cloth with glass cleaner)',
+      'Clean all wooden handrails in the entire temple',
+      'Clean the drinking fountains with descaling product',
+      'Organize the scriptures in the baptistry, chapel, and celestial room',
+      'Don’t forget there is a trash bin in the pulpit in the chapel',
+      'Don’t forget to remove the paper from the shredder in the office',
+      'Refill the cabinets with toilet paper, paper towels, and spare cups for the week',
+      'Clean and wash the stairs',
+    ] },
+    { title: 'Rooms', note: 'On Monday everything in the rooms must be cleaned', items: [
+      'Baseboards, furniture, closets',
+      'Check the windows and clean if necessary',
+      'Scrub the showers and fully clean the bathrooms',
+    ] },
+  ] },
+  { day: 2, sections: [
+    { title: 'Morning', items: [
+      'Finish the rooms and clean the guest cafeteria',
+      'In the cafeteria: clean inside and outside of fridges, clean the cabinets of the islands, clean all tables and chairs (don’t forget chair legs)',
+      'Baseboards, cabinet doors, kitchen counters, and sinks',
+      'Clean the entire nursery',
+    ] },
+    { title: 'Afternoon', items: [
+      'Clean the entire visitors’ center, visitors’ center offices, bathrooms, reception, and entrances',
+      'Clean the annex bathrooms, guest laundry room, and missionaries’ cafeteria',
+      'Clean the corridor',
+    ] },
+  ] },
+  { day: 3, sections: [{ items: [
+    'Clean rooms if there are any',
+    'Clean the store (first thing in the morning)',
+    'Clean the stairs of house 1 and house 2',
+    'Clean visitors’ center bathrooms and annex bathrooms',
+    'Check and clean all main doors',
+    'Remove temple trash at 14:00',
+    'Remove trash from the guest cafeteria and bathrooms before going to the temple',
+  ] }] },
+  { day: 4, sections: [{ items: [
+    'Rooms, visitors’ center bathrooms, and annex bathrooms',
+    'Main doors',
+    'Clean stairs of house 3 and house 4 and laundry in the house',
+    'Lightly clean the missionaries’ kitchen',
+    'Clean the technicians’ offices',
+    'Clean the Hausmeister cafeteria',
+    'Remove temple trash at 14:00',
+    'Remove trash before going to the temple',
+  ] }] },
+  { day: 5, sections: [{ items: [
+    'Bathrooms',
+    'Visitors’ center',
+    'Check the guest cafeteria to see if vacuuming is needed or if paper towels need restocking',
+    'Clean the area where we pray and the gardeners’ area',
+    'Clean main doors',
+    'Remove temple trash at 14:00',
+    'Remove trash from the guests’ cafeteria and bathrooms before going to the temple',
+  ] }] },
+  { day: 6, sections: [{ items: [
+    '11:00 Remove the trash from the 3 bathrooms in the temple',
+    'Clean the rooms',
+    'Remove the trash from the 3 cafeteria rooms (guests, missionaries, and Hausmeisters)',
+    'Remove the trash from all the bathrooms',
+    'Remove the trash from the luggage area and the guests’ trash',
+  ] }] },
+];

@@ -8,6 +8,7 @@ const META = {
   chat: { icon: 'messages', label: 'nav.chat' },
   team: { icon: 'id', label: 'nav.team' },
   meetings: { icon: 'calendar-month', label: 'nav.meetings' },
+  weekly: { icon: 'clipboard-check', label: 'nav.weekly' },
   shifts: { icon: 'clock', label: 'nav.shifts' },
   logbook: { icon: 'book', label: 'nav.logbook' },
   reports: { icon: 'clipboard-data', label: 'nav.reports' },

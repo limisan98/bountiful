@@ -99,7 +99,7 @@ export function SupervisorHome() {
         </button>`;
       })}</div></section>` : null}
 
-    <${MoreLinks} routes=${['tasks', 'calendar', 'shifts', 'logbook', 'reports', 'meetings', 'team']} />
+    <${MoreLinks} routes=${['weekly', 'tasks', 'calendar', 'shifts', 'logbook', 'reports', 'meetings', 'team']} />
 
     ${person ? html`<${PersonDaySheet} id=${person} day=${today} now=${now} onClose=${() => setPerson(null)} />` : null}
     ${quick ? html`<${QuickAssignSheet} day=${today} onClose=${() => setQuick(false)} />` : null}

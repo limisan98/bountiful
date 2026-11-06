@@ -1390,3 +1390,10 @@ select.input { appearance: auto; padding-right: 12px; }
 .qa-sub { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 14px; font-weight: 700; color: var(--ink-2); }
 .qa-sub::first-letter { text-transform: uppercase; }
 .qa-sub svg { color: var(--ink-3); }
+
+/* weekly checklist */
+.weekly-bar { height: 10px; border-radius: 99px; background: var(--track); overflow: hidden; }
+.weekly-bar span { display: block; height: 100%; border-radius: 99px; background: var(--mint); transition: width .4s var(--ease); }
+.weekly-sec { display: flex; flex-direction: column; gap: 10px; }
+.weekly-page .check-row { min-height: 56px; align-items: center; }
+.weekly-page .check-row.on .check-text b { text-decoration: line-through; }

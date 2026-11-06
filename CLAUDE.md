@@ -36,6 +36,7 @@ Data flow: `src/api.js` (all Supabase calls, plus `subscribe` for Realtime) → 
 | All CSS | `assets/app.css` (one file; sections are commented) |
 | PWA (install + notification display) | `sw.js`, `manifest.webmanifest` |
 | Shift rules (JS twin of the DB rules), priorities | `src/shifts.js` (`problem()`, `capacityOf`, `PRIORITIES`) |
+| Weekly checklist Mon–Sat (custodians + supervisor; ticks per device per week in localStorage; text in English only) | `src/views/weekly.js`, content `src/weeklydata.js`, route `#/weekly` |
 | Shifts screen (on duty now + week plan), Logbook screen | `src/views/shifts.js`, `src/views/logbook.js` |
 | Teams Shifts Excel import (supervisor, Shifts → Week plan → "Import from Teams") | `src/xlsx.js` (zip+XML reader, no library), `src/teamsimport.js` (parser + name/shift matching), `src/views/shiftimport.js` (drop zone, review table), `importShiftPlan` in `data.js` |
 | "Larger text and buttons" switch (class `big-text` on `<html>`) | `src/access.js`, profile sheet |

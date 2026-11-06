@@ -683,4 +683,8 @@ Vloer dweilen`,
   "floor.n": `Verdieping {n}`,
   "rec.nowDone": `Kamer {room} is klaar`,
   "quick.routines": `Routines op {day}`,
+  "nav.weekly": `Weeklijst`,
+  "weekly.sub": `Schoonmaaktaken van maandag tot zaterdag`,
+  "weekly.progress": `{done} van {total} klaar`,
+  "weekly.reset": `Deze dag wissen`,
 };
