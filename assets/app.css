@@ -1416,3 +1416,10 @@ select.input { appearance: auto; padding-right: 12px; }
 .weekly-card-head small { font-size: 13px; text-transform: capitalize; }
 .weekly-card-ic { width: 44px; height: 44px; border-radius: 16px; background: var(--brand-soft); color: var(--brand-ink); display: grid; place-items: center; }
 .weekly-all { margin: 0 auto; }
+
+/* room list import */
+.rimp-group { display: flex; flex-direction: column; gap: 10px; }
+.rimp-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.rimp-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 46px; padding: 0 16px; border-radius: 99px; background: var(--brand-soft); color: var(--brand-ink); font-weight: 800; font-size: 17px; }
+.rimp-chip.unknown { background: color-mix(in srgb, var(--yellow) 45%, #fff); color: var(--ink); }
+.rimp-chip.off { background: var(--track); color: var(--ink-3); text-decoration: line-through; }

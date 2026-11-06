@@ -11,6 +11,7 @@ import { AssignmentSheet, AssignmentRow, GiveSheet } from './assign.js';
 import { QuickAssignSheet } from './quick.js';
 import { MoreLinks } from './more.js';
 import { WeeklyToday } from './weekly.js';
+import { RoomImportSheet } from './roomimport.js';
 
 const FLOW_TIME = { checkout: '10:00', checkin: '14:00' };
 
@@ -21,6 +22,7 @@ export function SupervisorHome() {
   const loc = currentLocale();
   const [now, setNow] = useState(new Date());
   const [quick, setQuick] = useState(false);
+  const [roomImp, setRoomImp] = useState(false);
   const [open, setOpen] = useState(null);
   const [person, setPerson] = useState(null);
   useEffect(() => { const i = setInterval(() => setNow(new Date()), 30000); return () => clearInterval(i); }, []);
@@ -69,6 +71,7 @@ export function SupervisorHome() {
     </header>
 
     <button type="button" class="btn big-btn quick-btn" onClick=${() => setQuick(true)}><${Icon} name="bolt" size=${26} />${t('quick.button')}<span>${t('quick.buttonSub')}</span></button>
+    <button type="button" class="btn soft" onClick=${() => setRoomImp(true)}><${Icon} name="bed" size=${22} />${t('rimp.button')}</button>
 
     ${feed.length ? html`<section class="req-banner rise" aria-label=${t('sup.requests')}>
       <header><span class="req-bell"><${Icon} name="bell-ringing" size=${26} /></span>
@@ -105,6 +108,7 @@ export function SupervisorHome() {
     <${MoreLinks} routes=${['weekly', 'tasks', 'calendar', 'shifts', 'logbook', 'reports', 'meetings', 'team']} />
 
     ${person ? html`<${PersonDaySheet} id=${person} day=${today} now=${now} onClose=${() => setPerson(null)} />` : null}
+    ${roomImp ? html`<${RoomImportSheet} onClose=${() => setRoomImp(false)} />` : null}
     ${quick ? html`<${QuickAssignSheet} day=${today} onClose=${() => setQuick(false)} />` : null}
     ${open ? html`<${AssignmentSheet} id=${open} onClose=${() => setOpen(null)} />` : null}
   </div>`;
