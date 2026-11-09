@@ -785,4 +785,8 @@ Boden wischen`,
   "rx.kindList": `Wochenliste`,
   "rx.unassigned": `Nicht zugewiesen`,
   "rx.fromList": `In der Wochenliste abgehakt`,
+  "sup.progressWhat": `Das ist alles, was für heute vorgesehen ist, und wie weit es ist.`,
+  "sup.progressList": `Checkliste`,
+  "sup.progressTasks": `Weitere Aufgaben`,
+  "sup.progressRooms": `Zimmer`,
 };

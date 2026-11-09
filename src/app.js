@@ -12,6 +12,7 @@ import { loadCore, startLive, stopLive, resetData, inCrew, refresh } from './dat
 import { AuthScreen } from './views/auth.js';
 import { HomeView } from './views/home.js';
 import { SupBell } from './views/suphome.js';
+import { RECEPTION_ON } from './config.js';
 import { CalendarView } from './views/calendar.js';
 import { ChatView } from './views/chat.js';
 import { TeamView } from './views/team.js';
@@ -130,7 +131,7 @@ addEventListener('click', (e) => {
 function Splash() { return html`<div class="boot"><img class="boot-logo" src="assets/logo/logo.svg" alt=""></div>`; }
 
 function DemoBanner() {
-  const roles = [['custodian_supervisor', 'custodian_supervisor'], ['custodian', 'custodian'], ['receptionist', 'receptionist']];
+  const roles = [['custodian_supervisor', 'custodian_supervisor'], ['custodian', 'custodian'], ...(RECEPTION_ON ? [['receptionist', 'receptionist']] : [])];
   return html`<div class="demo-banner"><span>${t('demo.banner')}</span>
     ${roles.map(([r]) => html`<a href=${'?demo=' + r} class=${state.profile && state.profile.role === r ? 'on' : ''}>${roleInfo(r).name}</a>`)}
   </div>`;

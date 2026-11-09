@@ -6,7 +6,7 @@ import { isSupervisor } from '../roles.js';
 import { WEEKLY } from '../weeklydata.js';
 import { WEEKLY_TEXT } from '../weeklytext.js';
 import { todayYmd, parseYmd, startOfWeek, addDays, ymd, isoWeekday, fmt } from '../time.js';
-import { ensureWeekly, weeklyOf, setWeeklyItem, assignmentsOn, ensureMonth, finishAssignment, reopenAssignment } from '../data.js';
+import { ensureWeekly, weeklyOf, setWeeklyItem, assignmentsOn, ensureMonth, itemName, finishAssignment, reopenAssignment } from '../data.js';
 import { goalOf } from '../shifts.js';
 
 // The Monday-to-Saturday cleaning checklist, shared by the whole custodian team (supervisor included).
@@ -179,17 +179,17 @@ export function WeeklyToday() {
   </section>`;
 }
 
-// What is designated for a day, as a flat list with a state each - used by the supervisor's progress ring:
+// What is designated for a day, as a flat list with a state each - used by the supervisor's progress ring and its detail:
 // the weekday's checklist lines, every guest room (Monday) or the rooms left over from Monday (Tuesday on), and the other tasks given for that day.
-// state: 'done' | 'doing' | 'waiting' (given out by nobody yet) | 'todo'
+// -> [{ kind: 'line' | 'room' | 'task', label, state: 'done' | 'doing' | 'waiting' (given out by nobody yet) | 'todo', who: profile id or '' }]
 export function dayProgressItems(s, dayYmd) {
   const wk = ymd(startOfWeek(parseYmd(dayYmd))), wd = isoWeekday(parseYmd(dayYmd)), d = WEEKLY.find((x) => x.day === wd);
+  const lang = s.lang;
   const asg = assignmentsOn(dayYmd).filter((a) => s.tasks[a.task_id]);
   const stateOfAsg = (a) => (a.status === 'done' ? 'done' : !a.assignee ? 'waiting' : a.status === 'doing' ? 'doing' : 'todo');
-  const tickOf = (id) => { const r = weeklyOf(wk, id); return r ? r.status : null; };
   const roomAsg = {}; asg.filter((a) => a.kind === 'room').forEach((a) => { if (!roomAsg[a.title] || roomAsg[a.title].status === 'done') roomAsg[a.title] = a; });
-  const roomState = (label, id) => {
-    const tk = tickOf(id), a = roomAsg[label];
+  const roomState = (label, tick) => {
+    const tk = tick ? tick.status : null, a = roomAsg[label];
     if (tk === 'done' || (a && a.status === 'done')) return 'done';
     if (tk === 'doing' || (a && a.status === 'doing')) return 'doing';
     if (a && !a.assignee) return 'waiting';
@@ -197,16 +197,19 @@ export function dayProgressItems(s, dayYmd) {
   };
   const out = [];
   if (d) {
-    const rooms = [...s.guestRooms];
+    const rooms = [...s.guestRooms].sort((x, y) => x.house - y.house || x.floor - y.floor || x.num - y.num);
     const monDone = (label) => { const w = weeklyOf(wk, `1.r.${label}`); return (!!w && w.status === 'done') || assignmentsOn(wk).some((a) => a.kind === 'room' && a.title === label && a.status === 'done'); };
     d.sections.forEach((sec, si) => {
-      if (!sec.info && !sec.carry) sec.items.forEach((_, ii) => { const k = tickOf(`${wd}.${si}.${ii}`); out.push(k === 'done' ? 'done' : k === 'doing' ? 'doing' : 'todo'); });
+      if (!sec.info && !sec.carry) sec.items.forEach((txt, ii) => {
+        const id = `${wd}.${si}.${ii}`, k = weeklyOf(wk, id);
+        out.push({ kind: 'line', label: itemText(id, txt, lang), state: k && k.status === 'done' ? 'done' : k && k.status === 'doing' ? 'doing' : 'todo', who: k ? k.user_id : '' });
+      });
       const list = sec.rooms ? rooms : sec.carry && isoWeekday(new Date()) >= 2 ? rooms.filter((r) => !monDone(r.label)) : [];
-      list.forEach((r) => out.push(roomState(r.label, `${wd}.r.${r.label}`)));
+      list.forEach((r) => { const k = weeklyOf(wk, `${wd}.r.${r.label}`), a = roomAsg[r.label]; out.push({ kind: 'room', label: r.label, state: roomState(r.label, k), who: k ? k.user_id : (a && a.assignee) || '' }); });
     });
   }
   const known = new Set(s.guestRooms.map((r) => r.label));
-  Object.values(roomAsg).filter((a) => !known.has(a.title)).forEach((a) => out.push(stateOfAsg(a))); // requested rooms that are not in the room list
-  asg.filter((a) => a.kind !== 'room').forEach((a) => out.push(stateOfAsg(a)));
+  Object.values(roomAsg).filter((a) => !known.has(a.title)).forEach((a) => out.push({ kind: 'room', label: a.title, state: stateOfAsg(a), who: a.assignee || '' })); // requested rooms that are not in the room list
+  asg.filter((a) => a.kind !== 'room').forEach((a) => out.push({ kind: 'task', label: itemName(a), state: stateOfAsg(a), who: a.assignee || '' }));
   return out;
 }

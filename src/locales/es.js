@@ -785,4 +785,8 @@ Fregar el suelo`,
   "rx.kindList": `Lista semanal`,
   "rx.unassigned": `Sin asignar`,
   "rx.fromList": `Marcada en la lista semanal`,
+  "sup.progressWhat": `Esto es todo lo que estaba designado para hoy y cómo va.`,
+  "sup.progressList": `Lista del día`,
+  "sup.progressTasks": `Otras tareas`,
+  "sup.progressRooms": `Habitaciones`,
 };

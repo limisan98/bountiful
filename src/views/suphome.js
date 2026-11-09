@@ -12,6 +12,7 @@ import { QuickAssignSheet } from './quick.js';
 import { MoreLinks } from './more.js';
 import { WeeklyToday, dayProgressItems, weekStart } from './weekly.js';
 import { RoomImportSheet } from './roomimport.js';
+import { RECEPTION_ON } from '../config.js';
 
 const FLOW_TIME = { checkout: '10:00', checkin: '14:00' };
 
@@ -31,7 +32,8 @@ export function SupervisorHome() {
   // progress = everything designated for today: the weekday's checklist, the rooms and the other tasks given out (updates live with the ticks)
   const items = dayProgressItems(s, today);
   const stat = { done: 0, doing: 0, todo: 0, waiting: 0 };
-  items.forEach((st) => { stat[st] += 1; });
+  items.forEach((i) => { stat[i.state] += 1; });
+  const [openProg, setOpenProg] = useState(false);
   const total = items.length;
   const pct = total ? Math.round((stat.done / total) * 100) : 0;
 
@@ -60,11 +62,14 @@ export function SupervisorHome() {
     <button type="button" class="btn soft" onClick=${() => setRoomImp(true)}><${Icon} name="bed" size=${22} />${t('rimp.button')}</button>
 
     <section class="rise sum-card" aria-label=${t('sup.progress')}>
-      <h3 class="section-title">${t('sup.progress')}</h3>
+      <button type="button" class="prog-head" aria-expanded=${openProg} disabled=${!total} onClick=${() => setOpenProg(!openProg)}>
+        <h3 class="section-title">${t('sup.progress')}</h3>${total ? html`<${Icon} name=${openProg ? 'caret-up' : 'caret-down'} size=${22} />` : null}
+      </button>
       ${total ? html`<div class="sum-body">
         <div class="sum-ring" role="img" aria-label=${t('sup.percent', { n: pct }) + ': ' + legend.map((l) => l[1] + ' ' + l[2]).join(', ')} ><svg viewBox="0 0 100 100" aria-hidden="true">${arcs}</svg><span><b>${pct}%</b><small>${t('status.done')}</small></span></div>
         <ul class="ring-legend">${legend.map(([k, label, n]) => html`<li key=${k}><i class=${'lg-' + k}></i><span>${label}</span><b>${n}</b></li>`)}</ul>
       </div>` : html`<${Empty} icon="calendar-event" text=${t('home.teamEmpty')} />`}
+      ${openProg && total ? html`<${ProgressDetail} items=${items} />` : null}
     </section>
 
     ${updates.length ? html`<section class="rise">
@@ -160,7 +165,7 @@ export function SupBell() {
   const groups = {};
   Object.values(s.assignments).filter((a) => a.kind === 'room' && a.requested_by && !a.assignee && a.status !== 'done' && a.day >= today && s.tasks[a.task_id])
     .forEach((a) => { const k = a.day + '|' + a.task_id + '|' + a.requested_by; (groups[k] = groups[k] || { key: k, day: a.day, task: s.tasks[a.task_id], by: a.requested_by, items: [] }).items.push(a); });
-  const feed = Object.values(groups).sort((x, y) => x.day.localeCompare(y.day) || (x.task.room_flow === 'checkout' ? 0 : 1) - (y.task.room_flow === 'checkout' ? 0 : 1));
+  const feed = !RECEPTION_ON ? [] : Object.values(groups).sort((x, y) => x.day.localeCompare(y.day) || (x.task.room_flow === 'checkout' ? 0 : 1) - (y.task.room_flow === 'checkout' ? 0 : 1));
   const roomsWaiting = feed.reduce((n, g) => n + g.items.length, 0);
   const meetingsWaiting = Object.values(s.meetings).filter((m) => m.status === 'pending' && m.day >= today).length;
   const alerts = roomsWaiting + meetingsWaiting;
@@ -235,4 +240,24 @@ function QuickFab({ onOpen }) {
     onClick=${() => { if (!skip.current) onOpen(); }}>
     <${Icon} name="user" size=${30} /><span class="quick-fab-bolt"><${Icon} name="bolt" size=${16} /></span>
   </button>`;
+}
+
+// What was designated for today, state by state (opens under the progress ring)
+const STATE_ORDER = [['done', 'status.done'], ['doing', 'status.doing'], ['waiting', 'sup.waiting'], ['todo', 'status.todo']];
+function ProgressDetail({ items }) {
+  const s = useStore();
+  const first = (id) => ((s.profiles[id] || {}).display_name || '').split(' ')[0];
+  const lines = items.filter((i) => i.kind === 'line'), rooms = items.filter((i) => i.kind === 'room'), tasks = items.filter((i) => i.kind === 'task');
+  const row = (i, k) => html`<li key=${k} class=${'prog-row ' + i.state}><i></i><span>${i.label}</span>${i.who ? html`<small>${first(i.who)}</small>` : null}</li>`;
+  return html`<div class="prog-detail">
+    <p class="field-hint">${t('sup.progressWhat')}</p>
+    ${lines.length ? html`<h4>${t('sup.progressList')} <span class="count">${lines.filter((i) => i.state === 'done').length}/${lines.length}</span></h4>
+      <ul class="prog-list">${lines.map((i, k) => row(i, k))}</ul>` : null}
+    ${tasks.length ? html`<h4>${t('sup.progressTasks')} <span class="count">${tasks.filter((i) => i.state === 'done').length}/${tasks.length}</span></h4>
+      <ul class="prog-list">${tasks.map((i, k) => row(i, k))}</ul>` : null}
+    ${rooms.length ? html`<h4>${t('sup.progressRooms')} <span class="count">${rooms.filter((i) => i.state === 'done').length}/${rooms.length}</span></h4>
+      ${STATE_ORDER.map(([st, label]) => { const list = rooms.filter((i) => i.state === st); return list.length ? html`<div class="prog-rooms" key=${st}>
+        <span class=${'prog-state ' + st}>${t(label)} · ${list.length}</span>
+        <div class="rimp-chips">${list.map((i) => html`<span class=${'prog-chip ' + st} key=${i.label} title=${i.who ? first(i.who) : ''}>${i.label}</span>`)}</div></div>` : null; })}` : null}
+  </div>`;
 }

@@ -16,8 +16,11 @@ export const ROLE_DEFAULTS = {
   custodian:            { department: 'custodian', is_supervisor: false, icon: 'sparkles',     color: '#FFDD94', sort: 2 },
   receptionist:         { department: 'reception', is_supervisor: false, icon: 'key',          color: '#FA897B', sort: 3 },
 };
-export const ROLE_ORDER = ['custodian_supervisor', 'custodian', 'receptionist'];
-export const DEPARTMENTS = ['custodian', 'reception'];
+// Reception is switched off for now: the app is for the custodian team only. Set to true to bring Reception back
+// (role in the Team screens, Reception requests in the supervisor's bell, receptionist link in the demo bar).
+export const RECEPTION_ON = false;
+export const ROLE_ORDER = ['custodian_supervisor', 'custodian', ...(RECEPTION_ON ? ['receptionist'] : [])];
+export const DEPARTMENTS = ['custodian', ...(RECEPTION_ON ? ['reception'] : [])];
 
 // Icons a supervisor can choose from (all Tabler "filled" icons that are bundled in assets/icons.js)
 export const ROLE_ICONS = ['shield-check', 'crown', 'star', 'award', 'trophy', 'key', 'sparkles', 'sparkles-2', 'briefcase',

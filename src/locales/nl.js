@@ -785,4 +785,8 @@ Vloer dweilen`,
   "rx.kindList": `Weeklijst`,
   "rx.unassigned": `Niet toegewezen`,
   "rx.fromList": `Afgevinkt in de weeklijst`,
+  "sup.progressWhat": `Dit is alles wat voor vandaag is ingepland en hoe het gaat.`,
+  "sup.progressList": `Checklist`,
+  "sup.progressTasks": `Andere taken`,
+  "sup.progressRooms": `Kamers`,
 };

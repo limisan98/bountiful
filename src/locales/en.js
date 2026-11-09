@@ -785,4 +785,8 @@ Wipe the floor`,
   "rx.kindList": `Weekly list`,
   "rx.unassigned": `Unassigned`,
   "rx.fromList": `Ticked in the weekly list`,
+  "sup.progressWhat": `This is everything designated for today, and how it is going.`,
+  "sup.progressList": `Checklist`,
+  "sup.progressTasks": `Other tasks`,
+  "sup.progressRooms": `Rooms`,
 };

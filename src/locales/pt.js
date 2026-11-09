@@ -785,4 +785,8 @@ Limpar o chão`,
   "rx.kindList": `Lista semanal`,
   "rx.unassigned": `Sem atribuição`,
   "rx.fromList": `Marcada na lista semanal`,
+  "sup.progressWhat": `Isto é tudo o que estava designado para hoje e como está a correr.`,
+  "sup.progressList": `Lista do dia`,
+  "sup.progressTasks": `Outras tarefas`,
+  "sup.progressRooms": `Quartos`,
 };

@@ -785,4 +785,8 @@ Torka golvet`,
   "rx.kindList": `Veckolista`,
   "rx.unassigned": `Ej tilldelad`,
   "rx.fromList": `Avbockad i veckolistan`,
+  "sup.progressWhat": `Det här är allt som är planerat för i dag och hur det går.`,
+  "sup.progressList": `Checklista`,
+  "sup.progressTasks": `Andra uppgifter`,
+  "sup.progressRooms": `Rum`,
 };

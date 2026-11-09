@@ -1463,3 +1463,21 @@ select.input { appearance: auto; padding-right: 12px; }
 
 .perf-card { background: #fff; border-radius: var(--r-xl, 28px); box-shadow: var(--shadow-s); padding: 18px; display: flex; flex-direction: column; gap: 12px; }
 .perf-card .section-title { margin: 0; display: flex; align-items: center; gap: 8px; }
+
+/* progress detail */
+.prog-head { all: unset; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; width: 100%; cursor: pointer; color: var(--ink-2); }
+.prog-head:disabled { cursor: default; }
+.prog-head .section-title { margin: 0; }
+.prog-detail { margin-top: 14px; padding-top: 12px; border-top: 2px solid var(--track); display: flex; flex-direction: column; gap: 10px; }
+.prog-detail h4 { margin: 8px 0 0; font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+.prog-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.prog-row { display: flex; align-items: center; gap: 10px; font-size: 15px; line-height: 1.3; }
+.prog-row i { flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--lavender); }
+.prog-row.done i { background: var(--mint); } .prog-row.doing i { background: var(--yellow); } .prog-row.waiting i { background: var(--coral); }
+.prog-row.done span { color: var(--ink-2); text-decoration: line-through; }
+.prog-row small { margin-left: auto; color: var(--ink-2); font-weight: 700; white-space: nowrap; }
+.prog-rooms { display: flex; flex-direction: column; gap: 6px; }
+.prog-state { font-size: 13px; font-weight: 800; color: var(--ink-2); }
+.prog-chip { display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; border-radius: 99px; font-weight: 800; font-size: 14px; background: color-mix(in srgb, var(--lavender) 45%, #fff); }
+.prog-chip.done { background: color-mix(in srgb, var(--mint) 55%, #fff); } .prog-chip.doing { background: color-mix(in srgb, var(--yellow) 60%, #fff); } .prog-chip.waiting { background: color-mix(in srgb, var(--coral) 55%, #fff); }
+.prog-detail { background: #fff; border: 0; border-radius: var(--r-xl, 28px); box-shadow: var(--shadow-s); padding: 18px; }
