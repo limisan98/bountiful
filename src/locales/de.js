@@ -711,4 +711,6 @@ Boden wischen`,
   "rimp.dupes": `{n} waren schon vorhanden`,
   "weekly.urgent": `{n} rote Zimmer stehen heute auf der Reinigungsliste. Alle anderen Zimmer stehen ebenfalls darunter.`,
   "weekly.urgentOne": `Auf der Reinigungsliste`,
+  "weekly.carryHint": `Zimmer, die am Montag nicht fertig wurden. Sie kommen am Dienstag zu den Aufgaben des Dienstags dazu.`,
+  "weekly.carryNone": `Vom Montag ist nichts übrig.`,
 };

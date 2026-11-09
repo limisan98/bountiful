@@ -711,4 +711,6 @@ Fregar el suelo`,
   "rimp.dupes": `{n} ya existían`,
   "weekly.urgent": `{n} habitaciones en rojo están en la lista para limpiar hoy. Abajo siguen todas las demás.`,
   "weekly.urgentOne": `En la lista para limpiar`,
+  "weekly.carryHint": `Habitaciones que no se terminaron el lunes. Pasan al martes, junto con las tareas del martes.`,
+  "weekly.carryNone": `No quedó nada pendiente del lunes.`,
 };

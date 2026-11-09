@@ -711,4 +711,6 @@ Limpar o chão`,
   "rimp.dupes": `{n} já existiam`,
   "weekly.urgent": `{n} quartos a vermelho estão na lista para limpar hoje. Todos os outros quartos estão também abaixo.`,
   "weekly.urgentOne": `Na lista para limpar`,
+  "weekly.carryHint": `Quartos que não ficaram prontos na segunda-feira. Passam para terça-feira, junto com as tarefas de terça-feira.`,
+  "weekly.carryNone": `Nada ficou pendente de segunda-feira.`,
 };

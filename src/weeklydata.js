@@ -28,6 +28,7 @@ export const WEEKLY = [
     ] },
   ] },
   { day: 2, sections: [
+    { title: 'Rooms left from Monday', carry: true, items: [] },
     { title: 'Morning', items: [
       'Finish the rooms and clean the guest cafeteria',
       'In the cafeteria: clean inside and outside of fridges, clean the cabinets of the islands, clean all tables and chairs (don’t forget chair legs)',

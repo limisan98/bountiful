@@ -711,4 +711,6 @@ Torka golvet`,
   "rimp.dupes": `{n} fanns redan`,
   "weekly.urgent": `{n} röda rum står på dagens städlista. Alla andra rum finns också nedan.`,
   "weekly.urgentOne": `På städlistan`,
+  "weekly.carryHint": `Rum som inte blev klara på måndagen. De flyttas till tisdagen, tillsammans med tisdagens uppgifter.`,
+  "weekly.carryNone": `Inget har blivit över från måndagen.`,
 };

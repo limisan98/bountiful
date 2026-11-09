@@ -711,4 +711,6 @@ Wipe the floor`,
   "rimp.dupes": `{n} were already there`,
   "weekly.urgent": `{n} rooms in red are on the list to clean today. All the other rooms are below too.`,
   "weekly.urgentOne": `On the list to clean`,
+  "weekly.carryHint": `Rooms that were not finished on Monday. They carry over to Tuesday, together with Tuesday’s tasks.`,
+  "weekly.carryNone": `Nothing left over from Monday.`,
 };

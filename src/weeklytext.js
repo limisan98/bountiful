@@ -3,7 +3,7 @@
 // `items` = every checklist line in the order they appear in weeklydata.js (Monday → Saturday). Keep the order when editing.
 export const WEEKLY_TEXT = {
   es: {
-    titles: ['Templo', 'Habitaciones', 'El lunes se debe limpiar todo en las habitaciones', 'Mañana', 'Tarde'],
+    titles: ['Templo', 'Habitaciones', 'El lunes se debe limpiar todo en las habitaciones', 'Mañana', 'Tarde', 'Habitaciones pendientes del lunes'],
     items: [
       'Limpiar todo el templo',
       'Zócalos, baños completos (no olvidar las juntas de los azulejos ni la parte superior de puertas y espejos)',
@@ -62,7 +62,7 @@ export const WEEKLY_TEXT = {
     ],
   },
   pt: {
-    titles: ['Templo', 'Quartos', 'Na segunda-feira tudo nos quartos deve ser limpo', 'Manhã', 'Tarde'],
+    titles: ['Templo', 'Quartos', 'Na segunda-feira tudo nos quartos deve ser limpo', 'Manhã', 'Tarde', 'Quartos por fazer de segunda-feira'],
     items: [
       'Limpar todo o templo',
       'Rodapés, casas de banho completas (não esquecer as juntas dos azulejos e o topo das portas e dos espelhos)',
@@ -121,7 +121,7 @@ export const WEEKLY_TEXT = {
     ],
   },
   de: {
-    titles: ['Tempel', 'Zimmer', 'Am Montag muss in den Zimmern alles gereinigt werden', 'Vormittag', 'Nachmittag'],
+    titles: ['Tempel', 'Zimmer', 'Am Montag muss in den Zimmern alles gereinigt werden', 'Vormittag', 'Nachmittag', 'Offene Zimmer vom Montag'],
     items: [
       'Den gesamten Tempel reinigen',
       'Fußleisten, komplette Toiletten (Fliesenfugen sowie die Oberseiten von Türen und Spiegeln nicht vergessen)',
@@ -180,7 +180,7 @@ export const WEEKLY_TEXT = {
     ],
   },
   nl: {
-    titles: ['Tempel', 'Kamers', 'Op maandag moet alles in de kamers schoongemaakt worden', 'Ochtend', 'Middag'],
+    titles: ['Tempel', 'Kamers', 'Op maandag moet alles in de kamers schoongemaakt worden', 'Ochtend', 'Middag', 'Openstaande kamers van maandag'],
     items: [
       'De hele tempel schoonmaken',
       'Plinten, complete toiletten (vergeet de voegen van de tegels en de bovenkant van deuren en spiegels niet)',
@@ -239,7 +239,7 @@ export const WEEKLY_TEXT = {
     ],
   },
   sv: {
-    titles: ['Templet', 'Rum', 'På måndagar ska allt i rummen städas', 'Förmiddag', 'Eftermiddag'],
+    titles: ['Templet', 'Rum', 'På måndagar ska allt i rummen städas', 'Förmiddag', 'Eftermiddag', 'Kvarstående rum från måndag'],
     items: [
       'Städa hela templet',
       'Golvlister, kompletta toaletter (glöm inte kaklets fogar eller ovansidan av dörrar och speglar)',
