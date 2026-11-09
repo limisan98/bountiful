@@ -21,7 +21,7 @@ export const WEEKLY = [
       'Refill the cabinets with toilet paper, paper towels, and spare cups for the week',
       'Clean and wash the stairs',
     ] },
-    { title: 'Rooms', note: 'On Monday everything in the rooms must be cleaned', items: [
+    { title: 'Rooms', rooms: true, info: true, note: 'On Monday everything in the rooms must be cleaned', items: [
       'Baseboards, furniture, closets',
       'Check the windows and clean if necessary',
       'Scrub the showers and fully clean the bathrooms',

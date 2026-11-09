@@ -21,20 +21,30 @@ const titleText = (en, lang) => { const tr = WEEKLY_TEXT[lang]; const i = TITLES
 export const weekStart = () => ymd(startOfWeek(parseYmd(todayYmd())));
 export const todayWeekday = () => { const w = isoWeekday(new Date()); return w === 7 ? 0 : w; }; // 0 = Sunday: nothing planned
 
+// which sections are folded open on this device (everything starts closed: not everybody does the temple)
+const OPEN_KEY = 'bountiful.weekly.open';
+const loadOpen = () => { try { return JSON.parse(localStorage.getItem(OPEN_KEY) || '{}'); } catch { return {}; } };
+
 export function WeeklyList({ day, compact }) {
   const s = useStore();
   const me = s.profile;
   const sup = isSupervisor(me);
   const wk = weekStart();
   const lang = s.lang;
+  const [open, setOpen] = useState(loadOpen);
   useEffect(() => { ensureWeekly(wk).catch(() => {}); }, [wk]);
+  const toggleOpen = (k) => setOpen((o) => { const n = { ...o, [k]: !o[k] }; try { localStorage.setItem(OPEN_KEY, JSON.stringify(n)); } catch { /* private mode */ } return n; });
 
   const d = WEEKLY.find((x) => x.day === day);
   if (!d) return null;
   const id = (si, ii) => `${day}.${si}.${ii}`;
-  const items = d.sections.flatMap((sec, si) => sec.items.map((_, ii) => id(si, ii)));
-  const done = items.filter((i) => { const r = weeklyOf(wk, i); return r && r.status === 'done'; }).length;
-  const pct = items.length ? Math.round((done / items.length) * 100) : 0;
+  const rooms = [...s.guestRooms].sort((a, b) => a.house - b.house || a.floor - b.floor || a.num - b.num);
+  // every checkable thing of a section: its lines (unless they are only instructions) and, for "Rooms", one tile per guest room
+  const idsOf = (sec, si) => [...(sec.info ? [] : sec.items.map((_, ii) => id(si, ii))), ...(sec.rooms ? rooms.map((r) => `${day}.r.${r.label}`) : [])];
+  const isDone = (i) => { const r = weeklyOf(wk, i); return !!r && r.status === 'done'; };
+  const all = d.sections.flatMap((sec, si) => idsOf(sec, si));
+  const done = all.filter(isDone).length;
+  const pct = all.length ? Math.round((done / all.length) * 100) : 0;
 
   async function tap(i) {
     const r = weeklyOf(wk, i);
@@ -46,25 +56,54 @@ export function WeeklyList({ day, compact }) {
     const next = !r ? 'doing' : r.status === 'doing' ? 'done' : null;
     try { await setWeeklyItem(wk, i, next); } catch (ex) { toast(friendlyError(ex), 'bad'); }
   }
+  const first = (p) => (p ? p.display_name.split(' ')[0] : '');
+
+  const row = (i, txt) => {
+    const r = weeklyOf(wk, i);
+    const p = r ? s.profiles[r.user_id] : null;
+    const st = r ? r.status : '';
+    return html`<button type="button" key=${i} class=${'check-row weekly-row ' + st + (st === 'done' ? ' on' : '')} aria-pressed=${st === 'done'} onClick=${() => tap(i)}>
+      <span class="check-box">${st === 'doing' ? html`<${Icon} name="hourglass" size=${16} />` : html`<${Icon} name="check" size=${18} />`}</span>
+      <span class="check-text"><b>${txt}</b>
+        ${r ? html`<span class="weekly-who"><${Avatar} profile=${p} name=${p ? p.display_name : ''} size=${22} ring=${false} />${first(p)} · ${r.status === 'done' ? t('status.done') : t('weekly.doing')}</span>` : null}
+      </span>
+    </button>`;
+  };
+  // a guest room as a small tile (there are many): yellow = somebody is on it, green = done, with that person's picture
+  const tile = (r) => {
+    const i = `${day}.r.${r.label}`, w = weeklyOf(wk, i), p = w ? s.profiles[w.user_id] : null;
+    return html`<button type="button" key=${i} class=${'wk-room ' + (w ? w.status : '')} aria-pressed=${!!w && w.status === 'done'} title=${w ? first(p) + ' · ' + (w.status === 'done' ? t('status.done') : t('weekly.doing')) : ''}
+      aria-label=${r.label + (w ? ', ' + first(p) + ', ' + (w.status === 'done' ? t('status.done') : t('weekly.doing')) : '')} onClick=${() => tap(i)}>
+      <b>${r.label}</b>${w ? html`<${Avatar} profile=${p} name=${p ? p.display_name : ''} size=${20} ring=${false} />` : null}
+    </button>`;
+  };
 
   return html`<div class=${'weekly-list' + (compact ? ' compact' : '')}>
     <div class="weekly-prog"><div class="weekly-bar" role="progressbar" aria-valuenow=${pct} aria-valuemin="0" aria-valuemax="100"><span style=${`width:${pct}%`}></span></div>
-      <b>${t('weekly.progress', { done, total: items.length })}</b></div>
-    ${d.sections.map((sec, si) => html`<section class="weekly-sec" key=${day + '-' + si}>
-      ${sec.title ? html`<h4 class="weekly-sec-title">${titleText(sec.title, lang)}</h4>` : null}
-      ${sec.note ? html`<p class="field-hint">${titleText(sec.note, lang)}</p>` : null}
-      <div class="checklist">${sec.items.map((txt, ii) => {
-        const r = weeklyOf(wk, id(si, ii));
-        const p = r ? s.profiles[r.user_id] : null;
-        const st = r ? r.status : '';
-        return html`<button type="button" key=${ii} class=${'check-row weekly-row ' + st + (st === 'done' ? ' on' : '')} aria-pressed=${st === 'done'} onClick=${() => tap(id(si, ii))}>
-          <span class="check-box">${st === 'doing' ? html`<${Icon} name="hourglass" size=${16} />` : html`<${Icon} name="check" size=${18} />`}</span>
-          <span class="check-text"><b>${itemText(id(si, ii), txt, lang)}</b>
-            ${r ? html`<span class="weekly-who"><${Avatar} profile=${p} name=${p ? p.display_name : ''} size=${22} ring=${false} />${p ? p.display_name.split(' ')[0] : ''} · ${r.status === 'done' ? t('status.done') : t('weekly.doing')}</span>` : null}
-          </span>
-        </button>`;
-      })}</div>
-    </section>`)}
+      <b>${t('weekly.progress', { done, total: all.length })}</b></div>
+    ${d.sections.map((sec, si) => {
+      const ids = idsOf(sec, si), nDone = ids.filter(isDone).length, k = `${day}.${si}`;
+      const folded = !!sec.title && !open[k];
+      return html`<section class=${'weekly-sec' + (sec.title ? ' foldable' : '')} key=${k}>
+        ${sec.title ? html`<button type="button" class="weekly-fold" aria-expanded=${!folded} onClick=${() => toggleOpen(k)}>
+          <b>${titleText(sec.title, lang)}</b>${ids.length ? html`<span class=${'weekly-count' + (nDone === ids.length ? ' all' : '')}>${nDone}/${ids.length}</span>` : null}
+          <${Icon} name=${folded ? 'caret-down' : 'caret-up'} size=${20} />
+        </button>` : null}
+        ${folded ? null : html`
+          ${sec.note ? html`<p class="field-hint">${titleText(sec.note, lang)}</p>` : null}
+          ${sec.info ? html`<ul class="weekly-info">${sec.items.map((txt, ii) => html`<li key=${ii}>${itemText(id(si, ii), txt, lang)}</li>`)}</ul>`
+            : html`<div class="checklist">${sec.items.map((txt, ii) => row(id(si, ii), itemText(id(si, ii), txt, lang)))}</div>`}
+          ${sec.rooms ? [1, 2, 3, 4].map((h) => {
+            const hr = rooms.filter((r) => r.house === h);
+            if (!hr.length) return null;
+            const hd = hr.filter((r) => isDone(`${day}.r.${r.label}`)).length;
+            return html`<div class="wk-house" key=${h}>
+              <h5>${t('house.n', { n: h })}<span class=${'weekly-count' + (hd === hr.length ? ' all' : '')}>${hd}/${hr.length}</span></h5>
+              <div class="wk-rooms">${hr.map(tile)}</div>
+            </div>`;
+          }) : null}`}
+      </section>`;
+    })}
   </div>`;
 }
 

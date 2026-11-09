@@ -1425,3 +1425,18 @@ select.input { appearance: auto; padding-right: 12px; }
 .rimp-chip.off { background: var(--track); color: var(--ink-3); text-decoration: line-through; }
 .rimp-note { margin: 0; font-size: 14px; color: var(--ink-2); }
 .rimp-note b { color: var(--ink); margin-right: 4px; }
+
+/* weekly checklist: folding sections + room tiles */
+.weekly-fold { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 56px; padding: 6px 18px; border-radius: var(--r-l); background: #fff; box-shadow: var(--shadow-s); text-align: left; color: var(--ink-2); }
+.weekly-fold b { flex: 1; font-size: 17px; color: var(--ink); }
+.weekly-card .weekly-fold { background: var(--bg, #F6FAF8); box-shadow: none; }
+.weekly-count { font-size: 13px; font-weight: 800; padding: 3px 10px; border-radius: 99px; background: var(--track); color: var(--ink-2); margin-left: 8px; }
+.weekly-fold .weekly-count { margin-left: 0; }
+.weekly-count.all { background: var(--st-done, #D0E6A5); color: var(--st-done-ink, var(--ink)); }
+.weekly-info { margin: 0; padding: 0 8px 0 28px; color: var(--ink-2); font-size: 15px; display: flex; flex-direction: column; gap: 4px; }
+.wk-house h5 { margin: 6px 4px 8px; font-size: 15px; font-weight: 800; display: flex; align-items: center; }
+.wk-rooms { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; }
+.wk-room { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 52px; padding: 0 8px; border-radius: 18px; background: #fff; box-shadow: var(--shadow-s); font-size: 17px; color: var(--ink); }
+.weekly-card .wk-room { background: var(--bg, #F6FAF8); box-shadow: none; }
+.wk-room.doing { background: color-mix(in srgb, var(--yellow) 55%, #fff); }
+.wk-room.done { background: color-mix(in srgb, var(--lime) 60%, #fff); }
