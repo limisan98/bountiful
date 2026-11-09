@@ -18,6 +18,13 @@ const TITLES = ['Temple', 'Rooms', 'On Monday everything in the rooms must be cl
 const itemText = (id, en, lang) => { const tr = WEEKLY_TEXT[lang]; return (tr && tr.items[FLAT[id]]) || en; };
 const titleText = (en, lang) => { const tr = WEEKLY_TEXT[lang]; const i = TITLES.indexOf(en); return (tr && i >= 0 && tr.titles[i]) || en; };
 
+// every checkable text line of the weekly list (not the room tiles): { id, day, section, text } in the given language
+export function checklistLines(lang) {
+  const out = [];
+  WEEKLY.forEach((d) => d.sections.forEach((sec, si) => { if (sec.info || sec.carry) return; sec.items.forEach((txt, ii) => { const id = `${d.day}.${si}.${ii}`; out.push({ id, day: d.day, section: sec.title ? titleText(sec.title, lang) : '', text: itemText(id, txt, lang) }); }); }));
+  return out;
+}
+
 export const weekStart = () => ymd(startOfWeek(parseYmd(todayYmd())));
 export const todayWeekday = () => { const w = isoWeekday(new Date()); return w === 7 ? 0 : w; }; // 0 = Sunday: nothing planned
 

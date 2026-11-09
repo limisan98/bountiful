@@ -1457,3 +1457,6 @@ select.input { appearance: auto; padding-right: 12px; }
 .bell-btn.has { background: var(--yellow); color: var(--ink); }
 .bell-badge { position: absolute; top: -4px; right: -4px; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 99px; background: var(--coral); color: #fff; font-weight: 800; font-size: 14px; display: grid; place-items: center; box-shadow: 0 0 0 3px var(--bg, #F6FAF8); }
 .inbox-link { text-decoration: none; background: #fff; box-shadow: var(--shadow-s); }
+
+.perf-card { background: #fff; border-radius: var(--r-xl, 28px); box-shadow: var(--shadow-s); padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.perf-card .section-title { margin: 0; display: flex; align-items: center; gap: 8px; }
