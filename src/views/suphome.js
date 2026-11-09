@@ -24,7 +24,7 @@ export function SupervisorHome() {
   const [quick, setQuick] = useState(false);
   const [roomImp, setRoomImp] = useState(false);
   const [open, setOpen] = useState(null);
-  const [person, setPerson] = useState(null);
+  const [inbox, setInbox] = useState(false);
   useEffect(() => { const i = setInterval(() => setNow(new Date()), 30000); return () => clearInterval(i); }, []);
   useEffect(() => { ensureMonth(monthKey(new Date())).catch(() => {}); }, []);
   const nowMin = now.getHours() * 60 + now.getMinutes();
@@ -41,11 +41,8 @@ export function SupervisorHome() {
     .forEach((a) => { const k = a.day + '|' + a.task_id + '|' + a.requested_by; (groups[k] = groups[k] || { key: k, day: a.day, task: s.tasks[a.task_id], by: a.requested_by, items: [] }).items.push(a); });
   const feed = Object.values(groups).sort((x, y) => x.day.localeCompare(y.day) || (x.task.room_flow === 'checkout' ? 0 : 1) - (y.task.room_flow === 'checkout' ? 0 : 1));
   const roomsWaiting = feed.reduce((n, g) => n + g.items.length, 0);
-
-  // who is working now (or still to come today)
-  const planned = dayPlanned(today);
-  const team = crewPeople().map((p) => ({ p, sh: shiftOf(p.id, today) })).filter((x) => x.sh && nowMin < toMin(x.sh.end_time))
-    .sort((a, b) => toMin(a.sh.start_time) - toMin(b.sh.start_time) || a.p.display_name.localeCompare(b.p.display_name));
+  const meetingsWaiting = Object.values(s.meetings).filter((m) => m.status === 'pending' && m.day >= today).length;
+  const alerts = roomsWaiting + meetingsWaiting;
 
   const since = ymd(addDays(new Date(), -3));
   const updates = Object.values(s.reports).map((r) => ({ r, a: s.assignments[r.assignment_id] }))
@@ -65,18 +62,15 @@ export function SupervisorHome() {
   const legend = [['done', t('status.done'), stat.done], ['doing', t('status.doing'), stat.doing], ['todo', t('status.todo'), stat.todo], ['waiting', t('sup.waiting'), stat.waiting]];
 
   return html`<div class="stack sup-home">
-    <header class="my-head">
-      <p class="my-date">${now.toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-      <h2 class="my-title">${t('sup.title')}</h2>
+    <header class="my-head sup-head">
+      <div><p class="my-date">${now.toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+        <h2 class="my-title">${t('sup.title')}</h2></div>
+      <button type="button" class=${'bell-btn' + (alerts ? ' has' : '')} aria-label=${t('notif.title') + (alerts ? ': ' + alerts : '')} onClick=${() => setInbox(true)}>
+        <${Icon} name=${alerts ? 'bell-ringing' : 'bell'} size=${28} />${alerts ? html`<span class="bell-badge">${alerts}</span>` : null}
+      </button>
     </header>
 
     <button type="button" class="btn soft" onClick=${() => setRoomImp(true)}><${Icon} name="bed" size=${22} />${t('rimp.button')}</button>
-
-    ${feed.length ? html`<section class="req-banner rise" aria-label=${t('sup.requests')}>
-      <header><span class="req-bell"><${Icon} name="bell-ringing" size=${26} /></span>
-        <div><b>${t('sup.requests')}</b><span>${t('sup.requestsN', { n: roomsWaiting })}</span></div></header>
-      <div class="req-groups">${feed.map((g) => html`<${RequestGroup} key=${g.key} g=${g} onOpen=${setOpen} />`)}</div>
-    </section>` : html`<div class="req-calm rise"><${Icon} name="circle-check" size=${22} />${t('sup.requestsNone')}</div>`}
 
     <section class="rise sum-card" aria-label=${t('sup.progress')}>
       <h3 class="section-title">${t('sup.progress')}</h3>
@@ -84,12 +78,6 @@ export function SupervisorHome() {
         <div class="sum-ring" role="img" aria-label=${t('sup.percent', { n: pct }) + ': ' + legend.map((l) => l[1] + ' ' + l[2]).join(', ')} ><svg viewBox="0 0 100 100" aria-hidden="true">${arcs}</svg><span><b>${pct}%</b><small>${t('status.done')}</small></span></div>
         <ul class="ring-legend">${legend.map(([k, label, n]) => html`<li key=${k}><i class=${'lg-' + k}></i><span>${label}</span><b>${n}</b></li>`)}</ul>
       </div>` : html`<${Empty} icon="calendar-event" text=${t('home.teamEmpty')} />`}
-    </section>
-
-    <section class="rise">
-      <h3 class="section-title">${t('sup.team')}${team.length ? html`<span class="count">${team.length}</span>` : null}<a class="section-link" href="#/shifts">${t('sup.allShifts')}</a></h3>
-      ${team.length ? html`<div class="team-list">${team.map(({ p }) => html`<${TeamRow} key=${p.id} p=${p} day=${today} onPick=${() => setPerson(p.id)} />`)}</div>`
-        : html`<${Empty} icon="clock" text=${planned ? t('shift.nobody') : t('shift.notPlanned')} />`}
     </section>
 
     ${updates.length ? html`<section class="rise">
@@ -106,7 +94,7 @@ export function SupervisorHome() {
 
     <${MoreLinks} routes=${['weekly', 'tasks', 'calendar', 'shifts', 'logbook', 'reports', 'meetings', 'team']} />
 
-    ${person ? html`<${PersonDaySheet} id=${person} day=${today} now=${now} onClose=${() => setPerson(null)} />` : null}
+    ${inbox ? html`<${InboxSheet} feed=${feed} meetings=${meetingsWaiting} onClose=${() => setInbox(false)} />` : null}
     <${QuickFab} onOpen=${() => setQuick(true)} />
     ${roomImp ? html`<${RoomImportSheet} onClose=${() => setRoomImp(false)} />` : null}
     ${quick ? html`<${QuickAssignSheet} day=${today} onClose=${() => setQuick(false)} />` : null}
@@ -177,42 +165,19 @@ function RequestGroup({ g }) {
   </article>`;
 }
 
-const tasksOf = (s, id, day) => assignmentsOn(day).filter((a) => a.assignee === id && s.tasks[a.task_id])
-  .sort((x, y) => (x.start_time || '99').localeCompare(y.start_time || '99') || itemName(x).localeCompare(itemName(y)));
-
-// One compact line per worker: picture, name, progress, done/total and planned time. Tap = that person's tasks of the day.
-function TeamRow({ p, day, onPick }) {
-  const s = useStore();
-  const mine = tasksOf(s, p.id, day);
-  const done = mine.filter((a) => a.status === 'done').length;
-  const pct = mine.length ? Math.round((done / mine.length) * 100) : 0;
-  const planned = mine.reduce((n, a) => n + goalOf(a), 0);
-  return html`<button type="button" class="team-row" onClick=${onPick} aria-label=${p.display_name + ': ' + done + '/' + mine.length}>
-    <${Avatar} profile=${p} size=${48} />
-    <span class="team-main"><b>${p.display_name}</b>
-      <span class="load-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow=${pct}><i style=${`width:${pct}%`}></i></span></span>
-    <span class="team-num"><b>${done}/${mine.length}</b><small>${planned ? dur(planned) : ''}</small></span>
-  </button>`;
-}
-
-// The supervisor taps a worker and sees everything planned for that person today (tap a task for its details).
-function PersonDaySheet({ id, day, now, onClose }) {
-  const s = useStore();
-  const p = s.profiles[id];
-  const [view, setView] = useState(null);
-  const [give, setGive] = useState(false);
-  if (!p) return null;
-  const mine = tasksOf(s, id, day);
-  const sh = shiftOf(id, day);
-  const ended = sh && now.getHours() * 60 + now.getMinutes() >= toMin(sh.end_time);
-  return html`<${Sheet} title=${p.display_name} kicker=${sh ? hhmm(sh.start_time) + '–' + hhmm(sh.end_time) : ''} onClose=${onClose}>
+// The inbox behind the bell: Reception requests (give them out right here) and meeting requests waiting for an answer.
+function InboxSheet({ feed, meetings, onClose }) {
+  const rooms = feed.reduce((n, g) => n + g.items.length, 0);
+  return html`<${Sheet} title=${t('notif.title')} onClose=${onClose}>
     <div class="stack">
-      ${mine.length ? html`<div class="list">${mine.map((a) => html`<${AssignmentRow} key=${a.id} a=${a} onOpen=${setView} />`)}</div>`
-        : html`<${Empty} icon="list-check" text=${t('shift.noTasksYet')} />`}
-      ${!ended ? html`<button type="button" class="btn soft" onClick=${() => setGive(true)}><${Icon} name="bolt" size=${20} />${t('quick.giveTask')}</button>` : null}
+      ${feed.length ? html`<section class="req-banner" aria-label=${t('sup.requests')}>
+        <header><span class="req-bell"><${Icon} name="bell-ringing" size=${26} /></span>
+          <div><b>${t('sup.requests')}</b><span>${t('sup.requestsN', { n: rooms })}</span></div></header>
+        <div class="req-groups">${feed.map((g) => html`<${RequestGroup} key=${g.key} g=${g} />`)}</div>
+      </section>` : null}
+      ${meetings ? html`<a class="more-link inbox-link" href="#/meetings" onClick=${onClose}><${Icon} name="calendar-month" size=${24} />${t('sup.meetingsN', { n: meetings })}</a>` : null}
+      ${!feed.length && !meetings ? html`<div class="req-calm"><${Icon} name="circle-check" size=${22} />${t('sup.requestsNone')}</div>` : null}
     </div>
-    ${give ? html`<${QuickAssignSheet} day=${day} person=${id} onClose=${() => setGive(false)} />` : null}
-    ${view && s.assignments[view] ? html`<${AssignmentSheet} id=${view} onClose=${() => setView(null)} />` : null}
   <//>`;
 }
 

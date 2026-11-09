@@ -713,4 +713,5 @@ Boden wischen`,
   "weekly.urgentOne": `Auf der Reinigungsliste`,
   "weekly.carryHint": `Zimmer, die am Montag nicht fertig wurden. Sie kommen am Dienstag zu den Aufgaben des Dienstags dazu.`,
   "weekly.carryNone": `Vom Montag ist nichts übrig.`,
+  "sup.meetingsN": `Terminanfragen: {n}`,
 };

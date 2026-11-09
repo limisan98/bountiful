@@ -713,4 +713,5 @@ Fregar el suelo`,
   "weekly.urgentOne": `En la lista para limpiar`,
   "weekly.carryHint": `Habitaciones que no se terminaron el lunes. Pasan al martes, junto con las tareas del martes.`,
   "weekly.carryNone": `No quedó nada pendiente del lunes.`,
+  "sup.meetingsN": `Solicitudes de reunión: {n}`,
 };

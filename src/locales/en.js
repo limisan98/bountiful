@@ -713,4 +713,5 @@ Wipe the floor`,
   "weekly.urgentOne": `On the list to clean`,
   "weekly.carryHint": `Rooms that were not finished on Monday. They carry over to Tuesday, together with Tuesday’s tasks.`,
   "weekly.carryNone": `Nothing left over from Monday.`,
+  "sup.meetingsN": `Meeting requests: {n}`,
 };

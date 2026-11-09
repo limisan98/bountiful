@@ -713,4 +713,5 @@ Torka golvet`,
   "weekly.urgentOne": `På städlistan`,
   "weekly.carryHint": `Rum som inte blev klara på måndagen. De flyttas till tisdagen, tillsammans med tisdagens uppgifter.`,
   "weekly.carryNone": `Inget har blivit över från måndagen.`,
+  "sup.meetingsN": `Mötesförfrågningar: {n}`,
 };

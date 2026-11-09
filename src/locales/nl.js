@@ -713,4 +713,5 @@ Vloer dweilen`,
   "weekly.urgentOne": `Op de schoonmaaklijst`,
   "weekly.carryHint": `Kamers die maandag niet klaar waren. Ze schuiven door naar dinsdag, samen met de taken van dinsdag.`,
   "weekly.carryNone": `Er is niets blijven liggen van maandag.`,
+  "sup.meetingsN": `Afspraakverzoeken: {n}`,
 };
