@@ -1444,3 +1444,9 @@ select.input { appearance: auto; padding-right: 12px; }
 .wk-room.urgent { background: color-mix(in srgb, var(--coral) 55%, #fff); font-weight: 800; }
 .wk-urgent-note { margin: 0 4px; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: var(--ink-2); }
 .wk-urgent-note i { width: 14px; height: 14px; border-radius: 50%; background: var(--coral); flex: none; }
+
+/* Quick assign: small round button you can drag around */
+.quick-fab { position: fixed; right: max(20px, calc(50% - var(--maxw) / 2 + 20px)); bottom: calc(112px + env(safe-area-inset-bottom)); z-index: 16; width: 64px; height: 64px; border-radius: 50%; background: var(--mint); color: var(--ink); display: grid; place-items: center; box-shadow: 0 14px 34px rgba(30, 42, 40, .22); touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; transition: transform var(--d1) var(--ease), box-shadow var(--d1) var(--ease); }
+.quick-fab.placed { right: auto; bottom: auto; }
+.quick-fab:active { cursor: grabbing; transform: scale(1.06); box-shadow: 0 18px 40px rgba(30, 42, 40, .3); }
+.quick-fab-bolt { position: absolute; top: -2px; right: -2px; width: 28px; height: 28px; border-radius: 50%; background: var(--yellow); display: grid; place-items: center; box-shadow: 0 0 0 3px var(--bg, #F6FAF8); }

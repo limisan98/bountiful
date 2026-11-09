@@ -1,4 +1,4 @@
-import { html, useState, useEffect } from '../../assets/vendor/htm-preact.js';
+import { html, useState, useEffect, useRef } from '../../assets/vendor/htm-preact.js';
 import { useStore, toast } from '../store.js';
 import { t, currentLocale, friendlyError } from '../i18n.js';
 import { Icon, Avatar, Empty, TaskBadge, Sheet, badgeStatus } from '../ui.js';
@@ -70,7 +70,6 @@ export function SupervisorHome() {
       <h2 class="my-title">${t('sup.title')}</h2>
     </header>
 
-    <button type="button" class="btn big-btn quick-btn" onClick=${() => setQuick(true)}><${Icon} name="bolt" size=${26} />${t('quick.button')}<span>${t('quick.buttonSub')}</span></button>
     <button type="button" class="btn soft" onClick=${() => setRoomImp(true)}><${Icon} name="bed" size=${22} />${t('rimp.button')}</button>
 
     ${feed.length ? html`<section class="req-banner rise" aria-label=${t('sup.requests')}>
@@ -108,6 +107,7 @@ export function SupervisorHome() {
     <${MoreLinks} routes=${['weekly', 'tasks', 'calendar', 'shifts', 'logbook', 'reports', 'meetings', 'team']} />
 
     ${person ? html`<${PersonDaySheet} id=${person} day=${today} now=${now} onClose=${() => setPerson(null)} />` : null}
+    <${QuickFab} onOpen=${() => setQuick(true)} />
     ${roomImp ? html`<${RoomImportSheet} onClose=${() => setRoomImp(false)} />` : null}
     ${quick ? html`<${QuickAssignSheet} day=${today} onClose=${() => setQuick(false)} />` : null}
     ${open ? html`<${AssignmentSheet} id=${open} onClose=${() => setOpen(null)} />` : null}
@@ -214,4 +214,53 @@ function PersonDaySheet({ id, day, now, onClose }) {
     ${give ? html`<${QuickAssignSheet} day=${day} person=${id} onClose=${() => setGive(false)} />` : null}
     ${view && s.assignments[view] ? html`<${AssignmentSheet} id=${view} onClose=${() => setView(null)} />` : null}
   <//>`;
+}
+
+// Quick assign as a small round button that floats over the screen: a person with a lightning bolt = "give a task, fast".
+// Drag it anywhere (it remembers the place on this device); a tap opens the quick assign sheet.
+const FAB = 64;
+const FAB_KEY = 'bountiful.quickFab';
+const clampPos = (x, y) => ({ x: Math.min(Math.max(8, x), window.innerWidth - FAB - 8), y: Math.min(Math.max(8, y), window.innerHeight - FAB - 8) });
+function QuickFab({ onOpen }) {
+  const el = useRef(null);
+  const drag = useRef(null);
+  const skip = useRef(false);
+  const [pos, setPos] = useState(() => {
+    try { const v = JSON.parse(localStorage.getItem(FAB_KEY) || 'null'); if (v && typeof v.fx === 'number') return clampPos(v.fx * (window.innerWidth - FAB), v.fy * (window.innerHeight - FAB)); } catch { /* no saved place */ }
+    return null; // default place (CSS)
+  });
+  useEffect(() => {
+    const onResize = () => setPos((p) => (p ? clampPos(p.x, p.y) : p));
+    addEventListener('resize', onResize);
+    return () => removeEventListener('resize', onResize);
+  }, []);
+  const down = (e) => {
+    const r = el.current.getBoundingClientRect();
+    drag.current = { sx: e.clientX, sy: e.clientY, x: r.left, y: r.top, moved: false };
+    el.current.setPointerCapture(e.pointerId);
+  };
+  const move = (e) => {
+    const d = drag.current;
+    if (!d) return;
+    const dx = e.clientX - d.sx, dy = e.clientY - d.sy;
+    if (!d.moved && Math.hypot(dx, dy) < 6) return;
+    d.moved = true;
+    setPos(clampPos(d.x + dx, d.y + dy));
+  };
+  const up = (e) => {
+    const d = drag.current;
+    drag.current = null;
+    try { el.current.releasePointerCapture(e.pointerId); } catch { /* already released */ }
+    if (d && d.moved) {
+      skip.current = true; setTimeout(() => { skip.current = false; }, 0); // the click that follows a drag must not open the sheet
+      const p = clampPos(d.x + (e.clientX - d.sx), d.y + (e.clientY - d.sy));
+      try { localStorage.setItem(FAB_KEY, JSON.stringify({ fx: p.x / (window.innerWidth - FAB), fy: p.y / (window.innerHeight - FAB) })); } catch { /* private mode */ }
+    }
+  };
+  return html`<button type="button" ref=${el} class=${'quick-fab' + (pos ? ' placed' : '')} style=${pos ? `left:${pos.x}px;top:${pos.y}px` : ''}
+    aria-label=${t('quick.button')} title=${t('quick.button')}
+    onPointerDown=${down} onPointerMove=${move} onPointerUp=${up} onPointerCancel=${up}
+    onClick=${() => { if (!skip.current) onOpen(); }}>
+    <${Icon} name="user" size=${30} /><span class="quick-fab-bolt"><${Icon} name="bolt" size=${16} /></span>
+  </button>`;
 }
