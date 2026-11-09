@@ -83,7 +83,10 @@ p { margin-top: 0; }
 .topbar { max-width: var(--maxw); margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: calc(24px + env(safe-area-inset-top)) 24px 6px; }
 .hello p { margin: 0; color: var(--ink-2); }
 .hello h1 { margin-top: 2px; font-size: 28px; line-height: 1.15; font-weight: 800; letter-spacing: -.02em; }
-.avatar-btn { border-radius: 50%; margin: 6px; flex: none; }
+.avatar-btn { border-radius: 50%; margin: 0; flex: none; }
+.topbar-me { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.hello { min-width: 0; }
+.hello h1 { overflow-wrap: anywhere; }
 .screen { max-width: var(--maxw); margin: 0 auto; padding: 20px 24px; }
 .stack { display: flex; flex-direction: column; gap: 32px; }
 .stack-form { display: flex; flex-direction: column; gap: 18px; }
@@ -1453,7 +1456,7 @@ select.input { appearance: auto; padding-right: 12px; }
 
 /* supervisor home: bell button (inbox) */
 .sup-head { flex-direction: row; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.bell-btn { position: relative; flex: none; width: 60px; height: 60px; border-radius: 50%; background: #fff; color: var(--ink-2); display: grid; place-items: center; box-shadow: var(--shadow-s); }
+.bell-btn { position: relative; flex: none; width: 52px; height: 52px; border-radius: 50%; background: #fff; color: var(--ink-2); display: grid; place-items: center; box-shadow: var(--shadow-s); }
 .bell-btn.has { background: var(--yellow); color: var(--ink); }
 .bell-badge { position: absolute; top: -4px; right: -4px; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 99px; background: var(--coral); color: #fff; font-weight: 800; font-size: 14px; display: grid; place-items: center; box-shadow: 0 0 0 3px var(--bg, #F6FAF8); }
 .inbox-link { text-decoration: none; background: #fff; box-shadow: var(--shadow-s); }

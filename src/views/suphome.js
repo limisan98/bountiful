@@ -24,7 +24,6 @@ export function SupervisorHome() {
   const [quick, setQuick] = useState(false);
   const [roomImp, setRoomImp] = useState(false);
   const [open, setOpen] = useState(null);
-  const [inbox, setInbox] = useState(false);
   useEffect(() => { const i = setInterval(() => setNow(new Date()), 30000); return () => clearInterval(i); }, []);
   useEffect(() => { ensureMonth(monthKey(new Date())).catch(() => {}); }, []);
   const nowMin = now.getHours() * 60 + now.getMinutes();
@@ -34,15 +33,6 @@ export function SupervisorHome() {
   todays.forEach((a) => { if (a.status === 'done') stat.done += 1; else if (!a.assignee) stat.waiting += 1; else if (a.status === 'doing') stat.doing += 1; else stat.todo += 1; });
   const total = todays.length;
   const pct = total ? Math.round((stat.done / total) * 100) : 0;
-
-  // requests from Reception that nobody has taken yet, grouped by day, kind of cleaning and person
-  const groups = {};
-  Object.values(s.assignments).filter((a) => a.kind === 'room' && a.requested_by && !a.assignee && a.status !== 'done' && a.day >= today && s.tasks[a.task_id])
-    .forEach((a) => { const k = a.day + '|' + a.task_id + '|' + a.requested_by; (groups[k] = groups[k] || { key: k, day: a.day, task: s.tasks[a.task_id], by: a.requested_by, items: [] }).items.push(a); });
-  const feed = Object.values(groups).sort((x, y) => x.day.localeCompare(y.day) || (x.task.room_flow === 'checkout' ? 0 : 1) - (y.task.room_flow === 'checkout' ? 0 : 1));
-  const roomsWaiting = feed.reduce((n, g) => n + g.items.length, 0);
-  const meetingsWaiting = Object.values(s.meetings).filter((m) => m.status === 'pending' && m.day >= today).length;
-  const alerts = roomsWaiting + meetingsWaiting;
 
   const since = ymd(addDays(new Date(), -3));
   const updates = Object.values(s.reports).map((r) => ({ r, a: s.assignments[r.assignment_id] }))
@@ -62,12 +52,8 @@ export function SupervisorHome() {
   const legend = [['done', t('status.done'), stat.done], ['doing', t('status.doing'), stat.doing], ['todo', t('status.todo'), stat.todo], ['waiting', t('sup.waiting'), stat.waiting]];
 
   return html`<div class="stack sup-home">
-    <header class="my-head sup-head">
-      <div><p class="my-date">${now.toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-        <h2 class="my-title">${t('sup.title')}</h2></div>
-      <button type="button" class=${'bell-btn' + (alerts ? ' has' : '')} aria-label=${t('notif.title') + (alerts ? ': ' + alerts : '')} onClick=${() => setInbox(true)}>
-        <${Icon} name=${alerts ? 'bell-ringing' : 'bell'} size=${28} />${alerts ? html`<span class="bell-badge">${alerts}</span>` : null}
-      </button>
+    <header class="my-head">
+      <p class="my-date">${now.toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
     </header>
 
     <button type="button" class="btn soft" onClick=${() => setRoomImp(true)}><${Icon} name="bed" size=${22} />${t('rimp.button')}</button>
@@ -94,7 +80,6 @@ export function SupervisorHome() {
 
     <${MoreLinks} routes=${['weekly', 'tasks', 'calendar', 'shifts', 'logbook', 'reports', 'meetings', 'team']} />
 
-    ${inbox ? html`<${InboxSheet} feed=${feed} meetings=${meetingsWaiting} onClose=${() => setInbox(false)} />` : null}
     <${QuickFab} onOpen=${() => setQuick(true)} />
     ${roomImp ? html`<${RoomImportSheet} onClose=${() => setRoomImp(false)} />` : null}
     ${quick ? html`<${QuickAssignSheet} day=${today} onClose=${() => setQuick(false)} />` : null}
@@ -163,6 +148,27 @@ function RequestGroup({ g }) {
     </div>
     ${choose ? html`<${GiveSheet} ids=${ids} onClose=${() => setChoose(false)} onDone=${() => {}} />` : null}
   </article>`;
+}
+
+// The bell in the top right corner (supervisor): count badge + the inbox with Reception requests and meeting requests.
+export function SupBell() {
+  const s = useStore();
+  const today = todayYmd();
+  const [inbox, setInbox] = useState(false);
+  // requests from Reception that nobody has taken yet, grouped by day, kind of cleaning and person
+  const groups = {};
+  Object.values(s.assignments).filter((a) => a.kind === 'room' && a.requested_by && !a.assignee && a.status !== 'done' && a.day >= today && s.tasks[a.task_id])
+    .forEach((a) => { const k = a.day + '|' + a.task_id + '|' + a.requested_by; (groups[k] = groups[k] || { key: k, day: a.day, task: s.tasks[a.task_id], by: a.requested_by, items: [] }).items.push(a); });
+  const feed = Object.values(groups).sort((x, y) => x.day.localeCompare(y.day) || (x.task.room_flow === 'checkout' ? 0 : 1) - (y.task.room_flow === 'checkout' ? 0 : 1));
+  const roomsWaiting = feed.reduce((n, g) => n + g.items.length, 0);
+  const meetingsWaiting = Object.values(s.meetings).filter((m) => m.status === 'pending' && m.day >= today).length;
+  const alerts = roomsWaiting + meetingsWaiting;
+
+
+  return html`<button type="button" class=${'bell-btn' + (alerts ? ' has' : '')} aria-label=${t('notif.title') + (alerts ? ': ' + alerts : '')} onClick=${() => setInbox(true)}>
+      <${Icon} name=${alerts ? 'bell-ringing' : 'bell'} size=${26} />${alerts ? html`<span class="bell-badge">${alerts}</span>` : null}
+    </button>
+    ${inbox ? html`<${InboxSheet} feed=${feed} meetings=${meetingsWaiting} onClose=${() => setInbox(false)} />` : null}`;
 }
 
 // The inbox behind the bell: Reception requests (give them out right here) and meeting requests waiting for an answer.

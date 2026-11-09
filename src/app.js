@@ -11,6 +11,7 @@ import { isSupervisor, roleInfo } from './roles.js';
 import { loadCore, startLive, stopLive, resetData, inCrew, refresh } from './data.js';
 import { AuthScreen } from './views/auth.js';
 import { HomeView } from './views/home.js';
+import { SupBell } from './views/suphome.js';
 import { CalendarView } from './views/calendar.js';
 import { ChatView } from './views/chat.js';
 import { TeamView } from './views/team.js';
@@ -97,10 +98,13 @@ function Shell() {
 
   return html`<div class="shell">
     <header class="topbar">
-      <div class="hello"><p>${t(greet)},</p><h1>${me.display_name}</h1></div>
-      <button class="avatar-btn" aria-label=${t('profile.title')} onClick=${() => set({ sheet: 'profile' })}>
-        <${Avatar} profile=${me} size=${52} />
-      </button>
+      <div class="topbar-me">
+        <button class="avatar-btn" aria-label=${t('profile.title')} onClick=${() => set({ sheet: 'profile' })}>
+          <${Avatar} profile=${me} size=${56} />
+        </button>
+        <div class="hello"><p>${t(greet)},</p><h1>${me.display_name}</h1></div>
+      </div>
+      ${kind === 'sup' ? html`<${SupBell} />` : null}
     </header>
     <main class="screen" key=${active}>${view}</main>
     ${nav}
