@@ -7,6 +7,23 @@ const OUT = /check ?out|abreise|departure|salida|saida|vertrek|avresa|\bc\/o\b/;
 const IN = /check ?in|anreise|arrival|llegada|chegada|aankomst|ankomst|\bc\/i\b/;
 const DATE_RES = [/\d{4}-\d{1,2}-\d{1,2}/g, /\d{1,2}[./]\d{1,2}[./]\d{2,4}/g, /\d{1,2}\.\d{1,2}\./g, /\b\d{1,2}\.?\s+[A-Za-zÀ-ÿ]{3,}\.?(?:\s+\d{4})?/g];
 const SENT = /^\s*(sent|gesendet|date|datum|enviado|enviada|verzonden|skickat|enviada em)\b/i; // the date an email was sent is not the day of the list
+// weekday names in the six languages ("Montag", "lunes", "Dienstagmorgen"…) -> 1 = Monday … 7 = Sunday
+const WEEKDAYS = [
+  [1, /monday|montag|lunes|segunda|maandag|mandag/], [2, /tuesday|dienstag|martes|terca|dinsdag|tisdag/], [3, /wednesday|mittwoch|miercoles|quarta|woensdag|onsdag/],
+  [4, /thursday|donnerstag|jueves|quinta|donderdag|torsdag/], [5, /friday|freitag|viernes|sexta|vrijdag|fredag/], [6, /saturday|samstag|sonnabend|sabado|zaterdag|lordag/], [7, /sunday|sonntag|domingo|zondag|sondag/],
+];
+const weekdayIn = (n) => { let best = null; for (const [d, re] of WEEKDAYS) { const m = re.exec(n); if (m && (!best || m.index < best.at)) best = { d, at: m.index }; } return best && best.d; };
+const pad2 = (x) => String(x).padStart(2, '0');
+const ymdOf = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+// "Montag" in an email sent on Saturday 7 Nov = Monday 9 Nov (the next one after the sent date; with no sent date: today or the next one)
+function nextWeekday(wd, refYmd) {
+  const [y, m, d] = refYmd.split('-').map(Number); const ref = new Date(y, m - 1, d, 12);
+  const have = ref.getDay() === 0 ? 7 : ref.getDay();
+  let off = (wd - have + 7) % 7;
+  if (off === 0 && refYmd !== ymdOf(new Date())) off = 7;
+  ref.setDate(ref.getDate() + off);
+  return ymdOf(ref);
+}
 const TIME_RE = /\b\d{1,2}:\d{2}(?::\d{2})?\b/g;
 
 // A CSV / text table -> rows of cells (same shape as readXlsx)
@@ -50,7 +67,7 @@ function datesIn(line, dateOrder) {
 // rows: array of arrays of cells ({t,s,ymd?}) -> { items: [{id, code, day, flow}], sawDay, sawFlow }
 export function parseRooms(rows, { dateOrder = 'dmy' } = {}) {
   const items = []; const seen = new Set();
-  let curDay = null, curFlow = null, id = 0, sawDay = false, sawFlow = false, last = null; // last = rooms of the latest line that had a (note)
+  let curDay = null, curFlow = null, id = 0, sawDay = false, sawFlow = false, last = null, curNote = '', sentDay = null; // last = rooms of the latest line that had a (note)
   for (const cells of rows) {
     const parts = []; const cellDays = [];
     for (const c of cells || []) {
@@ -61,15 +78,27 @@ export function parseRooms(rows, { dateOrder = 'dmy' } = {}) {
     }
     const line = parts.join(' | ');
     const { found, rest } = datesIn(line, dateOrder);
-    const days = SENT.test(line) ? [] : [...cellDays, ...found];
+    const isSent = SENT.test(line);
+    if (isSent) { if (found[0] || cellDays[0]) sentDay = cellDays[0] || found[0]; continue; } // the date the email was sent is not the day of the list
     const n = norm(line);
+    let days = [...cellDays, ...found];
+    // no numeric date: a weekday word ("Montag ab 14:00 Uhr") counts, relative to the day the email was sent
+    if (!days.length) { const wd = weekdayIn(n); if (wd) days = [nextWeekday(wd, sentDay || ymdOf(new Date()))]; }
     const flow = OUT.test(n) && !(IN.test(n) && n.search(IN) < n.search(OUT)) ? 'checkout' : IN.test(n) ? 'checkin' : null;
     const codes = [...rest.matchAll(/(?<!\d[.,]?)[1-9]\d{2}(?![\d:]|[.,]\d)/g)].map((m) => m[0]);
     if (days.length) { curDay = days[0]; sawDay = true; }
     if (flow) { curFlow = flow; sawFlow = true; }
+    // a line with no room is a heading. If it says a time ("ab 14:00 Uhr", "Der Bus kommt um 8:00 Uhr an") it becomes the note of the rooms below it
+    const hasTime = TIME_RE.test(line); TIME_RE.lastIndex = 0;
+    if (!codes.length && (days.length || flow || hasTime)) {
+      curNote = hasTime ? line.trim().replace(/[:\s]+$/, '').slice(0, 140) : '';
+      last = null;
+      continue;
+    }
     // "313 (Stu)": what is in brackets next to a room is kept as a note for that room;
     // plain lines right under such a room ("time not known, please ask") belong to the note too
-    const note = [...rest.matchAll(/\(([^)]{1,60})\)/g)].map((m) => m[1].trim()).filter(Boolean).join(', ');
+    const own = [...rest.matchAll(/\(([^)]{1,60})\)/g)].map((m) => m[1].trim()).filter(Boolean).join(', ');
+    const note = [curNote, own].filter(Boolean).join(' · ');
     const added = [];
     for (const code of codes) {
       const key = `${days[0] || curDay}|${flow || curFlow}|${code}`;
@@ -78,10 +107,10 @@ export function parseRooms(rows, { dateOrder = 'dmy' } = {}) {
       const it = { id: ++id, code, day: days[0] || curDay, flow: flow || curFlow, note };
       items.push(it); added.push(it);
     }
-    if (codes.length) last = note ? added : null;
-    else if (last && last.length && !days.length && !flow && line.trim()) {
+    if (codes.length) last = own ? added : null;
+    else if (last && last.length && line.trim()) {
       last.forEach((it) => { it.note = (it.note ? it.note + (it.more ? ' ' : ' – ') : '') + line.trim(); it.more = true; if (it.note.length > 300) it.note = it.note.slice(0, 300); });
-    } else if (days.length || flow) last = null;
+    }
   }
   return { items, sawDay, sawFlow };
 }

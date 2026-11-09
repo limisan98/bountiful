@@ -10,6 +10,13 @@ import { todayYmd, parseYmd, fmt } from '../time.js';
 
 // The supervisor gets the list of rooms to clean by email: drop the file (Excel / CSV / text) or paste the text,
 // check what was found, and press the big button. The rooms become cleaning requests, ready to give out.
+// the notes under a day's rooms: each different note once, with the room numbers it belongs to (no numbers when it is for all of them)
+function noteLines(items) {
+  const by = new Map();
+  items.forEach((i) => { if (i.note) by.set(i.note, [...(by.get(i.note) || []), i.code]); });
+  return [...by].map(([text, codes]) => ({ text, codes: codes.length === items.length ? '' : codes.join(', ') }));
+}
+
 export function RoomImportSheet({ onClose }) {
   const s = useStore();
   const ctl = useSheetControl();
@@ -110,7 +117,7 @@ export function RoomImportSheet({ onClose }) {
         <div class="rimp-chips">${g.items.map((i) => html`<button type="button" key=${i.id} aria-pressed=${!off[i.id]}
           class=${'rimp-chip' + (off[i.id] ? ' off' : '') + (known.has(i.code) ? '' : ' unknown')} onClick=${() => setOff({ ...off, [i.id]: !off[i.id] })}>
           <${Icon} name=${off[i.id] ? 'x' : 'check'} size=${16} />${i.code}</button>`)}</div>
-        ${g.items.filter((i) => i.note && !off[i.id]).map((i) => html`<p class="rimp-note" key=${i.id}><b>${i.code}</b> ${i.note}</p>`)}
+        ${noteLines(g.items.filter((i) => !off[i.id])).map((n) => html`<p class="rimp-note" key=${n.text}>${n.codes ? html`<b>${n.codes}</b> ` : null}${n.text}</p>`)}
       </section>`)}
       ${items.some((i) => !known.has(i.code)) ? html`<p class="field-hint"><${Icon} name="alert-triangle" size=${14} /> ${t('rimp.unknownHint')}</p>` : null}
       <p class="field-hint">${t('rimp.tapHint')}</p>
