@@ -6,7 +6,8 @@ import { isSupervisor } from '../roles.js';
 import { WEEKLY } from '../weeklydata.js';
 import { WEEKLY_TEXT } from '../weeklytext.js';
 import { todayYmd, parseYmd, startOfWeek, addDays, ymd, isoWeekday, fmt } from '../time.js';
-import { ensureWeekly, weeklyOf, setWeeklyItem, assignmentsOn, ensureMonth } from '../data.js';
+import { ensureWeekly, weeklyOf, setWeeklyItem, assignmentsOn, ensureMonth, finishAssignment, reopenAssignment } from '../data.js';
+import { goalOf } from '../shifts.js';
 
 // The Monday-to-Saturday cleaning checklist, shared by the whole custodian team (supervisor included).
 // Tap an item: "I'm doing it" (yellow, with my picture) -> tap again: done (green, with my name) -> tap again: clear.
@@ -69,7 +70,20 @@ export function WeeklyList({ day, compact }) {
       return;
     }
     const next = !r ? 'doing' : r.status === 'doing' ? 'done' : null;
-    try { await setWeeklyItem(wk, i, next); } catch (ex) { toast(friendlyError(ex), 'bad'); }
+    try { await setWeeklyItem(wk, i, next); } catch (ex) { toast(friendlyError(ex), 'bad'); return; }
+    // Custodians no longer see rooms as separate tasks, they tick them here. So finishing a room tile also finishes its room task
+    // (that is what Reception watches: the tile turns green there). Only if the task is theirs (or they are the supervisor); otherwise the tick alone stays.
+    const code = (/^\d\.r\.(\d+)$/.exec(i) || [])[1];
+    if (code && (next === 'done' || (r && r.status === 'done' && !next))) {
+      const days = [dayYmd, ...(day === 2 ? [wk] : [])];
+      const a = days.flatMap((dy) => assignmentsOn(dy)).find((x) => x.kind === 'room' && x.title === code && (next === 'done' ? x.status !== 'done' : x.status === 'done'));
+      if (a && (sup || a.assignee === me.id)) {
+        try {
+          if (next === 'done') { const m = a.started_at ? Math.min(Math.max(1, Math.round((Date.now() - Date.parse(a.started_at)) / 60000)), 1440) : goalOf(a); await finishAssignment(a.id, m, '', ''); }
+          else await reopenAssignment(a.id);
+        } catch (_) { /* the tick is saved; the task keeps its own state */ }
+      }
+    }
   }
   // the rooms on the list the supervisor uploaded (or Reception sent) for this day and not finished yet = priority, shown in red; the whole list stays
   const urgent = {};

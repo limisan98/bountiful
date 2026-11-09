@@ -24,9 +24,10 @@ export function CustodianHome() {
   const timer = useRef(null);
   useEffect(() => { ensureLogbook(today, today).catch(() => {}); return () => clearTimeout(timer.current); }, []);
 
-  const mine = assignmentsOn(today).filter((a) => a.assignee === me.id && s.tasks[a.task_id]);
+  // rooms are not listed here: they are in today's checklist (red = priority)
+  const mine = assignmentsOn(today).filter((a) => a.assignee === me.id && a.kind !== 'room' && s.tasks[a.task_id]);
   const back = ymd(addDays(new Date(), -14));
-  const earlier = Object.values(s.assignments).filter((a) => a.assignee === me.id && s.tasks[a.task_id] && a.day < today && a.day >= back && a.status !== 'done')
+  const earlier = Object.values(s.assignments).filter((a) => a.assignee === me.id && a.kind !== 'room' && s.tasks[a.task_id] && a.day < today && a.day >= back && a.status !== 'done')
     .sort((x, y) => x.day.localeCompare(y.day) || timeKey(x) - timeKey(y));
   const todo = mine.filter((a) => a.status !== 'done');
   const done = mine.filter((a) => a.status === 'done');
