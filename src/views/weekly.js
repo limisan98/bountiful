@@ -164,3 +164,35 @@ export function WeeklyToday() {
     <a class="section-link weekly-all" href="#/weekly">${t('weekly.week')}</a>
   </section>`;
 }
+
+// What is designated for a day, as a flat list with a state each - used by the supervisor's progress ring:
+// the weekday's checklist lines, every guest room (Monday) or the rooms left over from Monday (Tuesday on), and the other tasks given for that day.
+// state: 'done' | 'doing' | 'waiting' (given out by nobody yet) | 'todo'
+export function dayProgressItems(s, dayYmd) {
+  const wk = ymd(startOfWeek(parseYmd(dayYmd))), wd = isoWeekday(parseYmd(dayYmd)), d = WEEKLY.find((x) => x.day === wd);
+  const asg = assignmentsOn(dayYmd).filter((a) => s.tasks[a.task_id]);
+  const stateOfAsg = (a) => (a.status === 'done' ? 'done' : !a.assignee ? 'waiting' : a.status === 'doing' ? 'doing' : 'todo');
+  const tickOf = (id) => { const r = weeklyOf(wk, id); return r ? r.status : null; };
+  const roomAsg = {}; asg.filter((a) => a.kind === 'room').forEach((a) => { if (!roomAsg[a.title] || roomAsg[a.title].status === 'done') roomAsg[a.title] = a; });
+  const roomState = (label, id) => {
+    const tk = tickOf(id), a = roomAsg[label];
+    if (tk === 'done' || (a && a.status === 'done')) return 'done';
+    if (tk === 'doing' || (a && a.status === 'doing')) return 'doing';
+    if (a && !a.assignee) return 'waiting';
+    return 'todo';
+  };
+  const out = [];
+  if (d) {
+    const rooms = [...s.guestRooms];
+    const monDone = (label) => { const w = weeklyOf(wk, `1.r.${label}`); return (!!w && w.status === 'done') || assignmentsOn(wk).some((a) => a.kind === 'room' && a.title === label && a.status === 'done'); };
+    d.sections.forEach((sec, si) => {
+      if (!sec.info && !sec.carry) sec.items.forEach((_, ii) => { const k = tickOf(`${wd}.${si}.${ii}`); out.push(k === 'done' ? 'done' : k === 'doing' ? 'doing' : 'todo'); });
+      const list = sec.rooms ? rooms : sec.carry && isoWeekday(new Date()) >= 2 ? rooms.filter((r) => !monDone(r.label)) : [];
+      list.forEach((r) => out.push(roomState(r.label, `${wd}.r.${r.label}`)));
+    });
+  }
+  const known = new Set(s.guestRooms.map((r) => r.label));
+  Object.values(roomAsg).filter((a) => !known.has(a.title)).forEach((a) => out.push(stateOfAsg(a))); // requested rooms that are not in the room list
+  asg.filter((a) => a.kind !== 'room').forEach((a) => out.push(stateOfAsg(a)));
+  return out;
+}

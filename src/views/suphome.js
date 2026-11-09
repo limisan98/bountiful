@@ -4,13 +4,13 @@ import { t, currentLocale, friendlyError } from '../i18n.js';
 import { Icon, Avatar, Empty, TaskBadge, Sheet, badgeStatus } from '../ui.js';
 import { colorStyle } from '../color.js';
 import { isSupervisor } from '../roles.js';
-import { assignmentsOn, giveTasks, distribute, ensureMonth, itemName } from '../data.js';
+import { assignmentsOn, giveTasks, distribute, ensureMonth, ensureWeekly, itemName } from '../data.js';
 import { todayYmd, addDays, ymd, parseYmd, fmt, dur, hhmm, toMin, monthKey } from '../time.js';
 import { dayPlanned, shiftOf, capacityOf, loadOf, goalOf, crewPeople, problem } from '../shifts.js';
 import { AssignmentSheet, AssignmentRow, GiveSheet } from './assign.js';
 import { QuickAssignSheet } from './quick.js';
 import { MoreLinks } from './more.js';
-import { WeeklyToday } from './weekly.js';
+import { WeeklyToday, dayProgressItems, weekStart } from './weekly.js';
 import { RoomImportSheet } from './roomimport.js';
 
 const FLOW_TIME = { checkout: '10:00', checkin: '14:00' };
@@ -25,13 +25,14 @@ export function SupervisorHome() {
   const [roomImp, setRoomImp] = useState(false);
   const [open, setOpen] = useState(null);
   useEffect(() => { const i = setInterval(() => setNow(new Date()), 30000); return () => clearInterval(i); }, []);
-  useEffect(() => { ensureMonth(monthKey(new Date())).catch(() => {}); }, []);
+  useEffect(() => { ensureMonth(monthKey(new Date())).catch(() => {}); ensureWeekly(weekStart()).catch(() => {}); }, []);
   const nowMin = now.getHours() * 60 + now.getMinutes();
 
-  const todays = assignmentsOn(today).filter((a) => s.tasks[a.task_id]);
+  // progress = everything designated for today: the weekday's checklist, the rooms and the other tasks given out (updates live with the ticks)
+  const items = dayProgressItems(s, today);
   const stat = { done: 0, doing: 0, todo: 0, waiting: 0 };
-  todays.forEach((a) => { if (a.status === 'done') stat.done += 1; else if (!a.assignee) stat.waiting += 1; else if (a.status === 'doing') stat.doing += 1; else stat.todo += 1; });
-  const total = todays.length;
+  items.forEach((st) => { stat[st] += 1; });
+  const total = items.length;
   const pct = total ? Math.round((stat.done / total) * 100) : 0;
 
   const since = ymd(addDays(new Date(), -3));
