@@ -1481,3 +1481,4 @@ select.input { appearance: auto; padding-right: 12px; }
 .prog-chip { display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; border-radius: 99px; font-weight: 800; font-size: 14px; background: color-mix(in srgb, var(--lavender) 45%, #fff); }
 .prog-chip.done { background: color-mix(in srgb, var(--mint) 55%, #fff); } .prog-chip.doing { background: color-mix(in srgb, var(--yellow) 60%, #fff); } .prog-chip.waiting { background: color-mix(in srgb, var(--coral) 55%, #fff); }
 .prog-detail { background: #fff; border: 0; border-radius: var(--r-xl, 28px); box-shadow: var(--shadow-s); padding: 18px; }
+.weekly-card-day { text-transform: capitalize; }

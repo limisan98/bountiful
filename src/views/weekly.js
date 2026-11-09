@@ -171,7 +171,7 @@ export function WeeklyToday() {
   return html`<section class="rise weekly-card" aria-label=${t('nav.weekly')}>
     <button type="button" class="weekly-card-head" aria-expanded=${open} onClick=${() => setOpen(!open)}>
       <span class="weekly-card-ic"><${Icon} name="clipboard-check" size=${24} /></span>
-      <span><b>${t('weekly.today')}</b><small>${fmt(new Date(), { weekday: 'long' })}</small></span>
+      <span><b class="weekly-card-day">${fmt(new Date(), { weekday: 'long' })}</b></span>
       <${Icon} name=${open ? 'caret-up' : 'caret-down'} size=${20} />
     </button>
     ${open ? html`<${WeeklyList} day=${wd} compact=${true} />` : null}
