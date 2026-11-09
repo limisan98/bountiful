@@ -3,6 +3,7 @@ import { useStore } from '../store.js';
 import { t } from '../i18n.js';
 import { Icon, Avatar, Segmented, Empty } from '../ui.js';
 import { ymd, parseYmd, addDays, todayYmd, fmt, dur } from '../time.js';
+import { makeXlsx, downloadBlob } from '../xlsxwrite.js';
 
 // Automatic reports. The database writes them by itself (day: every day 23:30, week: Saturday 23:30,
 // month: last Saturday of the month, quarter: last Saturday of Mar/Jun/Sep/Dec). Only supervisors can read them.
@@ -23,6 +24,29 @@ function whenText(d) {
   return t('reports.when.range', { a: short(d.period_start), b: short(d.period_end) });
 }
 
+// Everything the supervisor has received, as an Excel file: one sheet with a line per report, one with a line per task / note.
+function exportReports(digests, profiles) {
+  const list = [...digests].sort((a, b) => a.period_end.localeCompare(b.period_end) || a.kind.localeCompare(b.kind));
+  const nm = (d) => (profiles[d.custodian] || {}).display_name || t('chat.former');
+  const kindName = (k) => t('reports.kind.' + k);
+  const summary = [[t('rx.type'), t('rx.from'), t('rx.to'), t('rx.person'), t('rx.planned'), t('rx.done'), t('rx.minutes'), t('rx.over'), t('rx.rooms'), t('rx.roomList')]];
+  const detail = [[t('rx.type'), t('rx.from'), t('rx.to'), t('rx.person'), t('rx.task'), t('rx.times'), t('rx.minutes'), t('rx.goal'), t('rx.day'), t('rx.delay'), t('rx.comment')]];
+  list.forEach((d) => {
+    const sm = d.summary || {}, base = [kindName(d.kind), { date: d.period_start }, { date: d.period_end }, nm(d)];
+    const rooms = sm.rooms || [];
+    summary.push([...base, sm.planned || 0, sm.done || 0, sm.minutes || 0, sm.over || 0, rooms.length, d.kind === 'day' ? rooms.map((r) => r.room).join(', ') : '']);
+    if (d.kind === 'day') (sm.items || []).forEach((x) => detail.push([...base, x.task, 1, x.minutes || 0, x.goal || '', { date: d.period_end }, x.delay || '', x.comment || '']));
+    else {
+      (sm.tasks || []).forEach((x) => detail.push([...base, x.task, x.count || 0, x.minutes || 0, '', '', '', '']));
+      (sm.items || []).filter((x) => x.comment || x.delay).forEach((x) => detail.push([...base, x.task, '', '', '', x.day ? { date: x.day } : '', x.delay || '', x.comment || '']));
+    }
+  });
+  downloadBlob(makeXlsx([
+    { name: t('rx.sheetSummary'), widths: [14, 12, 12, 24, 10, 10, 12, 14, 8, 36], rows: summary },
+    { name: t('rx.sheetDetail'), widths: [14, 12, 12, 24, 34, 8, 10, 10, 12, 30, 40], rows: detail },
+  ]), `Bountiful_${t('reports.title')}_${todayYmd()}.xlsx`.replace(/\s+/g, '_'));
+}
+
 export function ReportsView() {
   const s = useStore();
   const [kind, setKind] = useState('day');
@@ -35,6 +59,8 @@ export function ReportsView() {
       <h2 class="page-title">${t('reports.title')}</h2>
       <p class="page-sub">${t('reports.sub')}</p>
     </div></div>
+
+    <button type="button" class="btn soft" disabled=${!Object.keys(s.digests).length} onClick=${() => exportReports(Object.values(s.digests), s.profiles)}><${Icon} name="arrow-badge-down" size=${22} />${t('reports.download')}</button>
 
     <${Segmented} value=${kind} onChange=${setKind} options=${KINDS.map((k) => ({ value: k, label: t('reports.kind.' + k) }))} />
 
