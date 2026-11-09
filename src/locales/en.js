@@ -709,4 +709,6 @@ Wipe the floor`,
   "rimp.create": `Create {n} cleaning requests`,
   "rimp.done": `{n} rooms created`,
   "rimp.dupes": `{n} were already there`,
+  "weekly.urgent": `{n} rooms in red are on the list to clean today. All the other rooms are below too.`,
+  "weekly.urgentOne": `On the list to clean`,
 };

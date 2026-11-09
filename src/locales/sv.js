@@ -709,4 +709,6 @@ Torka golvet`,
   "rimp.create": `Skapa {n} städförfrågningar`,
   "rimp.done": `{n} rum skapade`,
   "rimp.dupes": `{n} fanns redan`,
+  "weekly.urgent": `{n} röda rum står på dagens städlista. Alla andra rum finns också nedan.`,
+  "weekly.urgentOne": `På städlistan`,
 };

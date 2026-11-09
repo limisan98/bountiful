@@ -709,4 +709,6 @@ Fregar el suelo`,
   "rimp.create": `Crear {n} solicitudes de limpieza`,
   "rimp.done": `{n} habitaciones creadas`,
   "rimp.dupes": `{n} ya existían`,
+  "weekly.urgent": `{n} habitaciones en rojo están en la lista para limpiar hoy. Abajo siguen todas las demás.`,
+  "weekly.urgentOne": `En la lista para limpiar`,
 };

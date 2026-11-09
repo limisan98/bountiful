@@ -1440,3 +1440,7 @@ select.input { appearance: auto; padding-right: 12px; }
 .weekly-card .wk-room { background: var(--bg, #F6FAF8); box-shadow: none; }
 .wk-room.doing { background: color-mix(in srgb, var(--yellow) 55%, #fff); }
 .wk-room.done { background: color-mix(in srgb, var(--lime) 60%, #fff); }
+
+.wk-room.urgent { background: color-mix(in srgb, var(--coral) 55%, #fff); font-weight: 800; }
+.wk-urgent-note { margin: 0 4px; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: var(--ink-2); }
+.wk-urgent-note i { width: 14px; height: 14px; border-radius: 50%; background: var(--coral); flex: none; }

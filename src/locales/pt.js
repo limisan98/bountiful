@@ -709,4 +709,6 @@ Limpar o chão`,
   "rimp.create": `Criar {n} pedidos de limpeza`,
   "rimp.done": `{n} quartos criados`,
   "rimp.dupes": `{n} já existiam`,
+  "weekly.urgent": `{n} quartos a vermelho estão na lista para limpar hoje. Todos os outros quartos estão também abaixo.`,
+  "weekly.urgentOne": `Na lista para limpar`,
 };

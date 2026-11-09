@@ -6,7 +6,7 @@ import { isSupervisor } from '../roles.js';
 import { WEEKLY } from '../weeklydata.js';
 import { WEEKLY_TEXT } from '../weeklytext.js';
 import { todayYmd, parseYmd, startOfWeek, addDays, ymd, isoWeekday, fmt } from '../time.js';
-import { ensureWeekly, weeklyOf, setWeeklyItem } from '../data.js';
+import { ensureWeekly, weeklyOf, setWeeklyItem, assignmentsOn, ensureMonth } from '../data.js';
 
 // The Monday-to-Saturday cleaning checklist, shared by the whole custodian team (supervisor included).
 // Tap an item: "I'm doing it" (yellow, with my picture) -> tap again: done (green, with my name) -> tap again: clear.
@@ -32,7 +32,8 @@ export function WeeklyList({ day, compact }) {
   const wk = weekStart();
   const lang = s.lang;
   const [open, setOpen] = useState(loadOpen);
-  useEffect(() => { ensureWeekly(wk).catch(() => {}); }, [wk]);
+  const dayYmd = ymd(addDays(parseYmd(wk), day - 1));
+  useEffect(() => { ensureWeekly(wk).catch(() => {}); ensureMonth(dayYmd.slice(0, 7)).catch(() => {}); }, [wk]);
   const toggleOpen = (k) => setOpen((o) => { const n = { ...o, [k]: !o[k] }; try { localStorage.setItem(OPEN_KEY, JSON.stringify(n)); } catch { /* private mode */ } return n; });
 
   const d = WEEKLY.find((x) => x.day === day);
@@ -56,6 +57,10 @@ export function WeeklyList({ day, compact }) {
     const next = !r ? 'doing' : r.status === 'doing' ? 'done' : null;
     try { await setWeeklyItem(wk, i, next); } catch (ex) { toast(friendlyError(ex), 'bad'); }
   }
+  // the rooms on the list the supervisor uploaded (or Reception sent) for this day and not finished yet = priority, shown in red; the whole list stays
+  const urgent = {};
+  assignmentsOn(dayYmd).forEach((a) => { if (a.kind === 'room' && a.status !== 'done') urgent[a.title] = (s.tasks[a.task_id] && s.tasks[a.task_id].room_flow) || true; });
+  const nUrgent = rooms.filter((r) => urgent[r.label]).length;
   const first = (p) => (p ? p.display_name.split(' ')[0] : '');
 
   const row = (i, txt) => {
@@ -72,8 +77,9 @@ export function WeeklyList({ day, compact }) {
   // a guest room as a small tile (there are many): yellow = somebody is on it, green = done, with that person's picture
   const tile = (r) => {
     const i = `${day}.r.${r.label}`, w = weeklyOf(wk, i), p = w ? s.profiles[w.user_id] : null;
-    return html`<button type="button" key=${i} class=${'wk-room ' + (w ? w.status : '')} aria-pressed=${!!w && w.status === 'done'} title=${w ? first(p) + ' · ' + (w.status === 'done' ? t('status.done') : t('weekly.doing')) : ''}
-      aria-label=${r.label + (w ? ', ' + first(p) + ', ' + (w.status === 'done' ? t('status.done') : t('weekly.doing')) : '')} onClick=${() => tap(i)}>
+    const u = !w && urgent[r.label], uTxt = u ? (typeof u === 'string' ? t('flow.' + u) + ' · ' : '') + t('weekly.urgentOne') : '';
+    return html`<button type="button" key=${i} class=${'wk-room ' + (w ? w.status : u ? 'urgent' : '')} aria-pressed=${!!w && w.status === 'done'} title=${w ? first(p) + ' · ' + (w.status === 'done' ? t('status.done') : t('weekly.doing')) : uTxt}
+      aria-label=${r.label + (w ? ', ' + first(p) + ', ' + (w.status === 'done' ? t('status.done') : t('weekly.doing')) : uTxt ? ', ' + uTxt : '')} onClick=${() => tap(i)}>
       <b>${r.label}</b>${w ? html`<${Avatar} profile=${p} name=${p ? p.display_name : ''} size=${20} ring=${false} />` : null}
     </button>`;
   };
@@ -93,6 +99,7 @@ export function WeeklyList({ day, compact }) {
           ${sec.note ? html`<p class="field-hint">${titleText(sec.note, lang)}</p>` : null}
           ${sec.info ? html`<ul class="weekly-info">${sec.items.map((txt, ii) => html`<li key=${ii}>${itemText(id(si, ii), txt, lang)}</li>`)}</ul>`
             : html`<div class="checklist">${sec.items.map((txt, ii) => row(id(si, ii), itemText(id(si, ii), txt, lang)))}</div>`}
+          ${sec.rooms && nUrgent ? html`<p class="wk-urgent-note"><i></i>${t('weekly.urgent', { n: nUrgent })}</p>` : null}
           ${sec.rooms ? [1, 2, 3, 4].map((h) => {
             const hr = rooms.filter((r) => r.house === h);
             if (!hr.length) return null;

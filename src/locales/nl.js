@@ -709,4 +709,6 @@ Vloer dweilen`,
   "rimp.create": `{n} schoonmaakverzoeken maken`,
   "rimp.done": `{n} kamers aangemaakt`,
   "rimp.dupes": `{n} stonden er al`,
+  "weekly.urgent": `{n} rode kamers staan vandaag op de schoonmaaklijst. Alle andere kamers staan er ook onder.`,
+  "weekly.urgentOne": `Op de schoonmaaklijst`,
 };

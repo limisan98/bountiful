@@ -709,4 +709,6 @@ Boden wischen`,
   "rimp.create": `{n} Reinigungsaufträge erstellen`,
   "rimp.done": `{n} Zimmer erstellt`,
   "rimp.dupes": `{n} waren schon vorhanden`,
+  "weekly.urgent": `{n} rote Zimmer stehen heute auf der Reinigungsliste. Alle anderen Zimmer stehen ebenfalls darunter.`,
+  "weekly.urgentOne": `Auf der Reinigungsliste`,
 };
