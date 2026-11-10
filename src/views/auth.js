@@ -2,15 +2,13 @@ import { html, useState } from '../../assets/vendor/htm-preact.js';
 import { sb } from '../api.js';
 import { useStore } from '../store.js';
 import { t, friendlyError } from '../i18n.js';
-import { Icon, Segmented, Field, PasswordInput, LangMenu } from '../ui.js';
+import { Icon, Field, PasswordInput, LangMenu } from '../ui.js';
 import { LogoMark } from '../logo.js';
 
 export function AuthScreen() {
   const s = useStore();
-  const [mode, setMode] = useState('in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -20,22 +18,8 @@ export function AuthScreen() {
     setBusy(true);
     const cleanEmail = email.trim().toLowerCase();
     try {
-      if (mode === 'in') {
-        const { error: err } = await sb.auth.signInWithPassword({ email: cleanEmail, password });
-        if (err) throw err;
-      } else {
-        if (password.length < 8) throw { code: 'weak' };
-        const { data, error: err } = await sb.auth.signUp({
-          email: cleanEmail,
-          password,
-          options: { data: { invite_code: code.trim(), lang: s.lang } },
-        });
-        if (err) throw err;
-        if (!data.session) {
-          const r = await sb.auth.signInWithPassword({ email: cleanEmail, password });
-          if (r.error) throw r.error;
-        }
-      }
+      const { error: err } = await sb.auth.signInWithPassword({ email: cleanEmail, password });
+      if (err) throw err;
     } catch (ex) {
       setError(friendlyError(ex));
     } finally {
@@ -53,31 +37,24 @@ export function AuthScreen() {
         <p>${t('app.tagline')}</p>
       </div>
 
-      <${Segmented} value=${mode} onChange=${(m) => { setMode(m); setError(''); }}
-        options=${[{ value: 'in', label: t('auth.signin') }, { value: 'up', label: t('auth.create') }]} />
-
       <form onSubmit=${submit} class="stack-form">
         <${Field} label=${t('auth.email')}>
           <input class="input" type="email" inputmode="email" autocomplete="username" required
             value=${email} onInput=${(e) => setEmail(e.target.value)} />
         <//>
-        ${mode === 'up' && html`<${Field} label=${t('auth.code')} hint=${t('auth.codeHelp')}>
-          <input class="input code" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" required
-            value=${code} onInput=${(e) => setCode(e.target.value.toUpperCase())} />
-        <//>`}
-        <${Field} label=${t('auth.password')} hint=${mode === 'up' ? t('auth.passwordHelp') : ''}>
+        <${Field} label=${t('auth.password')} hint="">
           <${PasswordInput} value=${password} onInput=${(e) => setPassword(e.target.value)}
-            autocomplete=${mode === 'in' ? 'current-password' : 'new-password'} />
+            autocomplete="current-password" />
         <//>
 
         ${error && html`<p class="form-error" role="alert"><${Icon} name="alert-circle" size=${18} />${error}</p>`}
 
         <button class="btn" type="submit" disabled=${busy}>
-          ${busy ? t('common.loading') : mode === 'in' ? t('auth.submitIn') : t('auth.submitUp')}
+          ${busy ? t('common.loading') : t('auth.submitIn')}
         </button>
       </form>
 
-      ${mode === 'up' && html`<p class="auth-note">${t('auth.note')}</p>`}
+      <p class="auth-note">${t('auth.noAccount')}</p>
     </div>
   </div>`;
 }

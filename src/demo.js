@@ -274,6 +274,8 @@ const demoApi = {
     ];
   },
   async addPerson({ email, full_name, role }) { pending.push({ email, full_name, role, invite_code: Math.random().toString(16).slice(2, 10).toUpperCase(), claimed_by: null }); },
+  async createAccount(email) { const r = pending.find((x) => x.email === email); if (r) r.claimed_by = 'demo-' + email; },
+  async resetPassword() {},
   async updateInvite(email, patch) { Object.assign(pending.find((r) => r.email === email) || {}, patch); },
   async removeInvite(email) { const i = pending.findIndex((r) => r.email === email); if (i >= 0) pending.splice(i, 1); },
   async adminUpdateMember(id, role, active) { Object.assign(people.find((p) => p.id === id), { role, active }); pushProfiles(); },

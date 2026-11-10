@@ -5,6 +5,15 @@ import { state } from './store.js';
 export const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const ok = ({ data, error }) => { if (error) throw error; return data; };
+async function callCreateUser(action, email, password) {
+  const { error } = await sb.functions.invoke('create-user', { body: { action, email, password } });
+  if (!error) return;
+  let code = 'failed';
+  try { code = (await error.context.json()).error || code; } catch { /* no details */ }
+  if (code === 'weak') throw { code: 'weak' };
+  // the words friendlyError() already knows
+  throw new Error({ not_supervisor: 'only a supervisor', not_on_list: 'not on the bountiful list', already: 'already registered', not_found: 'not on the bountiful list' }[code] || String(error.message || 'failed'));
+}
 const rpc = async (name, args) => { const { error } = await sb.rpc(name, args); if (error) throw error; };
 
 // After a "safe door" (rpc) runs, read the task and its report back so the screen can update.
@@ -46,6 +55,9 @@ const real = {
     }
     return data.publicUrl;
   },
+  // The supervisor makes (or resets) a person's login through the "create-user" edge function (it checks the caller is a supervisor)
+  async createAccount(email, password) { return callCreateUser('create', email, password); },
+  async resetPassword(email, password) { return callCreateUser('reset', email, password); },
   async changePassword(password) { ok(await sb.auth.updateUser({ password })); },
   async saveNotifPrefs(notif) { ok(await sb.auth.updateUser({ data: { notif } })); },
   async savePushSubscription(endpoint, p256dh, auth, lang) { await rpc('save_push_subscription', { p_endpoint: endpoint, p_p256dh: p256dh, p_auth: auth, p_lang: lang }); },
