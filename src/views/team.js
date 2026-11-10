@@ -18,8 +18,7 @@ async function copyText(text) {
   }
   toast(t('team.copied'));
 }
-// a random password that is easy to read out loud (no 0/O, 1/l/I)
-const newPassword = () => { const a = 'abcdefghjkmnpqrstuvwxyz23456789'; const r = crypto.getRandomValues(new Uint32Array(10)); return Array.from(r, (n) => a[n % a.length]).join(''); };
+const inviteMessage = (row) => t('team.inviteMsg', { name: row.full_name || '', url: siteUrl(), email: row.email, code: row.invite_code });
 const siteUrl = () => location.origin + location.pathname.replace(/index\.html$/, '');
 
 // ---- Choose one of the four roles ----
@@ -133,23 +132,18 @@ function AddPerson({ onClose, onAdded }) {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('custodian');
   const [busy, setBusy] = useState(false);
-  const [added, setAdded] = useState(null); // the person is on the list: next step is making the login
 
   async function submit(e) {
     e.preventDefault();
     setBusy(true);
     try {
-      const row = { email: email.trim().toLowerCase(), full_name: name.trim(), role };
-      await api.addPerson(row);
-      setAdded(row);
+      await api.addPerson({ email: email.trim().toLowerCase(), full_name: name.trim(), role });
+      toast(t('team.added'));
+      ctl.close();
       onAdded();
     } catch (ex) { toast(friendlyError(ex), 'bad'); }
     setBusy(false);
   }
-  if (added) return html`<${Sheet} title=${t('team.createAccount')} onClose=${onClose} control=${ctl}>
-    <div class="who"><div><div class="who-name">${added.full_name}</div><div class="muted who-mail">${added.email}</div></div></div>
-    <${AccountBox} row=${added} onDone=${onAdded} />
-  <//>`;
   return html`<${Sheet} title=${t('team.addTitle')} onClose=${onClose} control=${ctl}>
     <form class="stack-form" onSubmit=${submit}>
       <${Field} label=${t('team.name')}><input class="input" value=${name} required maxlength="40" onInput=${(e) => setName(e.target.value)} /><//>
@@ -194,7 +188,18 @@ function Manage({ row, profile, onClose, onChanged }) {
       <div><div class="who-name">${name}</div><div class="muted who-mail">${row.email}</div></div>
     </div>
 
-    ${!registered ? html`<${AccountBox} row=${row} mode="create" onDone=${onChanged} />` : html`<${AccountBox} row=${row} mode="reset" />`}
+    ${!registered && html`<div class="code-card">
+      <span class="field-label">${t('team.invite')}</span>
+      <div class="code-big">${row.invite_code}</div>
+      <div class="row-btns stacked">
+        <button class="btn soft" onClick=${() => copyText(row.invite_code)}><${Icon} name="copy" size=${18} />${t('team.copy')}</button>
+        <button class="btn soft" onClick=${() => copyText(inviteMessage(row))}>
+          <${Icon} name="send" size=${18} />${t('team.copyMessage')}</button>
+        <a class="btn soft" href=${'https://wa.me/?text=' + encodeURIComponent(inviteMessage(row))} target="_blank" rel="noopener"><${Icon} name="send" size=${18} />${t('team.whatsapp')}</a>
+      </div>
+      <div class="send-steps"><b>${t('team.steps.title')}</b>
+        <ol><li>${t('team.steps.1')}</li><li>${t('team.steps.2')}</li><li>${t('team.steps.3')}</li><li>${t('team.steps.4')}</li></ol></div>
+    </div>`}
 
     <div class="stack-form">
       <div class="field"><span class="field-label">${t('team.role')}</span><${RolePicker} value=${role} onChange=${setRole} /></div>
@@ -246,46 +251,4 @@ function RoleEditor({ id, onClose }) {
 
 function Preview({ role }) {
   return html`<span class="chip role big" style=${colorStyle(role.color)}><${Icon} name=${role.icon} size=${18} />${role.name}</span>`;
-}
-
-// The supervisor makes the login: choose (or generate) a password, press the button, then copy the message with email + password.
-// mode 'create' = a person on the list with no login yet; mode 'reset' = a new password for somebody who already has one.
-function AccountBox({ row, mode = 'create', onDone }) {
-  const [pw, setPw] = useState(newPassword);
-  const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(null); // the password that was saved
-  const name = row.full_name || '';
-  const message = (p) => t('team.accountMsg', { name, url: siteUrl(), email: row.email, password: p });
-
-  async function go() {
-    if (busy) return;
-    if (pw.length < 8) { toast(t('err.weak'), 'bad'); return; }
-    setBusy(true);
-    try {
-      if (mode === 'create') await api.createAccount(row.email, pw); else await api.resetPassword(row.email, pw);
-      setDone(pw);
-      toast(mode === 'create' ? t('team.accountDone') : t('team.passwordSet'));
-      if (onDone) onDone();
-    } catch (ex) { toast(friendlyError(ex), 'bad'); }
-    setBusy(false);
-  }
-
-  if (done) return html`<div class="code-card">
-    <span class="field-label">${mode === 'create' ? t('team.accountDone') : t('team.passwordSet')}</span>
-    <div class="code-big">${done}</div>
-    <p class="muted">${t('team.accountHelp')}</p>
-    <div class="row-btns stacked">
-      <button class="btn soft" onClick=${() => copyText(done)}><${Icon} name="copy" size=${18} />${t('team.copy')}</button>
-      <button class="btn soft" onClick=${() => copyText(message(done))}><${Icon} name="send" size=${18} />${t('team.copyMessage')}</button>
-    </div>
-  </div>`;
-  return html`<div class="code-card">
-    <span class="field-label">${mode === 'create' ? t('team.createAccount') : t('team.setPassword')}</span>
-    <input class="input code" type="text" value=${pw} autocomplete="off" spellcheck="false" aria-label=${t('auth.password')} onInput=${(e) => setPw(e.target.value)} />
-    <p class="muted">${t('team.accountHelp')}</p>
-    <div class="row-btns stacked">
-      <button type="button" class="btn soft" onClick=${() => setPw(newPassword())}><${Icon} name="sparkles-2" size=${18} />${t("team.generate")}</button>
-      <button type="button" class="btn" disabled=${busy} onClick=${go}><${Icon} name="check" size=${20} />${mode === 'create' ? t('team.createAccount') : t('team.setPassword')}</button>
-    </div>
-  </div>`;
 }
