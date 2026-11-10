@@ -83,8 +83,8 @@ export async function buildPerformance(range, lang) {
     const done = ev.filter(isDone).sort((a, b) => b.day.localeCompare(a.day) || String(b.doneAt).localeCompare(String(a.doneAt))).filter((e) => !seen.has(e.day) && seen.add(e.day));
     return { r, n: done.length, last: done[0] ? done[0].day : '', by: done[0] ? nameOf(done[0].who) : '', asked: ev.filter((e) => e.src === 'assign').length };
   }).sort((a, b) => a.n - b.n || (a.last || '').localeCompare(b.last || '') || a.r.label.localeCompare(b.r.label));
-  const roomsSheet = [[t('px.room'), t('px.house'), t('px.floor'), t('px.timesCleaned'), t('px.lastCleaned'), t('px.daysSince'), t('px.lastBy'), t('px.asked')],
-    ...roomRows.map((x) => [x.r.label, x.r.house, x.r.floor, x.n, x.last ? { date: x.last } : '', x.last ? daysBetween(x.last, upTo) : '', x.by, x.asked])];
+  const roomsSheet = [[t('px.room'), t('px.house'), t('px.floor'), t('px.type'), t('px.timesCleaned'), t('px.lastCleaned'), t('px.daysSince'), t('px.lastBy'), t('px.asked')],
+    ...roomRows.map((x) => [x.r.label, x.r.house, x.r.floor, t('px.type.' + (x.r.kind || 'room')), x.n, x.last ? { date: x.last } : '', x.last ? daysBetween(x.last, upTo) : '', x.by, x.asked])];
 
   // ---- sheet 4: other tasks - how often they are given and finished
   const byTask = {};
@@ -109,7 +109,7 @@ export async function buildPerformance(range, lang) {
   return makeXlsx([
     { name: t('px.s.people'), widths: [24, 10, 34, 10, 10, 10, 10, 10, 10, 10, 10, 12, 10, 12], rows: peopleRows },
     { name: t('px.s.detail'), widths: [12, 24, 14, 40, 14, 10, 10, 10, 50], rows: detailRows },
-    { name: t('px.s.rooms'), widths: [9, 8, 8, 12, 14, 14, 24, 12], rows: roomsSheet },
+    { name: t('px.s.rooms'), widths: [9, 8, 8, 12, 12, 14, 14, 24, 12], rows: roomsSheet },
     { name: t('px.s.tasks'), widths: [36, 22, 10, 8, 10, 14, 14, 10, 12], rows: tasksSheet },
     { name: t('px.s.list'), widths: [14, 14, 60, 10, 14, 24, 14], rows: listSheet },
   ]);

@@ -48,13 +48,23 @@ export function WeeklyList({ day, compact }) {
   if (!d) return null;
   const id = (si, ii) => `${day}.${si}.${ii}`;
   const rooms = [...s.guestRooms].sort((a, b) => a.house - b.house || a.floor - b.floor || a.num - b.num);
+  const monYmd0 = wk;
+  // the rooms on the list the supervisor uploaded (or Reception sent) for this day and not finished yet = priority, shown in red; the whole list stays
+  const urgent = {};
+  const markUrgent = (ymdDay) => assignmentsOn(ymdDay).forEach((a) => { if (a.kind === 'room' && a.status !== 'done') urgent[a.title] = (s.tasks[a.task_id] && s.tasks[a.task_id].room_flow) || true; });
+  markUrgent(dayYmd);
+  if (day === 2) markUrgent(monYmd0); // a priority room nobody finished on Monday stays a priority on Tuesday
+  const nUrgentOf = (list) => list.filter((r) => urgent[r.label]).length;
+  // Studios and apartments are not part of the Monday cleaning: they only show up when they are requested (red) or somebody already ticked them
+  const onDemand = (r) => (r.kind || 'room') !== 'room';
+  const shown = (r) => !onDemand(r) || !!urgent[r.label] || !!weeklyOf(wk, `${day}.r.${r.label}`);
   // Rooms that were not finished on Monday (not ticked done in the list, and no finished room task) carry over to Tuesday's list. Only from Tuesday on.
   const monYmd = wk;
   const monRooms = assignmentsOn(monYmd).filter((a) => a.kind === 'room');
   const monDone = (label) => { const w = weeklyOf(wk, `1.r.${label}`); return (!!w && w.status === 'done') || monRooms.some((a) => a.title === label && a.status === 'done'); };
   const carryOn = isoWeekday(new Date()) >= 2;
-  const carried = carryOn ? rooms.filter((r) => !monDone(r.label)) : [];
-  const roomsOf = (sec) => (sec.rooms ? rooms : sec.carry ? carried : null);
+  const carried = carryOn ? rooms.filter((r) => !monDone(r.label) && (!onDemand(r) || !!urgent[r.label] || !!weeklyOf(wk, `${day}.r.${r.label}`))) : [];
+  const roomsOf = (sec) => (sec.rooms ? rooms.filter(shown) : sec.carry ? carried : null);
   // every checkable thing of a section: its lines (unless they are only instructions) and, for "Rooms", one tile per guest room
   const idsOf = (sec, si) => [...(sec.info ? [] : sec.items.map((_, ii) => id(si, ii))), ...((roomsOf(sec) || []).map((r) => `${day}.r.${r.label}`))];
   const isDone = (i) => { const r = weeklyOf(wk, i); return !!r && r.status === 'done'; };
@@ -85,12 +95,6 @@ export function WeeklyList({ day, compact }) {
       }
     }
   }
-  // the rooms on the list the supervisor uploaded (or Reception sent) for this day and not finished yet = priority, shown in red; the whole list stays
-  const urgent = {};
-  const markUrgent = (ymdDay) => assignmentsOn(ymdDay).forEach((a) => { if (a.kind === 'room' && a.status !== 'done') urgent[a.title] = (s.tasks[a.task_id] && s.tasks[a.task_id].room_flow) || true; });
-  markUrgent(dayYmd);
-  if (day === 2) markUrgent(monYmd); // a priority room nobody finished on Monday stays a priority on Tuesday
-  const nUrgentOf = (list) => list.filter((r) => urgent[r.label]).length;
   const first = (p) => (p ? p.display_name.split(' ')[0] : '');
 
   const row = (i, txt) => {
@@ -131,6 +135,7 @@ export function WeeklyList({ day, compact }) {
           ${sec.info ? html`<ul class="weekly-info">${sec.items.map((txt, ii) => html`<li key=${ii}>${itemText(id(si, ii), txt, lang)}</li>`)}</ul>`
             : html`<div class="checklist">${sec.items.map((txt, ii) => row(id(si, ii), itemText(id(si, ii), txt, lang)))}</div>`}
           ${sec.carry ? html`<p class="field-hint">${carried.length ? t('weekly.carryHint') : t('weekly.carryNone')}</p>` : null}
+          ${sec.rooms && rooms.some(onDemand) ? html`<p class="field-hint">${t('weekly.onDemandNote')}</p>` : null}
           ${roomsOf(sec) && nUrgentOf(roomsOf(sec)) ? html`<p class="wk-urgent-note"><i></i>${t('weekly.urgent', { n: nUrgentOf(roomsOf(sec)) })}</p>` : null}
           ${roomsOf(sec) ? [1, 2, 3, 4].map((h) => {
             const hr = roomsOf(sec).filter((r) => r.house === h);
@@ -198,13 +203,16 @@ export function dayProgressItems(s, dayYmd) {
   const out = [];
   if (d) {
     const rooms = [...s.guestRooms].sort((x, y) => x.house - y.house || x.floor - y.floor || x.num - y.num);
+    const onDemand = (r) => (r.kind || 'room') !== 'room';
+    const asked = (label) => assignmentsOn(dayYmd).concat(wd === 2 ? assignmentsOn(wk) : []).some((a) => a.kind === 'room' && a.title === label && a.status !== 'done');
+    const showRoom = (r) => !onDemand(r) || asked(r.label) || !!weeklyOf(wk, `${wd}.r.${r.label}`); // studios / apartments only when requested
     const monDone = (label) => { const w = weeklyOf(wk, `1.r.${label}`); return (!!w && w.status === 'done') || assignmentsOn(wk).some((a) => a.kind === 'room' && a.title === label && a.status === 'done'); };
     d.sections.forEach((sec, si) => {
       if (!sec.info && !sec.carry) sec.items.forEach((txt, ii) => {
         const id = `${wd}.${si}.${ii}`, k = weeklyOf(wk, id);
         out.push({ kind: 'line', label: itemText(id, txt, lang), state: k && k.status === 'done' ? 'done' : k && k.status === 'doing' ? 'doing' : 'todo', who: k ? k.user_id : '' });
       });
-      const list = sec.rooms ? rooms : sec.carry && isoWeekday(new Date()) >= 2 ? rooms.filter((r) => !monDone(r.label)) : [];
+      const list = sec.rooms ? rooms.filter(showRoom) : sec.carry && isoWeekday(new Date()) >= 2 ? rooms.filter((r) => !monDone(r.label) && showRoom(r)) : [];
       list.forEach((r) => { const k = weeklyOf(wk, `${wd}.r.${r.label}`), a = roomAsg[r.label]; out.push({ kind: 'room', label: r.label, state: roomState(r.label, k), who: k ? k.user_id : (a && a.assignee) || '' }); });
     });
   }
