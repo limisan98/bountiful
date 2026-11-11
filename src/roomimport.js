@@ -24,6 +24,8 @@ function nextWeekday(wd, refYmd) {
   ref.setDate(ref.getDate() + off);
   return ymdOf(ref);
 }
+// the signature of an email (phone number, opening hours, address) is never a room
+const NOISE = /^\s*(tel|telefon|phone|fax|mobil|mobile|handy|offnungszeiten|opening hours|horario|adresse|address)\b/;
 const TIME_RE = /\b\d{1,2}:\d{2}(?::\d{2})?\b/g;
 
 // A CSV / text table -> rows of cells (same shape as readXlsx)
@@ -81,6 +83,7 @@ export function parseRooms(rows, { dateOrder = 'dmy' } = {}) {
     const isSent = SENT.test(line);
     if (isSent) { if (found[0] || cellDays[0]) sentDay = cellDays[0] || found[0]; continue; } // the date the email was sent is not the day of the list
     const n = norm(line);
+    if (NOISE.test(n) || /\+\d{2}/.test(line)) continue;
     let days = [...cellDays, ...found];
     // no numeric date: a weekday word ("Montag ab 14:00 Uhr") counts, relative to the day the email was sent
     if (!days.length) { const wd = weekdayIn(n); if (wd) days = [nextWeekday(wd, sentDay || ymdOf(new Date()))]; }
