@@ -355,6 +355,14 @@ export async function ensureWeekly(week) {
   rows.forEach((r) => { weekly[weeklyKey(r.week, r.item)] = r; });
   set({ weekly });
 }
+// The supervisor gives a checklist item to a person (also for a day ahead); userId null = take the assignment away
+export async function assignWeeklyItem(week, item, userId) {
+  await api.assignWeekly(week, item, userId);
+  const weekly = { ...state.weekly }, k = weeklyKey(week, item);
+  if (!userId) { if (weekly[k] && weekly[k].status === 'assigned') delete weekly[k]; }
+  else if (!weekly[k] || weekly[k].status === 'assigned') weekly[k] = { week, item, status: 'assigned', user_id: userId, updated_at: new Date().toISOString() };
+  set({ weekly });
+}
 // status null = clear the item
 export async function setWeeklyItem(week, item, status) {
   // show it at once, then save; if saving fails, put it back

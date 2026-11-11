@@ -444,6 +444,12 @@ const demoApi = {
     return clone(e);
   },
   async loadWeekly(week) { return clone(weeklyRows.filter((r) => r.week === week)); },
+  async assignWeekly(week, item, userId) {
+    const i = weeklyRows.findIndex((r) => r.week === week && r.item === item);
+    if (!userId) { if (i >= 0 && weeklyRows[i].status === 'assigned') weeklyRows.splice(i, 1); return; }
+    if (i >= 0 && weeklyRows[i].status !== 'assigned') return;
+    if (i >= 0) weeklyRows[i].user_id = userId; else weeklyRows.push({ week, item, status: 'assigned', user_id: userId, updated_at: new Date().toISOString() });
+  },
   async setWeekly(week, item, status) {
     const i = weeklyRows.findIndex((r) => r.week === week && r.item === item);
     if (!status) { if (i >= 0) weeklyRows.splice(i, 1); return; }

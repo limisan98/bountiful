@@ -1,13 +1,14 @@
 import { html, useState, useEffect, useRef } from '../../assets/vendor/htm-preact.js';
 import { useStore, toast } from '../store.js';
 import { t, friendlyError } from '../i18n.js';
-import { Icon, Avatar, Segmented } from '../ui.js';
-import { isSupervisor } from '../roles.js';
+import { Icon, Avatar, Segmented, Sheet, Field, useSheetControl } from '../ui.js';
+import { isSupervisor, canAssign } from '../roles.js';
+import { DateField } from '../pickers.js';
 import { WEEKLY } from '../weeklydata.js';
 import { WEEKLY_TEXT } from '../weeklytext.js';
 import { todayYmd, parseYmd, startOfWeek, addDays, ymd, isoWeekday, fmt } from '../time.js';
-import { ensureWeekly, weeklyOf, setWeeklyItem, assignmentsOn, ensureMonth, itemName, finishAssignment, reopenAssignment } from '../data.js';
-import { goalOf } from '../shifts.js';
+import { ensureWeekly, weeklyOf, setWeeklyItem, assignWeeklyItem, assignmentsOn, ensureMonth, itemName, finishAssignment, reopenAssignment } from '../data.js';
+import { goalOf, crewPeople, shiftOf, dayPlanned } from '../shifts.js';
 
 // The Monday-to-Saturday cleaning checklist, shared by the whole custodian team (supervisor included).
 // Tap an item: "I'm doing it" (yellow, with my picture) -> tap again: done (green, with my name) -> tap again: clear.
@@ -85,7 +86,7 @@ export function WeeklyList({ day, compact }) {
       toast(t('weekly.taken', { name: p ? p.display_name.split(' ')[0] : '' }), 'bad');
       return;
     }
-    const next = !r ? 'doing' : r.status === 'doing' ? 'done' : null;
+    const next = !r || r.status === 'assigned' ? 'doing' : r.status === 'doing' ? 'done' : null;
     try { await setWeeklyItem(wk, i, next); } catch (ex) { toast(friendlyError(ex), 'bad'); return; }
     // Custodians no longer see rooms as separate tasks, they tick them here. So finishing a room tile also finishes its room task
     // (that is what Reception watches: the tile turns green there). Only if the task is theirs (or they are the supervisor); otherwise the tick alone stays.
@@ -108,9 +109,9 @@ export function WeeklyList({ day, compact }) {
     const p = r ? s.profiles[r.user_id] : null;
     const st = r ? r.status : '';
     return html`<button type="button" key=${i} class=${'check-row weekly-row ' + st + (st === 'done' ? ' on' : '')} aria-pressed=${st === 'done'} onClick=${() => tap(i)}>
-      <span class="check-box">${st === 'doing' ? html`<${Icon} name="hourglass" size=${16} />` : html`<${Icon} name="check" size=${18} />`}</span>
+      <span class="check-box">${st === 'doing' ? html`<${Icon} name="hourglass" size=${16} />` : st === 'assigned' ? html`<${Icon} name="user" size=${16} />` : html`<${Icon} name="check" size=${18} />`}</span>
       <span class="check-text"><b>${txt}</b>
-        ${r ? html`<span class="weekly-who"><${Avatar} profile=${p} name=${p ? p.display_name : ''} size=${22} ring=${false} />${first(p)} · ${r.status === 'done' ? t('status.done') : t('weekly.doing')}</span>` : null}
+        ${r ? html`<span class="weekly-who"><${Avatar} profile=${p} name=${p ? p.display_name : ''} size=${22} ring=${false} />${r.status === 'assigned' && r.user_id === me.id ? t('weekly.forYou') : first(p) + ' · ' + (r.status === 'done' ? t('status.done') : r.status === 'assigned' ? t('weekly.assigned') : t('weekly.doing'))}</span>` : null}
       </span>
     </button>`;
   };
@@ -164,8 +165,12 @@ export function WeeklyView() {
   const wd = todayWeekday();
   const [day, setDay] = useState(wd || 1);
   const dayName = (n, style) => fmt(addDays(monday, n - 1), { weekday: style });
+  const me = useStore().profile;
+  const [plan, setPlan] = useState(false);
   return html`<div class="stack weekly-page">
     <div class="page-head"><div><h2 class="page-title">${t('nav.weekly')}</h2><p class="page-sub">${t('weekly.sub')}</p></div></div>
+    ${canAssign(me) ? html`<button type="button" class="btn soft" onClick=${() => setPlan(true)}><${Icon} name="user" size=${22} />${t('weekly.plan')}</button>` : null}
+    ${plan ? html`<${PlanListSheet} onClose=${() => setPlan(false)} />` : null}
     <${Segmented} label=${t('nav.weekly')} value=${day} onChange=${setDay}
       options=${WEEKLY.map((x) => ({ value: x.day, label: dayName(x.day, 'short') }))} />
     <div class="cal-head"><div class="rooms-day" key=${day}>
@@ -177,6 +182,8 @@ export function WeeklyView() {
 
 // Card for the home screens: today's list, folded open
 export function WeeklyToday() {
+  const me = useStore().profile;
+  const [plan, setPlan] = useState(false);
   const wd = todayWeekday();
   if (!wd) return null;
   const [open, setOpen] = useState(true);
@@ -187,7 +194,9 @@ export function WeeklyToday() {
       <${Icon} name=${open ? 'caret-up' : 'caret-down'} size=${20} />
     </button>
     ${open ? html`<${WeeklyList} day=${wd} compact=${true} />` : null}
-    <a class="section-link weekly-all" href="#/weekly">${t('weekly.week')}</a>
+    <div class="weekly-foot"><a class="section-link" href="#/weekly">${t('weekly.week')}</a>
+      ${canAssign(me) ? html`<button type="button" class="section-link" onClick=${() => setPlan(true)}>${t('weekly.plan')}</button>` : null}</div>
+    ${plan ? html`<${PlanListSheet} onClose=${() => setPlan(false)} />` : null}
   </section>`;
 }
 
@@ -228,4 +237,55 @@ export function dayProgressItems(s, dayYmd) {
   Object.values(roomAsg).filter((a) => !known.has(a.title)).forEach((a) => out.push({ kind: 'room', label: a.title, state: stateOfAsg(a), who: a.assignee || '' })); // requested rooms that are not in the room list
   asg.filter((a) => a.kind !== 'room').forEach((a) => out.push({ kind: 'task', label: itemName(a), state: stateOfAsg(a), who: a.assignee || '' }));
   return out;
+}
+
+// Give items of a day's list to a person - also for tomorrow (e.g. on Wednesday: Thursday's items to Lucília). They see them in their list that day.
+function PlanListSheet({ onClose }) {
+  const s = useStore();
+  const ctl = useSheetControl();
+  const [date, setDate] = useState(ymd(addDays(new Date(), 1)));
+  const [picked, setPicked] = useState([]);
+  const [who, setWho] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const d = parseYmd(date), wd = isoWeekday(d), wkOf = ymd(startOfWeek(d));
+  useEffect(() => { setPicked([]); ensureWeekly(wkOf).catch(() => {}); }, [date]);
+  const lines = wd === 7 ? [] : checklistLines(s.lang).filter((l) => l.day === wd);
+  const people = crewPeople();
+  const planned = dayPlanned(date);
+  const toggle = (id) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+  const first = (p) => (p ? p.display_name.split(' ')[0] : '');
+
+  async function go(clear) {
+    if (busy || !picked.length || (!clear && !who)) return;
+    setBusy(true);
+    try {
+      for (const id of picked) await assignWeeklyItem(wkOf, id, clear ? null : who);
+      toast(clear ? t('weekly.planCleared', { n: picked.length }) : t('weekly.planDone', { n: picked.length, name: first(s.profiles[who]) }));
+      ctl.close();
+    } catch (ex) { toast(friendlyError(ex), 'bad'); }
+    setBusy(false);
+  }
+  return html`<${Sheet} title=${t('weekly.plan')} onClose=${onClose} control=${ctl}>
+    <div class="stack-form">
+      <p class="muted">${t('weekly.planSub')}</p>
+      <${Field} label=${t('weekly.planDay')}><${DateField} value=${date} label=${t('weekly.planDay')} onChange=${setDate} /><//>
+      ${lines.length ? html`<div class="field"><span class="field-label">${t('weekly.planItems')}</span>
+        <div class="checklist plan-list">${lines.map((l) => {
+          const r = weeklyOf(wkOf, l.id), p = r ? s.profiles[r.user_id] : null, on = picked.includes(l.id);
+          return html`<button type="button" key=${l.id} class=${'check-row' + (on ? ' on' : '')} aria-pressed=${on} onClick=${() => toggle(l.id)}>
+            <span class="check-box"><${Icon} name="check" size=${18} /></span>
+            <span class="check-text"><b>${l.text}</b>${r ? html`<span class="weekly-who"><${Avatar} profile=${p} name=${p ? p.display_name : ''} size=${22} ring=${false} />${first(p)} · ${r.status === 'done' ? t('status.done') : r.status === 'doing' ? t('weekly.doing') : t('weekly.assigned')}</span>` : null}</span>
+          </button>`;
+        })}</div></div>`
+        : html`<p class="muted center">${t('weekly.planNone')}</p>`}
+      ${lines.length ? html`<div class="field"><span class="field-label">${t('weekly.planWho')}</span>
+        <div class="req-people">${people.map((p) => {
+          const off = planned && !shiftOf(p.id, date);
+          return html`<button type="button" key=${p.id} class=${'req-person' + (who === p.id ? ' on' : '')} aria-pressed=${who === p.id} onClick=${() => setWho(p.id)}>
+            <${Avatar} profile=${p} size=${30} ring=${false} /><span><b>${first(p)}</b><small>${off ? t('weekly.planOff') : ''}</small></span></button>`;
+        })}</div></div>
+        <button type="button" class="btn" disabled=${busy || !picked.length || !who} onClick=${() => go(false)}><${Icon} name="check" size=${20} />${t('weekly.planGo', { n: picked.length })}</button>
+        <button type="button" class="btn soft" disabled=${busy || !picked.length} onClick=${() => go(true)}><${Icon} name="x" size=${20} />${t('weekly.planClear')}</button>` : null}
+    </div>
+  <//>`;
 }

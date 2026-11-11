@@ -177,6 +177,7 @@ const real = {
   },
   // ---- weekly checklist (who is doing / finished each item) ----
   async loadWeekly(week) { return ok(await sb.from('weekly_checks').select('*').eq('week', week)); },
+  async assignWeekly(week, item, userId) { await rpc('assign_weekly_check', { p_week: week, p_item: item, p_user: userId || null }); },
   async setWeekly(week, item, status) { await rpc('set_weekly_check', { p_week: week, p_item: item, p_status: status }); },
   async deleteLogEntry(id) { ok(await sb.from('logbook_entries').delete().eq('id', id)); },
 
