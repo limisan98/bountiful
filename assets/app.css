@@ -1522,3 +1522,9 @@ select.input { appearance: auto; padding-right: 12px; }
 .pt-who { white-space: nowrap; font-weight: 700; }
 .pt-who .avatar { vertical-align: middle; margin-right: 6px; }
 .pt-item { width: 46%; }
+
+/* checklist line timer */
+.line-timer { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 0 8px; }
+.line-timer .timer-clock { display: block; font-size: 60px; line-height: 1.1; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.line-timer .timer-clock.idle { color: var(--ink-3); }
+.live-time { font-variant-numeric: tabular-nums; color: var(--ink); }

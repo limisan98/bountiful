@@ -453,8 +453,9 @@ const demoApi = {
   async setWeekly(week, item, status) {
     const i = weeklyRows.findIndex((r) => r.week === week && r.item === item);
     if (!status) { if (i >= 0) weeklyRows.splice(i, 1); return; }
-    if (i >= 0) { weeklyRows[i].status = status; weeklyRows[i].updated_at = new Date().toISOString(); }
-    else weeklyRows.push({ week, item, status, user_id: state.profile.id, updated_at: new Date().toISOString() });
+    const now = new Date().toISOString();
+    if (i >= 0) { const r = weeklyRows[i]; r.status = status; r.updated_at = now; if (status === 'doing') r.started_at = r.started_at || now; r.done_at = status === 'done' ? now : null; }
+    else weeklyRows.push({ week, item, status, user_id: state.profile.id, updated_at: now, started_at: status === 'doing' ? now : null, done_at: status === 'done' ? now : null });
   },
   async deleteLogEntry(id) { const i = logbook.findIndex((x) => x.id === id); if (i >= 0) logbook.splice(i, 1); },
   async loadMyStats(since) {

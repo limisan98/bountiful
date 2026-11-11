@@ -369,7 +369,11 @@ export async function setWeeklyItem(week, item, status) {
   const k = weeklyKey(week, item), before = state.weekly[k];
   const weekly = { ...state.weekly };
   if (!status) delete weekly[k];
-  else weekly[k] = { week, item, status, user_id: (before && before.user_id) || state.profile.id, updated_at: new Date().toISOString() };
+  else {
+    const now = new Date().toISOString();
+    weekly[k] = { week, item, status, user_id: (before && before.user_id) || state.profile.id, updated_at: now,
+      started_at: status === 'doing' ? (before && before.started_at) || now : (before && before.started_at) || null, done_at: status === 'done' ? now : null };
+  }
   set({ weekly });
   try { await api.setWeekly(week, item, status); } catch (ex) {
     const back = { ...state.weekly };

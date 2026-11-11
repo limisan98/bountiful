@@ -4,6 +4,7 @@ import { t, friendlyError } from '../i18n.js';
 import { Icon, Avatar, Segmented, Sheet, Field, useSheetControl } from '../ui.js';
 import { isSupervisor, canAssign } from '../roles.js';
 import { DateField } from '../pickers.js';
+import { clock, useElapsed } from './timer.js';
 import { WEEKLY } from '../weeklydata.js';
 import { WEEKLY_TEXT } from '../weeklytext.js';
 import { todayYmd, parseYmd, startOfWeek, addDays, ymd, isoWeekday, fmt } from '../time.js';
@@ -79,14 +80,14 @@ export function WeeklyList({ day, compact }) {
   const done = all.filter(isDone).length;
   const pct = all.length ? Math.round((done / all.length) * 100) : 0;
 
-  async function tap(i) {
+  async function tap(i, target) {
     const r = weeklyOf(wk, i);
     if (r && r.user_id !== me.id && !sup) {
       const p = s.profiles[r.user_id];
       toast(t('weekly.taken', { name: p ? p.display_name.split(' ')[0] : '' }), 'bad');
       return;
     }
-    const next = !r || r.status === 'assigned' ? 'doing' : r.status === 'doing' ? 'done' : null;
+    const next = target ? (target === 'clear' ? null : target) : !r || r.status === 'assigned' ? 'doing' : r.status === 'doing' ? 'done' : null;
     try { await setWeeklyItem(wk, i, next); } catch (ex) { toast(friendlyError(ex), 'bad'); return; }
     // Custodians no longer see rooms as separate tasks, they tick them here. So finishing a room tile also finishes its room task
     // (that is what Reception watches: the tile turns green there). Only if the task is theirs (or they are the supervisor); otherwise the tick alone stays.
@@ -104,14 +105,15 @@ export function WeeklyList({ day, compact }) {
   }
   const first = (p) => (p ? p.display_name.split(' ')[0] : '');
 
+  const [lineOpen, setLineOpen] = useState(null); // the checklist line whose timer window is open: { id, text }
   const row = (i, txt) => {
     const r = weeklyOf(wk, i);
     const p = r ? s.profiles[r.user_id] : null;
     const st = r ? r.status : '';
-    return html`<button type="button" key=${i} class=${'check-row weekly-row ' + st + (st === 'done' ? ' on' : '')} aria-pressed=${st === 'done'} onClick=${() => tap(i)}>
+    return html`<button type="button" key=${i} class=${'check-row weekly-row ' + st + (st === 'done' ? ' on' : '')} aria-pressed=${st === 'done'} onClick=${() => setLineOpen({ id: i, text: txt })}>
       <span class="check-box">${st === 'doing' ? html`<${Icon} name="hourglass" size=${16} />` : st === 'assigned' ? html`<${Icon} name="user" size=${16} />` : html`<${Icon} name="check" size=${18} />`}</span>
       <span class="check-text"><b>${txt}</b>
-        ${r ? html`<span class="weekly-who"><${Avatar} profile=${p} name=${p ? p.display_name : ''} size=${22} ring=${false} />${r.status === 'assigned' && r.user_id === me.id ? t('weekly.forYou') : first(p) + ' · ' + (r.status === 'done' ? t('status.done') : r.status === 'assigned' ? t('weekly.assigned') : t('weekly.doing'))}</span>` : null}
+        ${r ? html`<span class="weekly-who"><${Avatar} profile=${p} name=${p ? p.display_name : ''} size=${22} ring=${false} />${r.status === 'assigned' && r.user_id === me.id ? t('weekly.forYou') : first(p) + ' · ' + (r.status === 'done' ? t('status.done') : r.status === 'assigned' ? t('weekly.assigned') : t('weekly.doing'))}${r.status === 'doing' && r.started_at ? html` · <${LiveTime} since=${r.started_at} />` : r.status === 'done' && r.started_at && r.done_at ? ' · ' + minutesText(r.started_at, r.done_at) : ''}</span>` : null}
       </span>
     </button>`;
   };
@@ -129,6 +131,7 @@ export function WeeklyList({ day, compact }) {
   return html`<div class=${'weekly-list' + (compact ? ' compact' : '')}>
     <div class="weekly-prog"><div class="weekly-bar" role="progressbar" aria-valuenow=${pct} aria-valuemin="0" aria-valuemax="100"><span style=${`width:${pct}%`}></span></div>
       <b>${t('weekly.progress', { done, total: all.length })}</b></div>
+    ${lineOpen ? html`<${LineSheet} line=${lineOpen} wk=${wk} onTap=${tap} onClose=${() => setLineOpen(null)} />` : null}
     ${secs.map((sec, si) => ({ sec, si })).sort((a, b) => (b.sec.requested ? 1 : 0) - (a.sec.requested ? 1 : 0)).map(({ sec, si }) => {
       if (sec.carry && !carryOn) return null;
       if (sec.requested && !requestedRooms.length) return null;
@@ -316,6 +319,43 @@ function PlanListSheet({ onClose }) {
         })}</div></div>
         <button type="button" class="btn" disabled=${busy || !picked.length || !who} onClick=${() => go(false)}><${Icon} name="check" size=${20} />${t('weekly.planGo', { n: picked.length })}</button>
         <button type="button" class="btn soft" disabled=${busy || !picked.length} onClick=${() => go(true)}><${Icon} name="x" size=${20} />${t('weekly.planClear')}</button>` : null}
+    </div>
+  <//>`;
+}
+
+// "12 min" / "1 h 05" between two time stamps
+function minutesText(a, b) {
+  const m = Math.max(0, Math.round((Date.parse(b) - Date.parse(a)) / 60000));
+  return m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m} min`;
+}
+function LiveTime({ since }) { return html`<b class="live-time">${clock(useElapsed(since))}</b>`; }
+
+// Tap a checklist line: start it (a timer begins), watch the clock, finish it. The start time is saved in the database,
+// so the clock keeps running when the app is closed - open the app later and the time is still right.
+function LineSheet({ line, wk, onTap, onClose }) {
+  const s = useStore();
+  const ctl = useSheetControl();
+  const me = s.profile;
+  const r = weeklyOf(wk, line.id);
+  const p = r ? s.profiles[r.user_id] : null;
+  const mine = !r || r.user_id === me.id || isSupervisor(me);
+  const st = r ? r.status : '';
+  const sec = useElapsed(st === 'doing' ? r.started_at : null);
+  const hhmm = (iso) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const go = async (to) => { await onTap(line.id, to); };
+  return html`<${Sheet} title=${line.text} kicker=${st === 'doing' ? t('timer.inProgress') : st === 'done' ? t('status.done') : st === 'assigned' ? t('weekly.assigned') : ''} onClose=${onClose} control=${ctl}>
+    <div class="timer line-timer">
+      ${st === 'doing' ? html`<b class="timer-clock" role="timer">${clock(sec)}</b><p class="muted center">${t('weekly.startedAt', { time: r.started_at ? hhmm(r.started_at) : '' })} · ${t('weekly.timerHint')}</p>`
+        : st === 'done' ? html`<b class="timer-clock">${r.started_at && r.done_at ? minutesText(r.started_at, r.done_at) : '–'}</b>
+            <p class="muted center">${r.started_at ? hhmm(r.started_at) + ' → ' : ''}${r.done_at ? hhmm(r.done_at) : ''}${p ? ' · ' + p.display_name.split(' ')[0] : ''}</p>`
+        : html`<b class="timer-clock idle">00:00</b><p class="muted center">${t('weekly.timerIdle')}</p>`}
+    </div>
+    <div class="stack-form">
+      ${!r || st === 'assigned' ? html`<button class="btn" disabled=${!mine} onClick=${() => go('doing')}><${Icon} name="hourglass" size=${20} />${t('weekly.start')}</button>` : null}
+      ${st === 'doing' ? html`<button class="btn" disabled=${!mine} onClick=${() => { go('done'); }}><${Icon} name="circle-check" size=${20} />${t('weekly.finish')}</button>
+        <button class="btn soft" onClick=${ctl.close}>${t('timer.keep')}</button>` : null}
+      ${st === 'done' ? html`<button class="btn soft" disabled=${!mine} onClick=${() => go('clear')}><${Icon} name="x" size=${20} />${t('weekly.back')}</button>` : null}
+      ${st === 'doing' ? html`<button class="btn soft" disabled=${!mine} onClick=${() => go('clear')}><${Icon} name="x" size=${20} />${t('weekly.back')}</button>` : null}
     </div>
   <//>`;
 }
