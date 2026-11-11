@@ -15,7 +15,10 @@ import { goalOf } from '../shifts.js';
 // Text of a checklist line / section title in the current language (English if there is no translation)
 const FLAT = {}; // "day.section.index" -> position in the translated list
 { let n = 0; WEEKLY.forEach((d) => d.sections.forEach((sec, si) => sec.items.forEach((_, ii) => { FLAT[`${d.day}.${si}.${ii}`] = n++; }))); }
-const TITLES = ['Temple', 'Rooms', 'On Monday everything in the rooms must be cleaned', 'Morning', 'Afternoon', 'Rooms left from Monday'];
+const TITLES = ['Temple', 'Rooms', 'On Monday everything in the rooms must be cleaned', 'Morning', 'Afternoon', 'Rooms left from Monday', 'Rooms requested today'];
+// From Tuesday on every day also has a section with the rooms that were requested for it (the supervisor's list / import), listed on top
+const REQUESTED = { title: 'Rooms requested today', requested: true, items: [] };
+const sectionsOf = (d) => [...d.sections, ...(d.day >= 2 ? [REQUESTED] : [])];
 const itemText = (id, en, lang) => { const tr = WEEKLY_TEXT[lang]; return (tr && tr.items[FLAT[id]]) || en; };
 const titleText = (en, lang) => { const tr = WEEKLY_TEXT[lang]; const i = TITLES.indexOf(en); return (tr && i >= 0 && tr.titles[i]) || en; };
 
@@ -42,7 +45,7 @@ export function WeeklyList({ day, compact }) {
   const [open, setOpen] = useState(loadOpen);
   const dayYmd = ymd(addDays(parseYmd(wk), day - 1));
   useEffect(() => { ensureWeekly(wk).catch(() => {}); ensureMonth(wk.slice(0, 7)).catch(() => {}); ensureMonth(dayYmd.slice(0, 7)).catch(() => {}); }, [wk]);
-  const toggleOpen = (k) => setOpen((o) => { const n = { ...o, [k]: !o[k] }; try { localStorage.setItem(OPEN_KEY, JSON.stringify(n)); } catch { /* private mode */ } return n; });
+  const toggleOpen = (k, was) => setOpen((o) => { const n = { ...o, [k]: !was }; try { localStorage.setItem(OPEN_KEY, JSON.stringify(n)); } catch { /* private mode */ } return n; });
 
   const d = WEEKLY.find((x) => x.day === day);
   if (!d) return null;
@@ -62,13 +65,16 @@ export function WeeklyList({ day, compact }) {
   const monYmd = wk;
   const monRooms = assignmentsOn(monYmd).filter((a) => a.kind === 'room');
   const monDone = (label) => { const w = weeklyOf(wk, `1.r.${label}`); return (!!w && w.status === 'done') || monRooms.some((a) => a.title === label && a.status === 'done'); };
+  const reqLabels = new Set(assignmentsOn(dayYmd).filter((a) => a.kind === 'room').map((a) => a.title)); // every room requested for this day (open or done)
+  const requestedRooms = day >= 2 ? rooms.filter((r) => reqLabels.has(r.label)) : [];
   const carryOn = isoWeekday(new Date()) >= 2;
-  const carried = carryOn ? rooms.filter((r) => !monDone(r.label) && (!onDemand(r) || !!urgent[r.label] || !!weeklyOf(wk, `${day}.r.${r.label}`))) : [];
-  const roomsOf = (sec) => (sec.rooms ? rooms.filter(shown) : sec.carry ? carried : null);
+  const carried = carryOn ? rooms.filter((r) => !reqLabels.has(r.label) && !monDone(r.label) && (!onDemand(r) || !!urgent[r.label] || !!weeklyOf(wk, `${day}.r.${r.label}`))) : [];
+  const roomsOf = (sec) => (sec.rooms ? rooms.filter(shown) : sec.carry ? carried : sec.requested ? requestedRooms : null);
   // every checkable thing of a section: its lines (unless they are only instructions) and, for "Rooms", one tile per guest room
   const idsOf = (sec, si) => [...(sec.info ? [] : sec.items.map((_, ii) => id(si, ii))), ...((roomsOf(sec) || []).map((r) => `${day}.r.${r.label}`))];
   const isDone = (i) => { const r = weeklyOf(wk, i); return !!r && r.status === 'done'; };
-  const all = d.sections.flatMap((sec, si) => idsOf(sec, si));
+  const secs = sectionsOf(d);
+  const all = secs.flatMap((sec, si) => idsOf(sec, si));
   const done = all.filter(isDone).length;
   const pct = all.length ? Math.round((done / all.length) * 100) : 0;
 
@@ -121,12 +127,13 @@ export function WeeklyList({ day, compact }) {
   return html`<div class=${'weekly-list' + (compact ? ' compact' : '')}>
     <div class="weekly-prog"><div class="weekly-bar" role="progressbar" aria-valuenow=${pct} aria-valuemin="0" aria-valuemax="100"><span style=${`width:${pct}%`}></span></div>
       <b>${t('weekly.progress', { done, total: all.length })}</b></div>
-    ${d.sections.map((sec, si) => {
+    ${secs.map((sec, si) => ({ sec, si })).sort((a, b) => (b.sec.requested ? 1 : 0) - (a.sec.requested ? 1 : 0)).map(({ sec, si }) => {
       if (sec.carry && !carryOn) return null;
+      if (sec.requested && !requestedRooms.length) return null;
       const ids = idsOf(sec, si), nDone = ids.filter(isDone).length, k = `${day}.${si}`;
-      const folded = !!sec.title && !open[k];
+      const folded = !!sec.title && !(sec.requested ? open[k] !== false : open[k]);
       return html`<section class=${'weekly-sec' + (sec.title ? ' foldable' : '')} key=${k}>
-        ${sec.title ? html`<button type="button" class="weekly-fold" aria-expanded=${!folded} onClick=${() => toggleOpen(k)}>
+        ${sec.title ? html`<button type="button" class="weekly-fold" aria-expanded=${!folded} onClick=${() => toggleOpen(k, !folded)}>
           <b>${titleText(sec.title, lang)}</b>${ids.length ? html`<span class=${'weekly-count' + (nDone === ids.length ? ' all' : '')}>${nDone}/${ids.length}</span>` : null}
           <${Icon} name=${folded ? 'caret-down' : 'caret-up'} size=${20} />
         </button>` : null}
@@ -207,12 +214,13 @@ export function dayProgressItems(s, dayYmd) {
     const asked = (label) => assignmentsOn(dayYmd).concat(wd === 2 ? assignmentsOn(wk) : []).some((a) => a.kind === 'room' && a.title === label && a.status !== 'done');
     const showRoom = (r) => !onDemand(r) || asked(r.label) || !!weeklyOf(wk, `${wd}.r.${r.label}`); // studios / apartments only when requested
     const monDone = (label) => { const w = weeklyOf(wk, `1.r.${label}`); return (!!w && w.status === 'done') || assignmentsOn(wk).some((a) => a.kind === 'room' && a.title === label && a.status === 'done'); };
-    d.sections.forEach((sec, si) => {
-      if (!sec.info && !sec.carry) sec.items.forEach((txt, ii) => {
+    sectionsOf(d).forEach((sec, si) => {
+      if (!sec.info && !sec.carry && !sec.requested) sec.items.forEach((txt, ii) => {
         const id = `${wd}.${si}.${ii}`, k = weeklyOf(wk, id);
         out.push({ kind: 'line', label: itemText(id, txt, lang), state: k && k.status === 'done' ? 'done' : k && k.status === 'doing' ? 'doing' : 'todo', who: k ? k.user_id : '' });
       });
-      const list = sec.rooms ? rooms.filter(showRoom) : sec.carry && isoWeekday(new Date()) >= 2 ? rooms.filter((r) => !monDone(r.label) && showRoom(r)) : [];
+      const reqSet = new Set(asg.filter((a) => a.kind === 'room').map((a) => a.title));
+      const list = sec.rooms ? rooms.filter(showRoom) : sec.requested ? rooms.filter((r) => reqSet.has(r.label)) : sec.carry && isoWeekday(new Date()) >= 2 ? rooms.filter((r) => !reqSet.has(r.label) && !monDone(r.label) && showRoom(r)) : [];
       list.forEach((r) => { const k = weeklyOf(wk, `${wd}.r.${r.label}`), a = roomAsg[r.label]; out.push({ kind: 'room', label: r.label, state: roomState(r.label, k), who: k ? k.user_id : (a && a.assignee) || '' }); });
     });
   }
