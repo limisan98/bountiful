@@ -825,4 +825,5 @@ Vloer dweilen`,
   "weekly.planOff": `Vrij`,
   "weekly.planRooms": `Voor deze dag aangevraagde kamers`,
   "weekly.planAllRooms": `Alle kamers selecteren`,
+  "weekly.planHouses": `Heel huis of verdieping`,
 };

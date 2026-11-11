@@ -825,4 +825,5 @@ Torka golvet`,
   "weekly.planOff": `Ledig`,
   "weekly.planRooms": `Rum som begärts för den här dagen`,
   "weekly.planAllRooms": `Markera alla rum`,
+  "weekly.planHouses": `Hela huset eller våningen`,
 };

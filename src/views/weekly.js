@@ -255,6 +255,12 @@ function PlanListSheet({ onClose }) {
   const asked = wd === 7 ? [] : [...new Map(assignmentsOn(date).filter((a) => a.kind === 'room' && a.status !== 'done').map((a) => [a.title, a])).values()]
     .sort((x, y) => x.title.localeCompare(y.title));
   const roomId = (a) => `${wd}.r.${a.title}`;
+  // whole houses / floors: on Monday every regular room is in the list, from Tuesday on the ones left over from Monday - the supervisor can give a whole house at once
+  const reqAll = new Set(assignmentsOn(date).filter((a) => a.kind === 'room').map((a) => a.title));
+  const monDoneLabel = (label) => { const w = weeklyOf(wkOf, `1.r.${label}`); return (!!w && w.status === 'done') || assignmentsOn(wkOf).some((a) => a.kind === 'room' && a.title === label && a.status === 'done'); };
+  const regular = s.guestRooms.filter((r) => (r.kind || 'room') === 'room').sort((x, y) => x.house - y.house || x.floor - y.floor || x.num - y.num);
+  const pool = wd === 1 ? regular.filter((r) => !reqAll.has(r.label)) : wd === 2 ? regular.filter((r) => !reqAll.has(r.label) && !monDoneLabel(r.label)) : [];
+  const pickGroup = (list) => { const ids = list.map((r) => `${wd}.r.${r.label}`); setPicked((pk) => (ids.every((x) => pk.includes(x)) ? pk.filter((x) => !ids.includes(x)) : [...new Set([...pk, ...ids])])); };
   const lines = wd === 7 ? [] : checklistLines(s.lang).filter((l) => l.day === wd);
   const people = crewPeople();
   const planned = dayPlanned(date);
@@ -265,7 +271,7 @@ function PlanListSheet({ onClose }) {
     if (busy || !picked.length || (!clear && !who)) return;
     setBusy(true);
     try {
-      for (const id of picked) await assignWeeklyItem(wkOf, id, clear ? null : who);
+      for (let i = 0; i < picked.length; i += 6) await Promise.all(picked.slice(i, i + 6).map((id) => assignWeeklyItem(wkOf, id, clear ? null : who)));
       toast(clear ? t('weekly.planCleared', { n: picked.length }) : t('weekly.planDone', { n: picked.length, name: first(s.profiles[who]) }));
       ctl.close();
     } catch (ex) { toast(friendlyError(ex), 'bad'); }
@@ -282,6 +288,17 @@ function PlanListSheet({ onClose }) {
             <b>${a.title}</b>${p ? html`<${Avatar} profile=${p} name=${p.display_name} size=${20} ring=${false} />` : null}</button>`;
         })}</div>
         <button type="button" class="pick ghost" onClick=${() => { const ids = asked.map(roomId); setPicked((pk) => (ids.every((x) => pk.includes(x)) ? pk.filter((x) => !ids.includes(x)) : [...new Set([...pk, ...ids])])); }}>${t('weekly.planAllRooms')}</button></div>` : null}
+      ${pool.length ? html`<div class="field"><span class="field-label">${t('weekly.planHouses')}</span>
+        <div class="plan-houses">${[1, 2, 3, 4].map((h) => {
+          const hr = pool.filter((r) => r.house === h);
+          if (!hr.length) return null;
+          const all = hr.every((r) => picked.includes(`${wd}.r.${r.label}`));
+          return html`<div class="plan-house" key=${h}>
+            <button type="button" class=${'btn small ' + (all ? '' : 'soft')} aria-pressed=${all} onClick=${() => pickGroup(hr)}><${Icon} name=${all ? 'check' : 'bed'} size=${18} />${t('house.n', { n: h })} · ${hr.length}</button>
+            ${[1, 2, 3].filter((f) => hr.some((r) => r.floor === f)).map((f) => { const fr = hr.filter((r) => r.floor === f), on = fr.every((r) => picked.includes(`${wd}.r.${r.label}`));
+              return html`<button type="button" key=${f} class=${'pick' + (on ? ' on' : '')} aria-pressed=${on} onClick=${() => pickGroup(fr)}>${t('floor.n', { n: f })}</button>`; })}
+          </div>`;
+        })}</div></div>` : null}
       ${lines.length ? html`<div class="field"><span class="field-label">${t('weekly.planItems')}</span>
         <div class="checklist plan-list">${lines.map((l) => {
           const r = weeklyOf(wkOf, l.id), p = r ? s.profiles[r.user_id] : null, on = picked.includes(l.id);
@@ -290,8 +307,8 @@ function PlanListSheet({ onClose }) {
             <span class="check-text"><b>${l.text}</b>${r ? html`<span class="weekly-who"><${Avatar} profile=${p} name=${p ? p.display_name : ''} size=${22} ring=${false} />${first(p)} · ${r.status === 'done' ? t('status.done') : r.status === 'doing' ? t('weekly.doing') : t('weekly.assigned')}</span>` : null}</span>
           </button>`;
         })}</div></div>`
-        : (asked.length ? null : html`<p class="muted center">${t('weekly.planNone')}</p>`)}
-      ${lines.length || asked.length ? html`<div class="field"><span class="field-label">${t('weekly.planWho')}</span>
+        : (asked.length || pool.length ? null : html`<p class="muted center">${t('weekly.planNone')}</p>`)}
+      ${lines.length || asked.length || pool.length ? html`<div class="field"><span class="field-label">${t('weekly.planWho')}</span>
         <div class="req-people">${people.map((p) => {
           const off = planned && !shiftOf(p.id, date);
           return html`<button type="button" key=${p.id} class=${'req-person' + (who === p.id ? ' on' : '')} aria-pressed=${who === p.id} onClick=${() => setWho(p.id)}>

@@ -825,4 +825,5 @@ Boden wischen`,
   "weekly.planOff": `Frei`,
   "weekly.planRooms": `Für diesen Tag angeforderte Zimmer`,
   "weekly.planAllRooms": `Alle Zimmer auswählen`,
+  "weekly.planHouses": `Ganzes Haus oder Etage`,
 };

@@ -825,4 +825,5 @@ Limpar o chão`,
   "weekly.planOff": `Folga`,
   "weekly.planRooms": `Quartos pedidos para este dia`,
   "weekly.planAllRooms": `Selecionar todos os quartos`,
+  "weekly.planHouses": `Casa ou piso inteiro`,
 };

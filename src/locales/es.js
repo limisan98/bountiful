@@ -825,4 +825,5 @@ Fregar el suelo`,
   "weekly.planOff": `Libre`,
   "weekly.planRooms": `Habitaciones pedidas para este día`,
   "weekly.planAllRooms": `Seleccionar todas las habitaciones`,
+  "weekly.planHouses": `Casa o piso completo`,
 };

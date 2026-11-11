@@ -825,4 +825,5 @@ Wipe the floor`,
   "weekly.planOff": `Day off`,
   "weekly.planRooms": `Rooms requested for this day`,
   "weekly.planAllRooms": `Select all rooms`,
+  "weekly.planHouses": `Whole house or floor`,
 };
