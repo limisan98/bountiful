@@ -1528,3 +1528,7 @@ select.input { appearance: auto; padding-right: 12px; }
 .line-timer .timer-clock { display: block; font-size: 60px; line-height: 1.1; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .line-timer .timer-clock.idle { color: var(--ink-3); }
 .live-time { font-variant-numeric: tabular-nums; color: var(--ink); }
+
+.tr-link { display: block; margin-top: 4px; padding: 0; font-size: 12px; font-weight: 700; color: var(--brand-ink); opacity: .85; text-align: left; }
+.theirs .tr-link { color: var(--brand-ink); }
+.mine .tr-link { color: inherit; opacity: .7; }

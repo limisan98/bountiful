@@ -27,10 +27,10 @@ const real = {
   async adminUpdateMember(id, role, active) { await rpc('admin_update_member', { p_id: id, p_role: role, p_active: active }); },
 
   // ---- people and roles ----
-  async loadProfiles() { return ok(await sb.from('profiles').select('id,display_name,avatar_url,role,active,created_at,can_assign,assign_until')); },
+  async loadProfiles() { return ok(await sb.from('profiles').select('id,display_name,avatar_url,role,active,created_at,can_assign,assign_until,language')); },
   async updateMyProfile(patch) {
     return ok(await sb.from('profiles').update(patch).eq('id', state.session.user.id)
-      .select('id,display_name,avatar_url,role,active,created_at,can_assign,assign_until').single());
+      .select('id,display_name,avatar_url,role,active,created_at,can_assign,assign_until,language').single());
   },
   async uploadAvatar(blob) {
     const uid = state.session.user.id;
@@ -45,6 +45,12 @@ const real = {
       if (stale.length) await sb.storage.from('avatars').remove(stale);
     }
     return data.publicUrl;
+  },
+  // Translate what people wrote (DeepL, through the "translate" edge function; every text is translated once and cached)
+  async translate(texts, target) {
+    const { data, error } = await sb.functions.invoke('translate', { body: { texts, target } });
+    if (error) throw error;
+    return data; // { results: [{ text, source }] } or { error }
   },
   // the supervisor lets a custodian hand out tasks (until a date, or until switched off)
   async setAssignDelegate(id, on, until) { await rpc('set_assign_delegate', { p_id: id, p_on: on, p_until: on && until ? until : null }); },

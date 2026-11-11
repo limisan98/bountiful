@@ -1,4 +1,5 @@
 import { html, useState, useEffect } from '../../assets/vendor/htm-preact.js';
+import { trFor } from '../translate.js';
 import { useStore, toast } from '../store.js';
 import { t, friendlyError } from '../i18n.js';
 import { Icon, Avatar, TaskBadge, badgeStatus, Segmented, Field, Sheet, PersonLine, Empty, useSheetControl } from '../ui.js';
@@ -29,7 +30,7 @@ export function AssignmentRow({ a, onOpen, showPerson, selectable, selected, onT
     <span class="arow-main">
       <span class="arow-name">${itemName(a)}</span>
       ${showPerson ? person : null}
-      <span class="arow-sub"><${PriorityChip} task=${tk} />${a.note ? html`<span class="arow-note">${a.note}</span>` : null}</span>
+      <span class="arow-sub"><${PriorityChip} task=${tk} />${a.note ? html`<span class="arow-note">${trFor(a.note, a.created_by)}</span>` : null}</span>
     </span>
     <span class=${'arow-state ' + a.status}><${Icon} name=${STATUS_ICON[a.status]} size=${20} /></span>`;
   return html`<div class=${'arow-wrap ' + a.status + (selected ? ' selected' : '')} key=${a.id}>
@@ -112,7 +113,7 @@ function DetailBody({ id, onClose, openTimer }) {
     ${who ? html`<div class="card slim"><${PersonLine} profile=${who} size=${44} /></div>`
       : html`<div class="card slim waiting-card"><${Icon} name="help-circle" size=${24} /><span>${t('task.waitingLong')}</span></div>`}
 
-    ${a.note ? html`<div class="note-card"><${Icon} name="message-circle" size=${20} /><p>${a.note}</p></div>` : null}
+    ${a.note ? html`<div class="note-card"><${Icon} name="message-circle" size=${20} /><p>${trFor(a.note, a.created_by)}</p></div>` : null}
     ${tk.description ? html`<div class="field"><span class="field-label">${t('task.description')}</span><p class="body-text">${tk.description}</p></div>` : null}
 
     ${steps.length ? html`<div class="field"><span class="field-label">${t('task.steps')}<span class="count">${(a.steps_done || []).filter((i) => i < steps.length).length}/${steps.length}</span></span>
@@ -199,7 +200,7 @@ function Comments({ a }) {
         <div class="comment-body"><div class="comment-head"><b>${au ? (c.author === me.id ? t('team.you') : au.display_name.split(' ')[0]) : t('chat.former')}</b>
           <small>${new Date(c.created_at).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</small>
           ${c.author === me.id || canAssign(me) ? html`<button type="button" class="comment-del" aria-label=${t('act.remove')} onClick=${() => removeComment(a.id, c.id).catch((ex) => toast(friendlyError(ex), 'bad'))}><${Icon} name="x" size=${14} /></button>` : null}</div>
-          <p>${c.body}</p></div>
+          <p>${trFor(c.body, c.author)}</p></div>
       </div>`;
     })}</div>` : html`<p class="muted small-text">${t('comment.none')}</p>`}
     <form class="comment-form" onSubmit=${send}>

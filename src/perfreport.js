@@ -44,7 +44,7 @@ export async function buildPerformance(range, lang) {
   const events = [];
   assignments.forEach((a) => {
     const r = report[a.id], tk = state.tasks[a.task_id], room = a.kind === 'room';
-    events.push({ src: 'assign', kind: room ? 'room' : 'task', who: a.assignee, day: a.day, item: room ? a.title : itemName(a), taskId: a.task_id, status: a.status, planned: r ? r.goal_minutes : goalOf(a), actual: r ? r.minutes_spent : '', startedAt: a.started_at ? hhmm(a.started_at) : '', doneAt: r ? hhmm(r.completed_at) : '',
+    events.push({ src: 'assign', kind: room ? 'room' : 'task', who: a.assignee, day: a.day, item: room ? a.title : itemName(a, true), taskId: a.task_id, status: a.status, planned: r ? r.goal_minutes : goalOf(a), actual: r ? r.minutes_spent : '', startedAt: a.started_at ? hhmm(a.started_at) : '', doneAt: r ? hhmm(r.completed_at) : '',
       notes: [a.note, r && r.delay_reason, r && r.comment].filter(Boolean).join(' · '), area: tk.area_id, over: !!r && r.minutes_spent > r.goal_minutes });
   });
   ticks.forEach((w) => {

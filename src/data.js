@@ -3,6 +3,7 @@ import { api } from './api.js';
 import { state, set } from './store.js';
 import { addMonths, monthKey, lastOfMonth, toMin, timeKey, ymd, addDays, startOfWeek } from './time.js';
 import { departmentOf, isSupervisor } from './roles.js';
+import { trFor } from './translate.js';
 import { t } from './i18n.js';
 import { notifyLive } from './notify.js';
 import { problem, ratioOf, byImportance } from './shifts.js';
@@ -214,9 +215,10 @@ export async function taskForPreset(p) {
   });
 }
 
-export const itemName = (a) => {
+export const itemName = (a, raw) => {
   const tk = state.tasks[a.task_id];
-  return (tk ? tk.name : '') + (a.title ? (tk ? ' · ' : '') + a.title : '');
+  const name = tk ? (raw ? tk.name : trFor(tk.name, tk.created_by, tk.preset_lang)) : '';
+  return name + (a.title ? (tk ? ' · ' : '') + a.title : '');
 };
 
 // Give planned tasks to people. One person: they take it over. Several people: each of them gets the task

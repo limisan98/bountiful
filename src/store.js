@@ -30,6 +30,8 @@ export const state = {
   chatSeen: {},      // channel -> time I last looked (for the unread counters; kept on this device)
   person: null,      // id of the person whose profile card is open
   lang: 'en',
+  tr: {},            // translations of what people wrote: language -> { original text: translated text ('' = no translation needed) }
+  trOn: true,        // "Translate messages" switch (kept on this device)
   toast: null,
   sheet: null,       // 'profile' when the profile panel is open
   demo: false,

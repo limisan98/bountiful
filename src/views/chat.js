@@ -8,6 +8,7 @@ import { mentionable, mentionTrigger, matchPeople, splitMentions, mentionsMe } f
 import { InviteCard, InviteSheet, canInvite } from './invites.js';
 import { ymd, todayYmd, addDays, fmtTimeOfDay, fmt } from '../time.js';
 import { set } from '../store.js';
+import { trFor } from '../translate.js';
 
 function dayLabel(iso) {
   const d = new Date(iso);
@@ -259,6 +260,9 @@ function Bubble({ m, first, mine, canDelete, selected, onSelect, dm }) {
   const who = s.profiles[m.sender];
   const r = roleInfo(who && who.role);
   const [sure, setSure] = useState(false);
+  const [orig, setOrig] = useState(false); // show the original instead of the translation
+  const trans = trFor(m.body, m.sender), hasTr = trans !== m.body;
+  const shownBody = orig ? m.body : trans;
   useEffect(() => { if (!selected) setSure(false); }, [selected]);
   const del = async () => {
     if (!sure) { setSure(true); return; }
@@ -279,8 +283,9 @@ function Bubble({ m, first, mine, canDelete, selected, onSelect, dm }) {
       </div>` : null}
       ${inv ? html`<${InviteCard} inv=${inv} m=${m} mine=${mine} />` : html`<div class=${'bubble' + (selected ? ' picked' : '')} ...${press.handlers}
         onClick=${() => { if (selected && !press.wasLong()) onSelect(); }}>
-        <span class="bubble-text">${splitMentions(m.body).map((x) => x.who
+        <span class="bubble-text">${splitMentions(shownBody).map((x) => x.who
           ? html`<span class=${'mention' + (x.who.id === s.profile.id ? ' me' : '')}>${x.text}</span>` : x.text)}</span>
+        ${hasTr ? html`<button type="button" class="tr-link" onClick=${(e) => { e.stopPropagation(); setOrig(!orig); }}>${orig ? t('tr.showTranslation') : t('tr.translated') + ' · ' + t('tr.showOriginal')}</button>` : null}
         <time>${fmtTimeOfDay(m.created_at)}</time>
       </div>`}
       ${selected ? html`<div class="msg-actions pop">

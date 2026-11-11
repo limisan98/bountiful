@@ -1,4 +1,5 @@
 import { html, useState, useEffect } from '../../assets/vendor/htm-preact.js';
+import { trFor } from '../translate.js';
 import { useStore, toast } from '../store.js';
 import { t, friendlyError } from '../i18n.js';
 import { Icon, Avatar, Field, Sheet, Empty, useSheetControl } from '../ui.js';
@@ -107,7 +108,7 @@ function LogEntry({ e, me, sup, showDay }) {
         <span>${showDay ? fmt(parseYmd(e.day), { weekday: 'short', day: 'numeric', month: 'short' }) + ' · ' + t('log.' + e.block) + ' · ' : ''}${fmtTimeOfDay(e.created_at)}</span></div>
       ${area ? html`<span class="chip log-area" style=${colorStyle(area.color)}><${Icon} name=${area.icon || 'home'} size=${14} />${areaName(area)}</span>` : null}
     </div>
-    <p class="log-body">${e.body}</p>
+    <p class="log-body">${trFor(e.body, e.author)}</p>
     ${e.follow_up ? html`<div class="log-follow">
       <span class=${'log-flag' + (e.resolved_at ? ' ok' : '')}><${Icon} name=${e.resolved_at ? 'circle-check' : 'flag'} size=${18} />${e.resolved_at
         ? t('log.resolvedBy', { name: resolver ? resolver.display_name.split(' ')[0] : '—' }) : t('log.needsFollow')}</span>

@@ -1,4 +1,5 @@
 import { html, useState, useEffect, useRef } from '../../assets/vendor/htm-preact.js';
+import { trFor } from '../translate.js';
 import { useStore, toast } from '../store.js';
 import { t, currentLocale, friendlyError } from '../i18n.js';
 import { Icon, Empty } from '../ui.js';
@@ -72,7 +73,7 @@ export function CustodianHome() {
           ${a.status === 'doing' ? html`<span class="chip status-chip doing"><${Icon} name="hourglass" size=${15} />${t('status.doing')}</span>` : null}
           ${priorityOf(tk) === 'high' ? html`<${PriorityChip} task=${tk} />` : null}
         </span>
-        ${a.note ? html`<span class="my-note">${a.note}</span>` : null}
+        ${a.note ? html`<span class="my-note">${trFor(a.note, a.created_by)}</span>` : null}
       </button>
     </article>`;
   };

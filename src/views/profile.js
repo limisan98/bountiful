@@ -9,6 +9,7 @@ import { NotificationsSheet } from './notifications.js';
 import { addDays, startOfWeek, todayYmd, ymd, dur } from '../time.js';
 import { colorStyle } from '../color.js';
 import { bigTextOn, setBigText } from '../access.js';
+import { setTranslateOn } from '../translate.js';
 
 // Where each period starts (today / this week / this quarter / this year)
 function periodStart(period) {
@@ -123,6 +124,11 @@ export function ProfileSheet({ onClose }) {
       </div>
       <p class="field-hint">${t('profile.activityNote')}</p>
     </div>
+
+    <button type="button" class="switch-row" onClick=${() => setTranslateOn(!s.trOn)}>
+      <span><strong>${t('tr.setting')}</strong><span class="muted block">${t('tr.settingHelp')}</span></span>
+      <span class=${'switch' + (s.trOn ? ' on' : '')} role="switch" aria-checked=${s.trOn}><span class="knob"></span></span>
+    </button>
 
     <button class="btn soft" onClick=${() => setNotif(true)}><${Icon} name="bell" size=${18} />${t('notif.title')}</button>
 
