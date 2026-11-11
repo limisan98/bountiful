@@ -2,6 +2,7 @@ import { state } from './store.js';
 import { t } from './i18n.js';
 import { ROLE_DEFAULTS, ROLE_ORDER } from './config.js';
 import { colorVars } from './color.js';
+import { todayYmd } from './time.js';
 
 // Everything about a role (name, icon, colors) in one place. The database row wins over the defaults.
 export function roleInfo(id) {
@@ -22,3 +23,7 @@ export function roleInfo(id) {
 export const roleList = () => ROLE_ORDER.map(roleInfo);
 export const isSupervisor = (p) => !!p && roleInfo(p.role).isSupervisor;
 export const departmentOf = (p) => (p ? roleInfo(p.role).department : null);
+
+// Who may hand out tasks: the supervisor, or a custodian the supervisor has made a delegate (while they are away), until the end date if there is one
+export const isDelegate = (p) => !!p && !!p.can_assign && (!p.assign_until || p.assign_until >= todayYmd());
+export const canAssign = (p) => isSupervisor(p) || isDelegate(p);

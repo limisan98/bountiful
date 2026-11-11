@@ -2,7 +2,7 @@ import { html, useState, useEffect } from '../../assets/vendor/htm-preact.js';
 import { useStore, toast } from '../store.js';
 import { t, friendlyError } from '../i18n.js';
 import { Icon, Avatar, Segmented, Sheet, Empty } from '../ui.js';
-import { isSupervisor } from '../roles.js';
+import { canAssign } from '../roles.js';
 import { colorStyle } from '../color.js';
 import { STATUS_ICON_COLOR, badgeStatus } from '../ui.js';
 import { ensureMonth, itemName, areaOf, areaName } from '../data.js';
@@ -23,7 +23,7 @@ function byDay(assignments, onlyMe) {
 export function CalendarView() {
   const s = useStore();
   const me = s.profile;
-  const sup = isSupervisor(me);
+  const sup = canAssign(me);
   const [mode, setMode] = useState('month');
   const [cursor, setCursor] = useState(() => new Date());
   const [who, setWho] = useState(sup ? 'all' : 'mine');
@@ -123,7 +123,7 @@ export function CalendarView() {
 export function DaySheet({ day: startDay, who: initialWho, onClose, onOpen, onAssign }) {
   const s = useStore();
   const me = s.profile;
-  const sup = isSupervisor(me);
+  const sup = canAssign(me);
   const [who, setWho] = useState(initialWho || 'all');
   const [day, setDay] = useState(startDay);
   const d = parseYmd(day);

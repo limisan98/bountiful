@@ -27,10 +27,10 @@ const real = {
   async adminUpdateMember(id, role, active) { await rpc('admin_update_member', { p_id: id, p_role: role, p_active: active }); },
 
   // ---- people and roles ----
-  async loadProfiles() { return ok(await sb.from('profiles').select('id,display_name,avatar_url,role,active,created_at')); },
+  async loadProfiles() { return ok(await sb.from('profiles').select('id,display_name,avatar_url,role,active,created_at,can_assign,assign_until')); },
   async updateMyProfile(patch) {
     return ok(await sb.from('profiles').update(patch).eq('id', state.session.user.id)
-      .select('id,display_name,avatar_url,role,active,created_at').single());
+      .select('id,display_name,avatar_url,role,active,created_at,can_assign,assign_until').single());
   },
   async uploadAvatar(blob) {
     const uid = state.session.user.id;
@@ -46,6 +46,8 @@ const real = {
     }
     return data.publicUrl;
   },
+  // the supervisor lets a custodian hand out tasks (until a date, or until switched off)
+  async setAssignDelegate(id, on, until) { await rpc('set_assign_delegate', { p_id: id, p_on: on, p_until: on && until ? until : null }); },
   async changePassword(password) { ok(await sb.auth.updateUser({ password })); },
   async saveNotifPrefs(notif) { ok(await sb.auth.updateUser({ data: { notif } })); },
   async savePushSubscription(endpoint, p256dh, auth, lang) { await rpc('save_push_subscription', { p_endpoint: endpoint, p_p256dh: p256dh, p_auth: auth, p_lang: lang }); },

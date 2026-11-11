@@ -2,7 +2,7 @@ import { html, useState, useEffect } from '../../assets/vendor/htm-preact.js';
 import { useStore, toast } from '../store.js';
 import { t, friendlyError } from '../i18n.js';
 import { Icon, Avatar, TaskBadge, badgeStatus, Segmented, Field, Sheet, PersonLine, Empty, useSheetControl } from '../ui.js';
-import { isSupervisor, roleInfo } from '../roles.js';
+import { canAssign, roleInfo } from '../roles.js';
 import { colorStyle } from '../color.js';
 import { startAssignment, saveSteps, finishAssignment, reopenAssignment, removeAssignment, editAssignment, planAssignments,
   ensureMonth, areaOf, areaName, activePeople, itemName, loadComments, addComment, removeComment, editRoomRequest, giveTasks, distribute } from '../data.js';
@@ -55,7 +55,7 @@ function DetailBody({ id, onClose, openTimer }) {
   const a = s.assignments[id];
   const tk = s.tasks[a.task_id];
   const me = s.profile;
-  const sup = isSupervisor(me);
+  const sup = canAssign(me);
   const mine = a.assignee === me.id;
   const who = s.profiles[a.assignee];
   const report = s.reports[id];
@@ -198,7 +198,7 @@ function Comments({ a }) {
         <${Avatar} profile=${au} size=${30} ring=${false} />
         <div class="comment-body"><div class="comment-head"><b>${au ? (c.author === me.id ? t('team.you') : au.display_name.split(' ')[0]) : t('chat.former')}</b>
           <small>${new Date(c.created_at).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</small>
-          ${c.author === me.id || isSupervisor(me) ? html`<button type="button" class="comment-del" aria-label=${t('act.remove')} onClick=${() => removeComment(a.id, c.id).catch((ex) => toast(friendlyError(ex), 'bad'))}><${Icon} name="x" size=${14} /></button>` : null}</div>
+          ${c.author === me.id || canAssign(me) ? html`<button type="button" class="comment-del" aria-label=${t('act.remove')} onClick=${() => removeComment(a.id, c.id).catch((ex) => toast(friendlyError(ex), 'bad'))}><${Icon} name="x" size=${14} /></button>` : null}</div>
           <p>${c.body}</p></div>
       </div>`;
     })}</div>` : html`<p class="muted small-text">${t('comment.none')}</p>`}

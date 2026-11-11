@@ -3,7 +3,7 @@ import { useStore, toast } from '../store.js';
 import { t, friendlyError } from '../i18n.js';
 import { Icon, Segmented, Field, Sheet, Empty, useSheetControl } from '../ui.js';
 import { colorStyle } from '../color.js';
-import { isSupervisor, departmentOf } from '../roles.js';
+import { canAssign, departmentOf } from '../roles.js';
 import { assignmentsOn, askRooms, ensureMonth, startAssignment, autoAllocate, areaOf, areaName } from '../data.js';
 import { dayPlanned, byImportance } from '../shifts.js';
 import { DateField } from '../pickers.js';
@@ -17,7 +17,7 @@ import { QuickAssignSheet } from './quick.js';
 // reception lists rooms and watches them get cleaned.
 export function TasksView() {
   const s = useStore();
-  const sup = isSupervisor(s.profile);
+  const sup = canAssign(s.profile);
   const rec = departmentOf(s.profile) === 'reception';
   const [tab, setTab] = useState('board');
   const lib = sup && tab === 'library';

@@ -9,6 +9,7 @@ import { shiftOf, shiftName, goalOf, priorityOf } from '../shifts.js';
 import { AssignmentSheet } from './assign.js';
 import { PriorityChip } from './tasks.js';
 import { WeeklyToday } from './weekly.js';
+import { isDelegate } from '../roles.js';
 import { WriteSheet, defaultLogBlock } from './logbook.js';
 
 // The custodian's whole app in one screen: today's tasks as big check buttons, and a handover note one tap away.
@@ -87,6 +88,10 @@ export function CustodianHome() {
       <div class="progress"><i style=${`width:${pct}%`}></i></div>
       <b>${done.length === mine.length ? t('home.allDone') : t('home.progress', { done: done.length, total: mine.length })}</b>
     </div>` : null}
+
+    ${isDelegate(me) ? html`<a class="deleg-banner" href="#/tasks"><${Icon} name="bolt" size=${24} />
+      <span><b>${t('deleg.banner')}</b><small>${me.assign_until ? t('deleg.until', { date: fmt(parseYmd(me.assign_until), { day: 'numeric', month: 'long' }) }) : t('deleg.noEnd')}</small></span>
+      <${Icon} name="caret-right" size=${18} /></a>` : null}
 
     <${WeeklyToday} />
 

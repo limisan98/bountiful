@@ -3,7 +3,9 @@ import { api } from '../api.js';
 import { useStore, toast } from '../store.js';
 import { t, friendlyError } from '../i18n.js';
 import { Icon, Avatar, RoleChip, Segmented, Field, Sheet, PersonLine, IconPicker, ColorPicker, Empty, useSheetControl } from '../ui.js';
-import { roleInfo, roleList, isSupervisor } from '../roles.js';
+import { roleInfo, roleList, isSupervisor, isDelegate } from '../roles.js';
+import { DateField } from '../pickers.js';
+import { addDays, ymd, parseYmd, fmt, todayYmd } from '../time.js';
 import { saveRole } from '../data.js';
 import { colorStyle } from '../color.js';
 import { ROLE_ICONS, DEPARTMENTS, ROLE_ORDER } from '../config.js';
@@ -82,6 +84,7 @@ export function TeamView() {
             const body = html`<${PersonLine} profile=${p} size=${52} extra=${html`<span class="pline-tail">
               ${p.id === me.id ? html`<span class="you">${t('team.you')}</span>` : null}
               ${p.active === false ? html`<span class="chip small status paused">${t('team.paused')}</span>` : null}
+              ${isDelegate(p) ? html`<span class="chip small status pending">${t('team.delegate')}</span>` : null}
               ${sup && p.id !== me.id ? html`<${Icon} name="caret-right" size=${18} class="chev" />` : null}</span>`} />`;
             return sup && p.id !== me.id
               ? html`<button class="person" key=${p.id} onClick=${() => openPerson(p)}>${body}</button>`
@@ -162,11 +165,17 @@ function Manage({ row, profile, onClose, onChanged }) {
   const [sure, setSure] = useState(false);
   const [busy, setBusy] = useState(false);
   const name = (profile && profile.display_name) || row.full_name || row.email;
+  // delegate: this person may hand out tasks while the supervisor is away (optionally until a date)
+  const [deleg, setDeleg] = useState(!!(profile && profile.can_assign));
+  const [until, setUntil] = useState((profile && profile.assign_until) || ymd(addDays(new Date(), 14)));
+  const [noEnd, setNoEnd] = useState(!!(profile && profile.can_assign && !profile.assign_until));
+  const canDelegate = registered && profile && !roleInfo(profile.role).isSupervisor;
 
   async function save() {
     setBusy(true);
     try {
       if (registered) await api.adminUpdateMember(row.claimed_by, role, !paused);
+      if (canDelegate) await api.setAssignDelegate(row.claimed_by, deleg, noEnd ? null : until);
       else await api.updateInvite(row.email, { role });
       toast(t('team.updated'));
       ctl.close();
@@ -203,6 +212,17 @@ function Manage({ row, profile, onClose, onChanged }) {
 
     <div class="stack-form">
       <div class="field"><span class="field-label">${t('team.role')}</span><${RolePicker} value=${role} onChange=${setRole} /></div>
+
+      ${canDelegate && html`<div class="deleg-box">
+        <button type="button" class="switch-row" onClick=${() => setDeleg(!deleg)}>
+          <span><strong>${t('team.delegate')}</strong><span class="muted block">${t('team.delegateHelp')}</span></span>
+          <span class=${'switch' + (deleg ? ' on' : '')} role="switch" aria-checked=${deleg}><span class="knob"></span></span>
+        </button>
+        ${deleg && html`<${Field} label=${t('team.delegateUntil')}>
+          ${noEnd ? html`<span class="muted">${t('team.delegateNoEnd')}</span>` : html`<${DateField} value=${until} label=${t('team.delegateUntil')} onChange=${setUntil} />`}
+        <//>
+        <button type="button" class="pick ghost" onClick=${() => setNoEnd(!noEnd)}>${noEnd ? t('team.delegateSetEnd') : t('team.delegateNoEndBtn')}</button>`}
+      </div>`}
 
       ${registered && html`<button type="button" class="switch-row" onClick=${() => setPaused(!paused)}>
         <span><strong>${t('team.pause')}</strong><span class="muted block">${t('team.pauseHelp')}</span></span>
