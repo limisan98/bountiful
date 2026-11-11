@@ -1501,3 +1501,7 @@ select.input { appearance: auto; padding-right: 12px; }
 .weekly-foot .section-link { margin: 0; }
 .req-person.on { box-shadow: inset 0 0 0 3px var(--mint); }
 .plan-list .check-row.on .check-text b { text-decoration: none; }
+
+.wk-room.assigned { box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--lavender) 80%, #fff); }
+.wk-room.sel { box-shadow: inset 0 0 0 3px var(--mint); }
+.plan-rooms .wk-room { min-height: 48px; }

@@ -823,4 +823,6 @@ Wipe the floor`,
   "weekly.planCleared": `{n} assignments removed`,
   "weekly.planNone": `No list on Sundays.`,
   "weekly.planOff": `Day off`,
+  "weekly.planRooms": `Rooms requested for this day`,
+  "weekly.planAllRooms": `Select all rooms`,
 };

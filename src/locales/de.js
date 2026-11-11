@@ -823,4 +823,6 @@ Boden wischen`,
   "weekly.planCleared": `{n} Zuweisungen entfernt`,
   "weekly.planNone": `Sonntags gibt es keine Liste.`,
   "weekly.planOff": `Frei`,
+  "weekly.planRooms": `Für diesen Tag angeforderte Zimmer`,
+  "weekly.planAllRooms": `Alle Zimmer auswählen`,
 };

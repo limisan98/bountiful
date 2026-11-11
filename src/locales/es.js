@@ -823,4 +823,6 @@ Fregar el suelo`,
   "weekly.planCleared": `{n} asignaciones quitadas`,
   "weekly.planNone": `Los domingos no hay lista.`,
   "weekly.planOff": `Libre`,
+  "weekly.planRooms": `Habitaciones pedidas para este día`,
+  "weekly.planAllRooms": `Seleccionar todas las habitaciones`,
 };

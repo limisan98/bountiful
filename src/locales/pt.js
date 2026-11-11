@@ -823,4 +823,6 @@ Limpar o chão`,
   "weekly.planCleared": `{n} atribuições removidas`,
   "weekly.planNone": `Ao domingo não há lista.`,
   "weekly.planOff": `Folga`,
+  "weekly.planRooms": `Quartos pedidos para este dia`,
+  "weekly.planAllRooms": `Selecionar todos os quartos`,
 };

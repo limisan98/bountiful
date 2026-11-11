@@ -823,4 +823,6 @@ Torka golvet`,
   "weekly.planCleared": `{n} tilldelningar borttagna`,
   "weekly.planNone": `På söndagar finns ingen lista.`,
   "weekly.planOff": `Ledig`,
+  "weekly.planRooms": `Rum som begärts för den här dagen`,
+  "weekly.planAllRooms": `Markera alla rum`,
 };

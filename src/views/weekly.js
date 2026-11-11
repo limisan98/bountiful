@@ -119,8 +119,9 @@ export function WeeklyList({ day, compact }) {
   const tile = (r) => {
     const i = `${day}.r.${r.label}`, w = weeklyOf(wk, i), p = w ? s.profiles[w.user_id] : null;
     const u = !w && urgent[r.label], uTxt = u ? (typeof u === 'string' ? t('flow.' + u) + ' · ' : '') + t('weekly.urgentOne') : '';
-    return html`<button type="button" key=${i} class=${'wk-room ' + (w ? w.status : u ? 'urgent' : '')} aria-pressed=${!!w && w.status === 'done'} title=${w ? first(p) + ' · ' + (w.status === 'done' ? t('status.done') : t('weekly.doing')) : uTxt}
-      aria-label=${r.label + (w ? ', ' + first(p) + ', ' + (w.status === 'done' ? t('status.done') : t('weekly.doing')) : uTxt ? ', ' + uTxt : '')} onClick=${() => tap(i)}>
+    const wTxt = w ? first(p) + ' · ' + (w.status === 'done' ? t('status.done') : w.status === 'assigned' ? t('weekly.assigned') : t('weekly.doing')) : '';
+    return html`<button type="button" key=${i} class=${'wk-room ' + (w ? w.status + (w.status === 'assigned' && urgent[r.label] ? ' urgent' : '') : u ? 'urgent' : '')} aria-pressed=${!!w && w.status === 'done'} title=${w ? wTxt : uTxt}
+      aria-label=${r.label + (w ? ', ' + wTxt : uTxt ? ', ' + uTxt : '')} onClick=${() => tap(i)}>
       <b>${r.label}</b>${w ? html`<${Avatar} profile=${p} name=${p ? p.display_name : ''} size=${20} ring=${false} />` : null}
     </button>`;
   };
@@ -213,6 +214,7 @@ export function dayProgressItems(s, dayYmd) {
     const tk = tick ? tick.status : null, a = roomAsg[label];
     if (tk === 'done' || (a && a.status === 'done')) return 'done';
     if (tk === 'doing' || (a && a.status === 'doing')) return 'doing';
+    if (tk === 'assigned') return 'todo';
     if (a && !a.assignee) return 'waiting';
     return 'todo';
   };
@@ -248,7 +250,11 @@ function PlanListSheet({ onClose }) {
   const [who, setWho] = useState(null);
   const [busy, setBusy] = useState(false);
   const d = parseYmd(date), wd = isoWeekday(d), wkOf = ymd(startOfWeek(d));
-  useEffect(() => { setPicked([]); ensureWeekly(wkOf).catch(() => {}); }, [date]);
+  useEffect(() => { setPicked([]); ensureWeekly(wkOf).catch(() => {}); ensureMonth(date.slice(0, 7)).catch(() => {}); }, [date]);
+  // the rooms requested for that day (from the uploaded file / the supervisor): they can be given to a person too
+  const asked = wd === 7 ? [] : [...new Map(assignmentsOn(date).filter((a) => a.kind === 'room' && a.status !== 'done').map((a) => [a.title, a])).values()]
+    .sort((x, y) => x.title.localeCompare(y.title));
+  const roomId = (a) => `${wd}.r.${a.title}`;
   const lines = wd === 7 ? [] : checklistLines(s.lang).filter((l) => l.day === wd);
   const people = crewPeople();
   const planned = dayPlanned(date);
@@ -269,6 +275,13 @@ function PlanListSheet({ onClose }) {
     <div class="stack-form">
       <p class="muted">${t('weekly.planSub')}</p>
       <${Field} label=${t('weekly.planDay')}><${DateField} value=${date} label=${t('weekly.planDay')} onChange=${setDate} /><//>
+      ${asked.length ? html`<div class="field"><span class="field-label">${t('weekly.planRooms')} · ${asked.length}</span>
+        <div class="wk-rooms plan-rooms">${asked.map((a) => {
+          const id = roomId(a), r = weeklyOf(wkOf, id), p = r ? s.profiles[r.user_id] : null, on = picked.includes(id), flow = s.tasks[a.task_id] && s.tasks[a.task_id].room_flow;
+          return html`<button type="button" key=${id} class=${'wk-room urgent' + (on ? ' sel' : '') + (r ? ' ' + r.status : '')} aria-pressed=${on} title=${[flow ? t('flow.' + flow) : '', r ? first(p) : ''].filter(Boolean).join(' · ')} onClick=${() => toggle(id)}>
+            <b>${a.title}</b>${p ? html`<${Avatar} profile=${p} name=${p.display_name} size=${20} ring=${false} />` : null}</button>`;
+        })}</div>
+        <button type="button" class="pick ghost" onClick=${() => { const ids = asked.map(roomId); setPicked((pk) => (ids.every((x) => pk.includes(x)) ? pk.filter((x) => !ids.includes(x)) : [...new Set([...pk, ...ids])])); }}>${t('weekly.planAllRooms')}</button></div>` : null}
       ${lines.length ? html`<div class="field"><span class="field-label">${t('weekly.planItems')}</span>
         <div class="checklist plan-list">${lines.map((l) => {
           const r = weeklyOf(wkOf, l.id), p = r ? s.profiles[r.user_id] : null, on = picked.includes(l.id);
@@ -277,8 +290,8 @@ function PlanListSheet({ onClose }) {
             <span class="check-text"><b>${l.text}</b>${r ? html`<span class="weekly-who"><${Avatar} profile=${p} name=${p ? p.display_name : ''} size=${22} ring=${false} />${first(p)} · ${r.status === 'done' ? t('status.done') : r.status === 'doing' ? t('weekly.doing') : t('weekly.assigned')}</span>` : null}</span>
           </button>`;
         })}</div></div>`
-        : html`<p class="muted center">${t('weekly.planNone')}</p>`}
-      ${lines.length ? html`<div class="field"><span class="field-label">${t('weekly.planWho')}</span>
+        : (asked.length ? null : html`<p class="muted center">${t('weekly.planNone')}</p>`)}
+      ${lines.length || asked.length ? html`<div class="field"><span class="field-label">${t('weekly.planWho')}</span>
         <div class="req-people">${people.map((p) => {
           const off = planned && !shiftOf(p.id, date);
           return html`<button type="button" key=${p.id} class=${'req-person' + (who === p.id ? ' on' : '')} aria-pressed=${who === p.id} onClick=${() => setWho(p.id)}>

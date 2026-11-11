@@ -823,4 +823,6 @@ Vloer dweilen`,
   "weekly.planCleared": `{n} toewijzingen verwijderd`,
   "weekly.planNone": `Op zondag is er geen lijst.`,
   "weekly.planOff": `Vrij`,
+  "weekly.planRooms": `Voor deze dag aangevraagde kamers`,
+  "weekly.planAllRooms": `Alle kamers selecteren`,
 };
