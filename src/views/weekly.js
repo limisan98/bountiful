@@ -228,7 +228,7 @@ export function dayProgressItems(s, dayYmd) {
     sectionsOf(d).forEach((sec, si) => {
       if (!sec.info && !sec.carry && !sec.requested) sec.items.forEach((txt, ii) => {
         const id = `${wd}.${si}.${ii}`, k = weeklyOf(wk, id);
-        out.push({ kind: 'line', label: itemText(id, txt, lang), state: k && k.status === 'done' ? 'done' : k && k.status === 'doing' ? 'doing' : 'todo', who: k ? k.user_id : '' });
+        out.push({ kind: 'line', label: itemText(id, txt, lang), state: k && k.status === 'done' ? 'done' : k && k.status === 'doing' ? 'doing' : 'todo', who: k ? k.user_id : '', at: k && k.status !== 'assigned' ? k.updated_at : '' });
       });
       const reqSet = new Set(asg.filter((a) => a.kind === 'room').map((a) => a.title));
       const list = sec.rooms ? rooms.filter(showRoom) : sec.requested ? rooms.filter((r) => reqSet.has(r.label)) : sec.carry && isoWeekday(new Date()) >= 2 ? rooms.filter((r) => !reqSet.has(r.label) && !monDone(r.label) && showRoom(r)) : [];
@@ -237,7 +237,7 @@ export function dayProgressItems(s, dayYmd) {
   }
   const known = new Set(s.guestRooms.map((r) => r.label));
   Object.values(roomAsg).filter((a) => !known.has(a.title)).forEach((a) => out.push({ kind: 'room', label: a.title, state: stateOfAsg(a), who: a.assignee || '' })); // requested rooms that are not in the room list
-  asg.filter((a) => a.kind !== 'room').forEach((a) => out.push({ kind: 'task', label: itemName(a), state: stateOfAsg(a), who: a.assignee || '' }));
+  asg.filter((a) => a.kind !== 'room').forEach((a) => out.push({ kind: 'task', label: itemName(a), state: stateOfAsg(a), who: a.assignee || '', at: (s.reports[a.id] && s.reports[a.id].completed_at) || '' }));
   return out;
 }
 

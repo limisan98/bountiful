@@ -248,13 +248,20 @@ function ProgressDetail({ items }) {
   const s = useStore();
   const first = (id) => ((s.profiles[id] || {}).display_name || '').split(' ')[0];
   const lines = items.filter((i) => i.kind === 'line'), rooms = items.filter((i) => i.kind === 'room'), tasks = items.filter((i) => i.kind === 'task');
-  const row = (i, k) => html`<li key=${k} class=${'prog-row ' + i.state}><i></i><span>${i.label}</span>${i.who ? html`<small>${first(i.who)}</small>` : null}</li>`;
+  const hh = (iso) => (iso ? new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '');
+  const stateLabel = { done: t('status.done'), doing: t('status.doing'), waiting: t('sup.waiting'), todo: t('status.todo') };
+  // a small table: what, how it is going (+ the time), who
+  const table = (list) => html`<table class="prog-table"><thead><tr><th>${t('px.item')}</th><th>${t('px.status')}</th><th>${t('rx.person')}</th></tr></thead>
+    <tbody>${list.map((i, k) => html`<tr key=${k}>
+      <td class="pt-item">${i.label}</td>
+      <td><span class=${'pt-state ' + i.state}>${stateLabel[i.state]}</span>${i.at && (i.state === 'done' || i.state === 'doing') ? html`<small>${hh(i.at)}</small>` : null}</td>
+      <td class="pt-who">${i.who ? html`<${Avatar} profile=${s.profiles[i.who]} size=${22} ring=${false} />${first(i.who)}` : '–'}</td></tr>`)}</tbody></table>`;
   return html`<div class="prog-detail">
     <p class="field-hint">${t('sup.progressWhat')}</p>
     ${lines.length ? html`<h4>${t('sup.progressList')} <span class="count">${lines.filter((i) => i.state === 'done').length}/${lines.length}</span></h4>
-      <ul class="prog-list">${lines.map((i, k) => row(i, k))}</ul>` : null}
+      ${table(lines)}` : null}
     ${tasks.length ? html`<h4>${t('sup.progressTasks')} <span class="count">${tasks.filter((i) => i.state === 'done').length}/${tasks.length}</span></h4>
-      <ul class="prog-list">${tasks.map((i, k) => row(i, k))}</ul>` : null}
+      ${table(tasks)}` : null}
     ${rooms.length ? html`<h4>${t('sup.progressRooms')} <span class="count">${rooms.filter((i) => i.state === 'done').length}/${rooms.length}</span></h4>
       ${STATE_ORDER.map(([st, label]) => { const list = rooms.filter((i) => i.state === st); return list.length ? html`<div class="prog-rooms" key=${st}>
         <span class=${'prog-state ' + st}>${t(label)} · ${list.length}</span>
