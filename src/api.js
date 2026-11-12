@@ -27,10 +27,10 @@ const real = {
   async adminUpdateMember(id, role, active) { await rpc('admin_update_member', { p_id: id, p_role: role, p_active: active }); },
 
   // ---- people and roles ----
-  async loadProfiles() { return ok(await sb.from('profiles').select('id,display_name,avatar_url,role,active,created_at,can_assign,assign_until,language')); },
+  async loadProfiles() { return ok(await sb.from('profiles').select('id,display_name,avatar_url,role,active,created_at,can_assign,assign_until')); },
   async updateMyProfile(patch) {
     return ok(await sb.from('profiles').update(patch).eq('id', state.session.user.id)
-      .select('id,display_name,avatar_url,role,active,created_at,can_assign,assign_until,language').single());
+      .select('id,display_name,avatar_url,role,active,created_at,can_assign,assign_until').single());
   },
   async uploadAvatar(blob) {
     const uid = state.session.user.id;
