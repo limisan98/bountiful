@@ -115,11 +115,11 @@ export function RoomImportSheet({ onClose }) {
       ${groups.map((g) => html`<section class="rimp-group" key=${g.day + g.flow}>
         <h3 class="section-title">${fmt(parseYmd(g.day), { weekday: 'long', day: 'numeric', month: 'long' })} · ${t('flow.' + g.flow)}<span class="count">${g.items.filter((i) => !off[i.id]).length}</span></h3>
         <div class="rimp-chips">${g.items.map((i) => html`<button type="button" key=${i.id} aria-pressed=${!off[i.id]}
-          class=${'rimp-chip' + (off[i.id] ? ' off' : '') + (known.has(i.code) ? '' : ' unknown')} onClick=${() => setOff({ ...off, [i.id]: !off[i.id] })}>
+          class=${'rimp-chip' + (off[i.id] ? ' off' : '') + (known.has(i.code.replace(/-[A-Z]$/, '')) ? '' : ' unknown')} onClick=${() => setOff({ ...off, [i.id]: !off[i.id] })}>
           <${Icon} name=${off[i.id] ? 'x' : 'check'} size=${16} />${i.code}</button>`)}</div>
         ${noteLines(g.items.filter((i) => !off[i.id])).map((n) => html`<p class="rimp-note" key=${n.text}>${n.codes ? html`<b>${n.codes}</b> ` : null}${n.text}</p>`)}
       </section>`)}
-      ${items.some((i) => !known.has(i.code)) ? html`<p class="field-hint"><${Icon} name="alert-triangle" size=${14} /> ${t('rimp.unknownHint')}</p>` : null}
+      ${items.some((i) => !known.has(i.code.replace(/-[A-Z]$/, ''))) ? html`<p class="field-hint"><${Icon} name="alert-triangle" size=${14} /> ${t('rimp.unknownHint')}</p>` : null}
       <p class="field-hint">${t('rimp.tapHint')}</p>
 
       <div class="imp-foot">

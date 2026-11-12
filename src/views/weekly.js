@@ -68,10 +68,13 @@ export function WeeklyList({ day, compact }) {
   const monRooms = assignmentsOn(monYmd).filter((a) => a.kind === 'room');
   const monDone = (label) => { const w = weeklyOf(wk, `1.r.${label}`); return (!!w && w.status === 'done') || monRooms.some((a) => a.title === label && a.status === 'done'); };
   const reqLabels = new Set(assignmentsOn(dayYmd).filter((a) => a.kind === 'room').map((a) => a.title)); // every room requested for this day (open or done)
-  const requestedRooms = day >= 2 ? rooms.filter((r) => reqLabels.has(r.label)) : [];
+  // a requested code that is not in the room list ("231-B" = a part of room 231) still gets a tile, placed in the house of its number
+  const roomOf = (label) => rooms.find((r) => r.label === label) || (() => { const b = rooms.find((r) => r.label === label.replace(/-[A-Z]$/, '')); return { label, house: b ? b.house : Number(label[0]) || 0, floor: b ? b.floor : Number(label[1]) || 0, num: b ? b.num : 0, kind: b ? b.kind : 'room' }; })();
+  const requestedRooms = day >= 2 ? [...reqLabels].sort().map(roomOf) : [];
+  const extraRooms = [...reqLabels].filter((l) => !rooms.some((r) => r.label === l) && /^\d{3}/.test(l)).sort().map(roomOf);
   const carryOn = isoWeekday(new Date()) >= 2;
   const carried = carryOn ? rooms.filter((r) => !reqLabels.has(r.label) && !monDone(r.label) && (!onDemand(r) || !!urgent[r.label] || !!weeklyOf(wk, `${day}.r.${r.label}`))) : [];
-  const roomsOf = (sec) => (sec.rooms ? rooms.filter(shown) : sec.carry ? carried : sec.requested ? requestedRooms : null);
+  const roomsOf = (sec) => (sec.rooms ? [...rooms.filter(shown), ...extraRooms] : sec.carry ? carried : sec.requested ? requestedRooms : null);
   // every checkable thing of a section: its lines (unless they are only instructions) and, for "Rooms", one tile per guest room
   const idsOf = (sec, si) => [...(sec.info ? [] : sec.items.map((_, ii) => id(si, ii))), ...((roomsOf(sec) || []).map((r) => `${day}.r.${r.label}`))];
   const isDone = (i) => { const r = weeklyOf(wk, i); return !!r && r.status === 'done'; };
@@ -91,7 +94,7 @@ export function WeeklyList({ day, compact }) {
     try { await setWeeklyItem(wk, i, next); } catch (ex) { toast(friendlyError(ex), 'bad'); return; }
     // Custodians no longer see rooms as separate tasks, they tick them here. So finishing a room tile also finishes its room task
     // (that is what Reception watches: the tile turns green there). Only if the task is theirs (or they are the supervisor); otherwise the tick alone stays.
-    const code = (/^\d\.r\.(\d+)$/.exec(i) || [])[1];
+    const code = (/^\d\.r\.(\d{3}(?:-[A-Z])?)$/.exec(i) || [])[1];
     if (code && (next === 'done' || (r && r.status === 'done' && !next))) {
       const days = [dayYmd, ...(day === 2 ? [wk] : [])];
       const a = days.flatMap((dy) => assignmentsOn(dy)).find((x) => x.kind === 'room' && x.title === code && (next === 'done' ? x.status !== 'done' : x.status === 'done'));
