@@ -88,10 +88,10 @@ export function parseRooms(rows, { dateOrder = 'dmy' } = {}) {
     // no numeric date: a weekday word ("Montag ab 14:00 Uhr") counts, relative to the day the email was sent
     if (!days.length) { const wd = weekdayIn(n); if (wd) days = [nextWeekday(wd, sentDay || ymdOf(new Date()))]; }
     const flow = OUT.test(n) && !(IN.test(n) && n.search(IN) < n.search(OUT)) ? 'checkout' : IN.test(n) ? 'checkin' : null;
-    // "231-B" / "231-C": the letters are the BEDS of room 231 - the whole room is cleaned once (beds are kept for the note);
+    // "231-B", "231a", "231 b": the letter is a BED of room 231 - the app reads the room number, not the letter - the whole room is cleaned once (beds are kept for the note);
     // "Villa 1A" = a villa unit, listed on its own
     const villas = [...rest.matchAll(/\bvilla\s*(\d+[A-Za-z]?)\b/gi)].map((m) => ({ code: 'Villa ' + m[1].toUpperCase(), bed: '' }));
-    const found3 = [...rest.replace(/\bvilla\s*\d+[A-Za-z]?\b/gi, ' ').matchAll(/(?<!\d[.,]?)([1-9]\d{2})(?:-([A-Za-z]))?(?![\d:]|[.,]\d)/g)].map((m) => ({ code: m[1], bed: (m[2] || '').toUpperCase() }));
+    const found3 = [...rest.replace(/\bvilla\s*\d+[A-Za-z]?\b/gi, ' ').matchAll(/(?<!\d[.,]?)([1-9]\d{2})(?:(?:[-\/])?([A-Za-z])(?![A-Za-z0-9])|\s+([A-Da-d])(?=\s*(?:$|[,;\/.)]|\d)))?(?![\d:]|[.,]\d)/g)].map((m) => ({ code: m[1], bed: (m[2] || m[3] || '').toUpperCase() }));
     const units = found3.concat(villas), codes = units.map((x) => x.code);
     if (days.length) { curDay = days[0]; sawDay = true; }
     if (flow) { curFlow = flow; sawFlow = true; }
