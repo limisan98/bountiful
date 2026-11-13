@@ -4,7 +4,6 @@ import { t, friendlyError } from '../i18n.js';
 import { Icon, Avatar, Segmented, Sheet, Field, useSheetControl } from '../ui.js';
 import { isSupervisor, canAssign } from '../roles.js';
 import { DateField } from '../pickers.js';
-import { clock, useElapsed } from './timer.js';
 import { WEEKLY } from '../weeklydata.js';
 import { WEEKLY_TEXT } from '../weeklytext.js';
 import { todayYmd, parseYmd, startOfWeek, addDays, ymd, isoWeekday, fmt } from '../time.js';
@@ -108,15 +107,14 @@ export function WeeklyList({ day, compact }) {
   }
   const first = (p) => (p ? p.display_name.split(' ')[0] : '');
 
-  const [lineOpen, setLineOpen] = useState(null); // the checklist line whose timer window is open: { id, text }
   const row = (i, txt) => {
     const r = weeklyOf(wk, i);
     const p = r ? s.profiles[r.user_id] : null;
     const st = r ? r.status : '';
-    return html`<button type="button" key=${i} class=${'check-row weekly-row ' + st + (st === 'done' ? ' on' : '')} aria-pressed=${st === 'done'} onClick=${() => setLineOpen({ id: i, text: txt })}>
+    return html`<button type="button" key=${i} class=${'check-row weekly-row ' + st + (st === 'done' ? ' on' : '')} aria-pressed=${st === 'done'} onClick=${() => tap(i)}>
       <span class="check-box">${st === 'doing' ? html`<${Icon} name="hourglass" size=${16} />` : st === 'assigned' ? html`<${Icon} name="user" size=${16} />` : html`<${Icon} name="check" size=${18} />`}</span>
       <span class="check-text"><b>${txt}</b>
-        ${r ? html`<span class="weekly-who"><${Avatar} profile=${p} name=${p ? p.display_name : ''} size=${22} ring=${false} />${r.status === 'assigned' && r.user_id === me.id ? t('weekly.forYou') : first(p) + ' · ' + (r.status === 'done' ? t('status.done') : r.status === 'assigned' ? t('weekly.assigned') : t('weekly.doing'))}${r.status === 'doing' && r.started_at ? html` · <${LiveTime} since=${r.started_at} />` : r.status === 'done' && r.started_at && r.done_at ? ' · ' + minutesText(r.started_at, r.done_at) : ''}</span>` : null}
+        ${r ? html`<span class="weekly-who"><${Avatar} profile=${p} name=${p ? p.display_name : ''} size=${22} ring=${false} />${r.status === 'assigned' && r.user_id === me.id ? t('weekly.forYou') : first(p) + ' · ' + (r.status === 'done' ? t('status.done') : r.status === 'assigned' ? t('weekly.assigned') : t('weekly.doing'))}</span>` : null}
       </span>
     </button>`;
   };
@@ -134,7 +132,6 @@ export function WeeklyList({ day, compact }) {
   return html`<div class=${'weekly-list' + (compact ? ' compact' : '')}>
     <div class="weekly-prog"><div class="weekly-bar" role="progressbar" aria-valuenow=${pct} aria-valuemin="0" aria-valuemax="100"><span style=${`width:${pct}%`}></span></div>
       <b>${t('weekly.progress', { done, total: all.length })}</b></div>
-    ${lineOpen ? html`<${LineSheet} line=${lineOpen} wk=${wk} onTap=${tap} onClose=${() => setLineOpen(null)} />` : null}
     ${secs.map((sec, si) => ({ sec, si })).sort((a, b) => (b.sec.requested ? 1 : 0) - (a.sec.requested ? 1 : 0)).map(({ sec, si }) => {
       if (sec.carry && !carryOn) return null;
       if (sec.requested && !requestedRooms.length) return null;
@@ -245,6 +242,85 @@ export function dayProgressItems(s, dayYmd) {
   Object.values(roomAsg).filter((a) => !known.has(a.title)).forEach((a) => out.push({ kind: 'room', label: a.title, state: stateOfAsg(a), who: a.assignee || '' })); // requested rooms that are not in the room list
   asg.filter((a) => a.kind !== 'room').forEach((a) => out.push({ kind: 'task', label: itemName(a), state: stateOfAsg(a), who: a.assignee || '', at: (s.reports[a.id] && s.reports[a.id].completed_at) || '' }));
   return out;
+}
+
+// Give items of a day's list to a person - also for tomorrow (e.g. on Wednesday: Thursday's items to Lucília). They see them in their list that day.
+function PlanListSheet({ onClose }) {
+  const s = useStore();
+  const ctl = useSheetControl();
+  const [date, setDate] = useState(ymd(addDays(new Date(), 1)));
+  const [picked, setPicked] = useState([]);
+  const [who, setWho] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const d = parseYmd(date), wd = isoWeekday(d), wkOf = ymd(startOfWeek(d));
+  useEffect(() => { setPicked([]); ensureWeekly(wkOf).catch(() => {}); ensureMonth(date.slice(0, 7)).catch(() => {}); }, [date]);
+  // the rooms requested for that day (from the uploaded file / the supervisor): they can be given to a person too
+  const asked = wd === 7 ? [] : [...new Map(assignmentsOn(date).filter((a) => a.kind === 'room' && a.status !== 'done').map((a) => [a.title, a])).values()]
+    .sort((x, y) => x.title.localeCompare(y.title));
+  const roomId = (a) => `${wd}.r.${a.title}`;
+  // whole houses / floors: on Monday every regular room is in the list, from Tuesday on the ones left over from Monday - the supervisor can give a whole house at once
+  const reqAll = new Set(assignmentsOn(date).filter((a) => a.kind === 'room').map((a) => a.title));
+  const monDoneLabel = (label) => { const w = weeklyOf(wkOf, `1.r.${label}`); return (!!w && w.status === 'done') || assignmentsOn(wkOf).some((a) => a.kind === 'room' && a.title === label && a.status === 'done'); };
+  const regular = s.guestRooms.filter((r) => (r.kind || 'room') === 'room').sort((x, y) => x.house - y.house || x.floor - y.floor || x.num - y.num);
+  const pool = wd === 1 ? regular.filter((r) => !reqAll.has(r.label)) : wd === 2 ? regular.filter((r) => !reqAll.has(r.label) && !monDoneLabel(r.label)) : [];
+  const pickGroup = (list) => { const ids = list.map((r) => `${wd}.r.${r.label}`); setPicked((pk) => (ids.every((x) => pk.includes(x)) ? pk.filter((x) => !ids.includes(x)) : [...new Set([...pk, ...ids])])); };
+  const lines = wd === 7 ? [] : checklistLines(s.lang).filter((l) => l.day === wd);
+  const people = crewPeople();
+  const planned = dayPlanned(date);
+  const toggle = (id) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+  const first = (p) => (p ? p.display_name.split(' ')[0] : '');
+
+  async function go(clear) {
+    if (busy || !picked.length || (!clear && !who)) return;
+    setBusy(true);
+    try {
+      for (let i = 0; i < picked.length; i += 6) await Promise.all(picked.slice(i, i + 6).map((id) => assignWeeklyItem(wkOf, id, clear ? null : who)));
+      toast(clear ? t('weekly.planCleared', { n: picked.length }) : t('weekly.planDone', { n: picked.length, name: first(s.profiles[who]) }));
+      ctl.close();
+    } catch (ex) { toast(friendlyError(ex), 'bad'); }
+    setBusy(false);
+  }
+  return html`<${Sheet} title=${t('weekly.plan')} onClose=${onClose} control=${ctl}>
+    <div class="stack-form">
+      <p class="muted">${t('weekly.planSub')}</p>
+      <${Field} label=${t('weekly.planDay')}><${DateField} value=${date} label=${t('weekly.planDay')} onChange=${setDate} /><//>
+      ${asked.length ? html`<div class="field"><span class="field-label">${t('weekly.planRooms')} · ${asked.length}</span>
+        <div class="wk-rooms plan-rooms">${asked.map((a) => {
+          const id = roomId(a), r = weeklyOf(wkOf, id), p = r ? s.profiles[r.user_id] : null, on = picked.includes(id), flow = s.tasks[a.task_id] && s.tasks[a.task_id].room_flow;
+          return html`<button type="button" key=${id} class=${'wk-room urgent' + (on ? ' sel' : '') + (r ? ' ' + r.status : '')} aria-pressed=${on} title=${[flow ? t('flow.' + flow) : '', r ? first(p) : ''].filter(Boolean).join(' · ')} onClick=${() => toggle(id)}>
+            <b>${a.title}</b>${p ? html`<${Avatar} profile=${p} name=${p.display_name} size=${20} ring=${false} />` : null}</button>`;
+        })}</div>
+        <button type="button" class="pick ghost" onClick=${() => { const ids = asked.map(roomId); setPicked((pk) => (ids.every((x) => pk.includes(x)) ? pk.filter((x) => !ids.includes(x)) : [...new Set([...pk, ...ids])])); }}>${t('weekly.planAllRooms')}</button></div>` : null}
+      ${pool.length ? html`<div class="field"><span class="field-label">${t('weekly.planHouses')}</span>
+        <div class="plan-houses">${[1, 2, 3, 4].map((h) => {
+          const hr = pool.filter((r) => r.house === h);
+          if (!hr.length) return null;
+          const all = hr.every((r) => picked.includes(`${wd}.r.${r.label}`));
+          return html`<div class="plan-house" key=${h}>
+            <button type="button" class=${'btn small ' + (all ? '' : 'soft')} aria-pressed=${all} onClick=${() => pickGroup(hr)}><${Icon} name=${all ? 'check' : 'bed'} size=${18} />${t('house.n', { n: h })} · ${hr.length}</button>
+            ${[1, 2, 3].filter((f) => hr.some((r) => r.floor === f)).map((f) => { const fr = hr.filter((r) => r.floor === f), on = fr.every((r) => picked.includes(`${wd}.r.${r.label}`));
+              return html`<button type="button" key=${f} class=${'pick' + (on ? ' on' : '')} aria-pressed=${on} onClick=${() => pickGroup(fr)}>${t('floor.n', { n: f })}</button>`; })}
+          </div>`;
+        })}</div></div>` : null}
+      ${lines.length ? html`<div class="field"><span class="field-label">${t('weekly.planItems')}</span>
+        <div class="checklist plan-list">${lines.map((l) => {
+          const r = weeklyOf(wkOf, l.id), p = r ? s.profiles[r.user_id] : null, on = picked.includes(l.id);
+          return html`<button type="button" key=${l.id} class=${'check-row' + (on ? ' on' : '')} aria-pressed=${on} onClick=${() => toggle(l.id)}>
+            <span class="check-box"><${Icon} name="check" size=${18} /></span>
+            <span class="check-text"><b>${l.text}</b>${r ? html`<span class="weekly-who"><${Avatar} profile=${p} name=${p ? p.display_name : ''} size=${22} ring=${false} />${first(p)} · ${r.status === 'done' ? t('status.done') : r.status === 'doing' ? t('weekly.doing') : t('weekly.assigned')}</span>` : null}</span>
+          </button>`;
+        })}</div></div>`
+        : (asked.length || pool.length ? null : html`<p class="muted center">${t('weekly.planNone')}</p>`)}
+      ${lines.length || asked.length || pool.length ? html`<div class="field"><span class="field-label">${t('weekly.planWho')}</span>
+        <div class="req-people">${people.map((p) => {
+          const off = planned && !shiftOf(p.id, date);
+          return html`<button type="button" key=${p.id} class=${'req-person' + (who === p.id ? ' on' : '')} aria-pressed=${who === p.id} onClick=${() => setWho(p.id)}>
+            <${Avatar} profile=${p} size=${30} ring=${false} /><span><b>${first(p)}</b><small>${off ? t('weekly.planOff') : ''}</small></span></button>`;
+        })}</div></div>
+        <button type="button" class="btn" disabled=${busy || !picked.length || !who} onClick=${() => go(false)}><${Icon} name="check" size=${20} />${t('weekly.planGo', { n: picked.length })}</button>
+        <button type="button" class="btn soft" disabled=${busy || !picked.length} onClick=${() => go(true)}><${Icon} name="x" size=${20} />${t('weekly.planClear')}</button>` : null}
+    </div>
+  <//>`;
 }
 
 // Give items of a day's list to a person - also for tomorrow (e.g. on Wednesday: Thursday's items to Lucília). They see them in their list that day.
