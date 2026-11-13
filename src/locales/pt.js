@@ -839,4 +839,6 @@ Limpar o chão`,
   "tr.showTranslation": `Ver tradução`,
   "tr.setting": `Traduzir mensagens`,
   "tr.settingHelp": `As mensagens, tarefas e notas escritas noutro idioma são traduzidas automaticamente para o teu.`,
+  "rimp.beds": `Camas: {beds}`,
+  "weekly.villas": `Vilas`,
 };

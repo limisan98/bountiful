@@ -839,4 +839,6 @@ Torka golvet`,
   "tr.showTranslation": `Visa översättning`,
   "tr.setting": `Översätt meddelanden`,
   "tr.settingHelp": `Meddelanden, uppgifter och anteckningar på ett annat språk översätts automatiskt till ditt.`,
+  "rimp.beds": `Sängar: {beds}`,
+  "weekly.villas": `Villor`,
 };

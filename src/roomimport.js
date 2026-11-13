@@ -88,9 +88,11 @@ export function parseRooms(rows, { dateOrder = 'dmy' } = {}) {
     // no numeric date: a weekday word ("Montag ab 14:00 Uhr") counts, relative to the day the email was sent
     if (!days.length) { const wd = weekdayIn(n); if (wd) days = [nextWeekday(wd, sentDay || ymdOf(new Date()))]; }
     const flow = OUT.test(n) && !(IN.test(n) && n.search(IN) < n.search(OUT)) ? 'checkout' : IN.test(n) ? 'checkin' : null;
-    // "231-B" = a part of room 231, listed on its own; "Villa 1A" = a villa, also listed on its own
-    const villas = [...rest.matchAll(/\bvilla\s*(\d+[A-Za-z]?)\b/gi)].map((m) => 'Villa ' + m[1].toUpperCase());
-    const codes = [...rest.replace(/\bvilla\s*\d+[A-Za-z]?\b/gi, ' ').matchAll(/(?<!\d[.,]?)[1-9]\d{2}(?:-[A-Za-z])?(?![\d:]|[.,]\d)/g)].map((m) => m[0].toUpperCase()).concat(villas);
+    // "231-B" / "231-C": the letters are the BEDS of room 231 - the whole room is cleaned once (beds are kept for the note);
+    // "Villa 1A" = a villa unit, listed on its own
+    const villas = [...rest.matchAll(/\bvilla\s*(\d+[A-Za-z]?)\b/gi)].map((m) => ({ code: 'Villa ' + m[1].toUpperCase(), bed: '' }));
+    const found3 = [...rest.replace(/\bvilla\s*\d+[A-Za-z]?\b/gi, ' ').matchAll(/(?<!\d[.,]?)([1-9]\d{2})(?:-([A-Za-z]))?(?![\d:]|[.,]\d)/g)].map((m) => ({ code: m[1], bed: (m[2] || '').toUpperCase() }));
+    const units = found3.concat(villas), codes = units.map((x) => x.code);
     if (days.length) { curDay = days[0]; sawDay = true; }
     if (flow) { curFlow = flow; sawFlow = true; }
     // a line with no room is a heading. If it says a time ("ab 14:00 Uhr", "Der Bus kommt um 8:00 Uhr an") it becomes the note of the rooms below it
@@ -105,11 +107,11 @@ export function parseRooms(rows, { dateOrder = 'dmy' } = {}) {
     const own = [...rest.matchAll(/\(([^)]{1,60})\)/g)].map((m) => m[1].trim()).filter(Boolean).join(', ');
     const note = [curNote, own].filter(Boolean).join(' · ');
     const added = [];
-    for (const code of codes) {
+    for (const { code, bed } of units) {
       const key = `${days[0] || curDay}|${flow || curFlow}|${code}`;
-      if (seen.has(key)) continue;
+      if (seen.has(key)) { const ex = items.find((x) => x.key === key); if (ex && bed && !ex.beds.includes(bed)) ex.beds.push(bed); continue; } // the same room again with another bed
       seen.add(key);
-      const it = { id: ++id, code, day: days[0] || curDay, flow: flow || curFlow, note };
+      const it = { id: ++id, key, code, day: days[0] || curDay, flow: flow || curFlow, note, beds: bed ? [bed] : [] };
       items.push(it); added.push(it);
     }
     if (codes.length) last = own ? added : null;

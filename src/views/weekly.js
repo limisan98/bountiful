@@ -152,12 +152,12 @@ export function WeeklyList({ day, compact }) {
           ${sec.carry ? html`<p class="field-hint">${carried.length ? t('weekly.carryHint') : t('weekly.carryNone')}</p>` : null}
           ${sec.rooms && rooms.some(onDemand) ? html`<p class="field-hint">${t('weekly.onDemandNote')}</p>` : null}
           ${roomsOf(sec) && nUrgentOf(roomsOf(sec)) ? html`<p class="wk-urgent-note"><i></i>${t('weekly.urgent', { n: nUrgentOf(roomsOf(sec)) })}</p>` : null}
-          ${roomsOf(sec) ? [1, 2, 3, 4, 0].map((h) => {
+          ${roomsOf(sec) ? [1, 2, 3, 4, 5, 0].map((h) => {
             const hr = roomsOf(sec).filter((r) => r.house === h);
             if (!hr.length) return null;
             const hd = hr.filter((r) => isDone(`${day}.r.${r.label}`)).length;
             return html`<div class="wk-house" key=${h}>
-              <h5>${h ? t('house.n', { n: h }) : t('rec.other')}<span class=${'weekly-count' + (hd === hr.length ? ' all' : '')}>${hd}/${hr.length}</span></h5>
+              <h5>${h === 5 ? t('weekly.villas') : h ? t('house.n', { n: h }) : t('rec.other')}<span class=${'weekly-count' + (hd === hr.length ? ' all' : '')}>${hd}/${hr.length}</span></h5>
               <div class="wk-rooms">${hr.map(tile)}</div>
             </div>`;
           }) : null}`}

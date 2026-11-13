@@ -1532,3 +1532,4 @@ select.input { appearance: auto; padding-right: 12px; }
 .tr-link { display: block; margin-top: 4px; padding: 0; font-size: 12px; font-weight: 700; color: var(--brand-ink); opacity: .85; text-align: left; }
 .theirs .tr-link { color: var(--brand-ink); }
 .mine .tr-link { color: inherit; opacity: .7; }
+.rimp-beds { margin-left: 6px; font-size: 12px; font-weight: 800; opacity: .75; letter-spacing: .05em; }

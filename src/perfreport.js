@@ -87,7 +87,7 @@ export async function buildPerformance(range, lang) {
     const timed = done.filter((e) => e.actual !== ''); return { r, n: done.length, last: done[0] ? done[0].day : '', by: done[0] ? nameOf(done[0].who) : '', asked: ev.filter((e) => e.src === 'assign').length, avg: timed.length ? Math.round(sum(timed, (e) => e.actual) / timed.length) : '' };
   }).sort((a, b) => a.n - b.n || (a.last || '').localeCompare(b.last || '') || a.r.label.localeCompare(b.r.label));
   const roomsSheet = [[t('px.room'), t('px.house'), t('px.floor'), t('px.type'), t('px.timesCleaned'), t('px.lastCleaned'), t('px.daysSince'), t('px.lastBy'), t('px.asked'), t('px.avgMin')],
-    ...roomRows.map((x) => [x.r.label, x.r.house, x.r.floor, t('px.type.' + (x.r.kind || 'room')), x.n, x.last ? { date: x.last } : '', x.last ? daysBetween(x.last, upTo) : '', x.by, x.asked, x.avg])];
+    ...roomRows.map((x) => [x.r.label, x.r.house === 5 ? 'Villa' : x.r.house, x.r.house === 5 ? '' : x.r.floor, t('px.type.' + (x.r.kind || 'room')), x.n, x.last ? { date: x.last } : '', x.last ? daysBetween(x.last, upTo) : '', x.by, x.asked, x.avg])];
 
   // ---- sheet 4: other tasks - how often they are given and finished
   const byTask = {};

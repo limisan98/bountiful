@@ -839,4 +839,6 @@ Wipe the floor`,
   "tr.showTranslation": `Show translation`,
   "tr.setting": `Translate messages`,
   "tr.settingHelp": `Messages, tasks and notes written in another language are translated to yours automatically.`,
+  "rimp.beds": `Beds: {beds}`,
+  "weekly.villas": `Villas`,
 };

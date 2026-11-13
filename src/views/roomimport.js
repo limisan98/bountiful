@@ -10,6 +10,8 @@ import { todayYmd, parseYmd, fmt } from '../time.js';
 
 // The supervisor gets the list of rooms to clean by email: drop the file (Excel / CSV / text) or paste the text,
 // check what was found, and press the big button. The rooms become cleaning requests, ready to give out.
+// the note of a room: what the email said + which beds (231-B, 231-C -> "Beds: B, C")
+const withBeds = (i) => [i.note, i.beds && i.beds.length ? t('rimp.beds', { beds: i.beds.join(', ') }) : ''].filter(Boolean).join(' · ');
 // the notes under a day's rooms: each different note once, with the room numbers it belongs to (no numbers when it is for all of them)
 function noteLines(items) {
   const by = new Map();
@@ -74,9 +76,9 @@ export function RoomImportSheet({ onClose }) {
       let made = 0;
       for (const g of groups) {
         // rooms with the same note go together (a note shows on the room's task)
-        const notes = [...new Set(g.items.filter((i) => !off[i.id]).map((i) => i.note || ''))];
+        const notes = [...new Set(g.items.filter((i) => !off[i.id]).map((i) => withBeds(i)))];
         for (const n of notes) {
-          const codes = g.items.filter((i) => !off[i.id] && (i.note || '') === n).map((i) => i.code);
+          const codes = g.items.filter((i) => !off[i.id] && withBeds(i) === n).map((i) => i.code);
           if (codes.length) made += (await askRoomCleaning(g.day, g.flow, codes, n)).length;
         }
       }
@@ -116,8 +118,8 @@ export function RoomImportSheet({ onClose }) {
         <h3 class="section-title">${fmt(parseYmd(g.day), { weekday: 'long', day: 'numeric', month: 'long' })} · ${t('flow.' + g.flow)}<span class="count">${g.items.filter((i) => !off[i.id]).length}</span></h3>
         <div class="rimp-chips">${g.items.map((i) => html`<button type="button" key=${i.id} aria-pressed=${!off[i.id]}
           class=${'rimp-chip' + (off[i.id] ? ' off' : '') + (known.has(i.code.replace(/-[A-Z]$/, '')) ? '' : ' unknown')} onClick=${() => setOff({ ...off, [i.id]: !off[i.id] })}>
-          <${Icon} name=${off[i.id] ? 'x' : 'check'} size=${16} />${i.code}</button>`)}</div>
-        ${noteLines(g.items.filter((i) => !off[i.id])).map((n) => html`<p class="rimp-note" key=${n.text}>${n.codes ? html`<b>${n.codes}</b> ` : null}${n.text}</p>`)}
+          <${Icon} name=${off[i.id] ? 'x' : 'check'} size=${16} />${i.code}${i.beds.length ? html`<small class="rimp-beds">${i.beds.join(' ')}</small>` : null}</button>`)}</div>
+        ${noteLines(g.items.filter((i) => !off[i.id]).map((i) => ({ ...i, note: withBeds(i) }))).map((n) => html`<p class="rimp-note" key=${n.text}>${n.codes ? html`<b>${n.codes}</b> ` : null}${n.text}</p>`)}
       </section>`)}
       ${items.some((i) => !known.has(i.code.replace(/-[A-Z]$/, ''))) ? html`<p class="field-hint"><${Icon} name="alert-triangle" size=${14} /> ${t('rimp.unknownHint')}</p>` : null}
       <p class="field-hint">${t('rimp.tapHint')}</p>

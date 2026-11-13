@@ -839,4 +839,6 @@ Fregar el suelo`,
   "tr.showTranslation": `Ver traducción`,
   "tr.setting": `Traducir mensajes`,
   "tr.settingHelp": `Los mensajes, tareas y notas escritos en otro idioma se traducen al tuyo automáticamente.`,
+  "rimp.beds": `Camas: {beds}`,
+  "weekly.villas": `Villas`,
 };

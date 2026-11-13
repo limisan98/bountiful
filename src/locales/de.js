@@ -839,4 +839,6 @@ Boden wischen`,
   "tr.showTranslation": `Übersetzung anzeigen`,
   "tr.setting": `Nachrichten übersetzen`,
   "tr.settingHelp": `Nachrichten, Aufgaben und Notizen in einer anderen Sprache werden automatisch in deine übersetzt.`,
+  "rimp.beds": `Betten: {beds}`,
+  "weekly.villas": `Villen`,
 };

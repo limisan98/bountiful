@@ -839,4 +839,6 @@ Vloer dweilen`,
   "tr.showTranslation": `Vertaling tonen`,
   "tr.setting": `Berichten vertalen`,
   "tr.settingHelp": `Berichten, taken en notities in een andere taal worden automatisch naar jouw taal vertaald.`,
+  "rimp.beds": `Bedden: {beds}`,
+  "weekly.villas": `Villa’s`,
 };
