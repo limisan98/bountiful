@@ -71,7 +71,7 @@ export function WeeklyList({ day, compact }) {
   // a requested code that is not in the room list ("231-B" = a part of room 231) still gets a tile, placed in the house of its number
   const roomOf = (label) => rooms.find((r) => r.label === label) || (() => { const b = rooms.find((r) => r.label === label.replace(/-[A-Z]$/, '')); return { label, house: b ? b.house : Number(label[0]) || 0, floor: b ? b.floor : Number(label[1]) || 0, num: b ? b.num : 0, kind: b ? b.kind : 'room' }; })();
   const requestedRooms = day >= 2 ? [...reqLabels].sort().map(roomOf) : [];
-  const extraRooms = [...reqLabels].filter((l) => !rooms.some((r) => r.label === l) && /^\d{3}/.test(l)).sort().map(roomOf);
+  const extraRooms = [...reqLabels].filter((l) => !rooms.some((r) => r.label === l)).sort().map(roomOf);
   const carryOn = isoWeekday(new Date()) >= 2;
   const carried = carryOn ? rooms.filter((r) => !reqLabels.has(r.label) && !monDone(r.label) && (!onDemand(r) || !!urgent[r.label] || !!weeklyOf(wk, `${day}.r.${r.label}`))) : [];
   const roomsOf = (sec) => (sec.rooms ? [...rooms.filter(shown), ...extraRooms] : sec.carry ? carried : sec.requested ? requestedRooms : null);
@@ -94,7 +94,7 @@ export function WeeklyList({ day, compact }) {
     try { await setWeeklyItem(wk, i, next); } catch (ex) { toast(friendlyError(ex), 'bad'); return; }
     // Custodians no longer see rooms as separate tasks, they tick them here. So finishing a room tile also finishes its room task
     // (that is what Reception watches: the tile turns green there). Only if the task is theirs (or they are the supervisor); otherwise the tick alone stays.
-    const code = (/^\d\.r\.(\d{3}(?:-[A-Z])?)$/.exec(i) || [])[1];
+    const code = (/^\d\.r\.(\d{3}(?:-[A-Z])?|Villa \d+[A-Z]?)$/.exec(i) || [])[1];
     if (code && (next === 'done' || (r && r.status === 'done' && !next))) {
       const days = [dayYmd, ...(day === 2 ? [wk] : [])];
       const a = days.flatMap((dy) => assignmentsOn(dy)).find((x) => x.kind === 'room' && x.title === code && (next === 'done' ? x.status !== 'done' : x.status === 'done'));
@@ -152,12 +152,12 @@ export function WeeklyList({ day, compact }) {
           ${sec.carry ? html`<p class="field-hint">${carried.length ? t('weekly.carryHint') : t('weekly.carryNone')}</p>` : null}
           ${sec.rooms && rooms.some(onDemand) ? html`<p class="field-hint">${t('weekly.onDemandNote')}</p>` : null}
           ${roomsOf(sec) && nUrgentOf(roomsOf(sec)) ? html`<p class="wk-urgent-note"><i></i>${t('weekly.urgent', { n: nUrgentOf(roomsOf(sec)) })}</p>` : null}
-          ${roomsOf(sec) ? [1, 2, 3, 4].map((h) => {
+          ${roomsOf(sec) ? [1, 2, 3, 4, 0].map((h) => {
             const hr = roomsOf(sec).filter((r) => r.house === h);
             if (!hr.length) return null;
             const hd = hr.filter((r) => isDone(`${day}.r.${r.label}`)).length;
             return html`<div class="wk-house" key=${h}>
-              <h5>${t('house.n', { n: h })}<span class=${'weekly-count' + (hd === hr.length ? ' all' : '')}>${hd}/${hr.length}</span></h5>
+              <h5>${h ? t('house.n', { n: h }) : t('rec.other')}<span class=${'weekly-count' + (hd === hr.length ? ' all' : '')}>${hd}/${hr.length}</span></h5>
               <div class="wk-rooms">${hr.map(tile)}</div>
             </div>`;
           }) : null}`}

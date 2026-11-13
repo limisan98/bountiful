@@ -38,7 +38,7 @@ export async function buildPerformance(range, lang) {
 
   const nameOf = (id) => (state.profiles[id] || {}).display_name || (id ? t('chat.former') : t('rx.unassigned'));
   const lines = {}; checklistLines(lang).forEach((l) => { lines[l.id] = l; });
-  const roomCode = (item) => (/^\d\.r\.(\d{3}(?:-[A-Z])?)$/.exec(item) || [])[1];
+  const roomCode = (item) => (/^\d\.r\.(\d{3}(?:-[A-Z])?|Villa \d+[A-Z]?)$/.exec(item) || [])[1];
 
   // ---- one flat list of "things people did or were given", used by every sheet
   const events = [];

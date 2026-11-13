@@ -88,7 +88,9 @@ export function parseRooms(rows, { dateOrder = 'dmy' } = {}) {
     // no numeric date: a weekday word ("Montag ab 14:00 Uhr") counts, relative to the day the email was sent
     if (!days.length) { const wd = weekdayIn(n); if (wd) days = [nextWeekday(wd, sentDay || ymdOf(new Date()))]; }
     const flow = OUT.test(n) && !(IN.test(n) && n.search(IN) < n.search(OUT)) ? 'checkout' : IN.test(n) ? 'checkin' : null;
-    const codes = [...rest.matchAll(/(?<!\d[.,]?)[1-9]\d{2}(?:-[A-Za-z])?(?![\d:]|[.,]\d)/g)].map((m) => m[0].toUpperCase()); // "231-B" = a part of room 231, listed on its own
+    // "231-B" = a part of room 231, listed on its own; "Villa 1A" = a villa, also listed on its own
+    const villas = [...rest.matchAll(/\bvilla\s*(\d+[A-Za-z]?)\b/gi)].map((m) => 'Villa ' + m[1].toUpperCase());
+    const codes = [...rest.replace(/\bvilla\s*\d+[A-Za-z]?\b/gi, ' ').matchAll(/(?<!\d[.,]?)[1-9]\d{2}(?:-[A-Za-z])?(?![\d:]|[.,]\d)/g)].map((m) => m[0].toUpperCase()).concat(villas);
     if (days.length) { curDay = days[0]; sawDay = true; }
     if (flow) { curFlow = flow; sawFlow = true; }
     // a line with no room is a heading. If it says a time ("ab 14:00 Uhr", "Der Bus kommt um 8:00 Uhr an") it becomes the note of the rooms below it
