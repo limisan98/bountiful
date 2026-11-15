@@ -1239,7 +1239,7 @@ select.input { appearance: auto; padding-right: 12px; }
 .more-links summary { list-style: none; display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 8px 20px; cursor: pointer; font-weight: 800; font-size: 16px; color: var(--ink-2); }
 .more-links summary::-webkit-details-marker { display: none; }
 .more-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 0 12px 14px; }
-.more-link { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 8px 14px; border-radius: var(--r-l); background: var(--bg, #F6FAF8); font-weight: 700; font-size: 15px; }
+.more-link { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 8px 14px; border-radius: var(--r-l); background: var(--soft, var(--bg, #F6FAF8)); font-weight: 700; font-size: 15px; }
 .section-link { margin-left: auto; font-size: 14px; font-weight: 700; color: var(--brand-ink); }
 
 /* reception */
@@ -1346,7 +1346,9 @@ select.input { appearance: auto; padding-right: 12px; }
 .sheet-head { touch-action: none; }
 
 .menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-.menu-grid .more-link { min-height: 72px; font-size: 16px; background: #fff; box-shadow: var(--shadow-s); }
+.menu-grid .more-link { min-height: 72px; font-size: 16px; background: var(--soft, #fff); box-shadow: var(--shadow-s); }
+.more-ic { width: 40px; height: 40px; border-radius: 50%; background: var(--c, var(--mint)); display: grid; place-items: center; flex: none; color: #2b3a36; }
+.menu-grid .more-ic { width: 46px; height: 46px; }
 
 /* room finished by a custodian: green card + badge, short highlight */
 .rec-room { scroll-margin-top: 90px; }

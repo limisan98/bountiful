@@ -1,30 +1,34 @@
 import { html } from '../../assets/vendor/htm-preact.js';
 import { t } from '../i18n.js';
 import { Icon, Sheet } from '../ui.js';
+import { colorVars } from '../color.js';
 
 const META = {
-  calendar: { icon: 'calendar-event', label: 'nav.calendar' },
-  tasks: { icon: 'list-check', label: 'nav.tasks' },
-  chat: { icon: 'messages', label: 'nav.chat' },
-  team: { icon: 'id', label: 'nav.team' },
-  meetings: { icon: 'calendar-month', label: 'nav.meetings' },
-  weekly: { icon: 'clipboard-check', label: 'nav.weekly' },
-  shifts: { icon: 'clock', label: 'nav.shifts' },
-  logbook: { icon: 'book', label: 'nav.logbook' },
-  reports: { icon: 'clipboard-data', label: 'nav.reports' },
+  calendar: { icon: 'calendar-event', color: '#FFDD94', label: 'nav.calendar' },
+  tasks: { icon: 'list-check', color: '#CCABD8', label: 'nav.tasks' },
+  chat: { icon: 'messages', color: '#86E3CE', label: 'nav.chat' },
+  team: { icon: 'id', color: '#FFDD94', label: 'nav.team' },
+  meetings: { icon: 'calendar-month', color: '#86E3CE', label: 'nav.meetings' },
+  weekly: { icon: 'clipboard-check', color: '#D0E6A5', label: 'nav.weekly' },
+  shifts: { icon: 'clock', color: '#FA897B', label: 'nav.shifts' },
+  logbook: { icon: 'book', color: '#D0E6A5', label: 'nav.logbook' },
+  reports: { icon: 'clipboard-data', color: '#CCABD8', label: 'nav.reports' },
 };
+
+// Soft tinted card + round icon bubble per screen (not colorStyle: that would also set --ink)
+const tint = (r) => { const v = colorVars(META[r].color); return `--c:${v.c};--soft:${v.soft}`; };
 
 // The "other screens" of the app, tucked away so the home screen stays calm
 export function MoreLinks({ routes }) {
   return html`<details class="more-links">
     <summary><${Icon} name="dots" size=${22} />${t('more.title')}</summary>
-    <div class="more-grid">${routes.map((r) => html`<a key=${r} class="more-link" href=${'#/' + r}><${Icon} name=${META[r].icon} size=${22} />${t(META[r].label)}</a>`)}</div>
+    <div class="more-grid">${routes.map((r) => html`<a key=${r} class="more-link" style=${tint(r)} href=${'#/' + r}><span class="more-ic"><${Icon} name=${META[r].icon} size=${22} /></span>${t(META[r].label)}</a>`)}</div>
   </details>`;
 }
 
 // The burger tab in the bottom menu: a sheet with the other screens
 export function MenuSheet({ routes, onClose }) {
   return html`<${Sheet} title=${t('nav.menu')} onClose=${onClose}>
-    <div class="menu-grid">${routes.map((r) => html`<a key=${r} class="more-link" href=${'#/' + r} onClick=${onClose}><${Icon} name=${META[r].icon} size=${24} />${t(META[r].label)}</a>`)}</div>
+    <div class="menu-grid">${routes.map((r) => html`<a key=${r} class="more-link" style=${tint(r)} href=${'#/' + r} onClick=${onClose}><span class="more-ic"><${Icon} name=${META[r].icon} size=${24} /></span>${t(META[r].label)}</a>`)}</div>
   <//>`;
 }
