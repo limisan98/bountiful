@@ -89,7 +89,9 @@ export function WeeklyList({ day, compact }) {
       toast(t('weekly.taken', { name: p ? p.display_name.split(' ')[0] : '' }), 'bad');
       return;
     }
-    const next = target ? (target === 'clear' ? null : target) : !r || r.status === 'assigned' ? 'doing' : r.status === 'doing' ? 'done' : null;
+    // a room tile is one tap = done (green at once); a line of the list goes assigned/none → doing → done → clear
+    const isRoom = /^\d\.r\./.test(i);
+    const next = target ? (target === 'clear' ? null : target) : isRoom ? (r && r.status === 'done' ? null : 'done') : !r || r.status === 'assigned' ? 'doing' : r.status === 'doing' ? 'done' : null;
     try { await setWeeklyItem(wk, i, next); } catch (ex) { toast(friendlyError(ex), 'bad'); return; }
     // Custodians no longer see rooms as separate tasks, they tick them here. So finishing a room tile also finishes its room task
     // (that is what Reception watches: the tile turns green there). Only if the task is theirs (or they are the supervisor); otherwise the tick alone stays.
