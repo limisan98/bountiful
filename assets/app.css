@@ -1553,6 +1553,6 @@ select.input { appearance: auto; padding-right: 12px; }
 .rn-form { display: flex; gap: 8px; }
 .rn-form input { flex: 1; min-width: 0; border: 0; background: #EEF4F2; border-radius: 26px; padding: 13px 18px; font-size: 16px; outline: none; }
 .rn-form input:focus { box-shadow: 0 0 0 4px rgba(134, 227, 206, .3); }
-.rn-send { width: 48px; height: 48px; border-radius: 50%; background: var(--mint); color: var(--ink); display: grid; place-items: center; flex: none; }
+.rn-send { height: 48px; padding: 0 18px; border-radius: 99px; background: var(--mint); color: var(--ink); display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 15px; flex: none; }
 .rn-send:disabled { opacity: .45; }
 @media (min-width: 1024px) { .rn-panel { left: auto; right: 28px; bottom: 28px; margin: 0; width: 380px; } }

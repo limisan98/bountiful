@@ -63,7 +63,7 @@ function RoomNotes({ room }) {
     </div>
     <form class="rn-form" onSubmit=${send}>
       <input type="text" value=${text} maxlength="1000" placeholder=${t('rn.placeholder')} aria-label=${t('rn.placeholder')} onInput=${(e) => setText(e.target.value)} />
-      <button type="submit" class="rn-send" disabled=${!text.trim() || busy} aria-label=${t('rn.send')}><${Icon} name="send" size=${20} /></button>
+      <button type="submit" class="rn-send" disabled=${!text.trim() || busy}><${Icon} name="check" size=${20} />${t('rn.send')}</button>
     </form>
   </section>`;
 }
