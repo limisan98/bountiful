@@ -253,6 +253,7 @@ const shiftPlan = [];
   });
 }
 const logbook = [];
+const roomNoteRows = []; // notes on guest rooms
 const weeklyRows = []; // weekly checklist ticks, with a few pretend ones for today
 {
   const wk = ymd(startOfWeek(now())), d = Math.min(isoWeekday(now()), 6), at = new Date().toISOString();
@@ -458,6 +459,9 @@ const demoApi = {
     if (i >= 0) { const r = weeklyRows[i]; r.status = status; r.updated_at = now; if (status === 'doing') r.started_at = r.started_at || now; r.done_at = status === 'done' ? now : null; }
     else weeklyRows.push({ week, item, status, user_id: state.profile.id, updated_at: now, started_at: status === 'doing' ? now : null, done_at: status === 'done' ? now : null });
   },
+  async loadRoomNotes(from) { return clone(roomNoteRows.filter((n) => n.day >= from)); },
+  async addRoomNote(row) { const n = { id: uid(), author: state.profile.id, created_at: new Date().toISOString(), ...row }; roomNoteRows.push(n); return clone(n); },
+  async deleteRoomNote(id) { const i = roomNoteRows.findIndex((x) => x.id === id); if (i >= 0) roomNoteRows.splice(i, 1); },
   async deleteLogEntry(id) { const i = logbook.findIndex((x) => x.id === id); if (i >= 0) logbook.splice(i, 1); },
   async loadMyStats(since) {
     const mine = Object.fromEntries(assignments.filter((a) => a.assignee === state.profile.id && a.day >= since).map((a) => [a.id, a]));

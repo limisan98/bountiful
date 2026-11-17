@@ -1535,3 +1535,24 @@ select.input { appearance: auto; padding-right: 12px; }
 .theirs .tr-link { color: var(--brand-ink); }
 .mine .tr-link { color: inherit; opacity: .7; }
 .rimp-beds { margin-left: 6px; font-size: 12px; font-weight: 800; opacity: .75; letter-spacing: .05em; }
+
+/* ---------- notes on guest rooms: a small floating card over the page (no backdrop) ---------- */
+.wk-room { position: relative; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.wk-note { position: absolute; top: 4px; right: 6px; width: 20px; height: 20px; border-radius: 50%; background: var(--lavender); color: var(--ink); display: grid; place-items: center; }
+.rn-panel { position: fixed; z-index: 30; left: 16px; right: 16px; bottom: calc(100px + env(safe-area-inset-bottom)); max-width: 420px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; max-height: min(55vh, 420px); padding: 14px; border-radius: 28px; background: #fff; color: var(--ink); box-shadow: 0 18px 50px rgba(30, 42, 40, .28), 0 0 0 1px rgba(30, 60, 52, .06); animation: rn-in var(--d3) var(--ease); }
+@keyframes rn-in { from { opacity: 0; transform: translateY(18px) scale(.97); } }
+.rn-head { display: flex; align-items: center; gap: 10px; font-size: 17px; }
+.rn-head b { flex: 1; }
+.rn-ic { width: 36px; height: 36px; border-radius: 50%; background: var(--lavender); display: grid; place-items: center; }
+.rn-list { overflow-y: auto; display: flex; flex-direction: column; gap: 10px; min-height: 40px; padding: 2px; }
+.rn-note { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 20px; background: var(--bg, #F6FAF8); }
+.rn-body { flex: 1; min-width: 0; }
+.rn-who { font-size: 12px; color: var(--ink-3); }
+.rn-body p { margin: 2px 0 0; font-size: 15px; line-height: 1.35; overflow-wrap: anywhere; white-space: pre-wrap; }
+.rn-del { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: var(--ink-3); flex: none; }
+.rn-form { display: flex; gap: 8px; }
+.rn-form input { flex: 1; min-width: 0; border: 0; background: #EEF4F2; border-radius: 26px; padding: 13px 18px; font-size: 16px; outline: none; }
+.rn-form input:focus { box-shadow: 0 0 0 4px rgba(134, 227, 206, .3); }
+.rn-send { width: 48px; height: 48px; border-radius: 50%; background: var(--mint); color: var(--ink); display: grid; place-items: center; flex: none; }
+.rn-send:disabled { opacity: .45; }
+@media (min-width: 1024px) { .rn-panel { left: auto; right: 28px; bottom: 28px; margin: 0; width: 380px; } }

@@ -23,6 +23,7 @@ export const state = {
   shiftPlan: {},     // who works which shift on which day, by id
   contracts: {},     // 4h / 8h contract, by person id
   weekly: {},        // weekly checklist: "<monday>|<item>" -> {week,item,status,user_id}
+  roomNotes: {},     // notes on guest rooms, by id
   logbook: {},       // handover logbook entries, by id
   comments: {},      // comments on tasks, by assignment id (loaded when a task is opened)
   messages: {},      // chat, by channel: 'general' or 'dm:<id>:<id>' -> { list, more, loaded }

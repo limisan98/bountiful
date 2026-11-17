@@ -7,7 +7,8 @@ import { DateField } from '../pickers.js';
 import { WEEKLY } from '../weeklydata.js';
 import { WEEKLY_TEXT } from '../weeklytext.js';
 import { todayYmd, parseYmd, startOfWeek, addDays, ymd, isoWeekday, fmt } from '../time.js';
-import { ensureWeekly, weeklyOf, setWeeklyItem, assignWeeklyItem, assignmentsOn, ensureMonth, itemName, finishAssignment, reopenAssignment } from '../data.js';
+import { ensureWeekly, ensureRoomNotes, roomNotesOf, weeklyOf, setWeeklyItem, assignWeeklyItem, assignmentsOn, ensureMonth, itemName, finishAssignment, reopenAssignment } from '../data.js';
+import { openRoomNotes } from './roomnotes.js';
 import { goalOf, crewPeople, shiftOf, dayPlanned } from '../shifts.js';
 
 // The Monday-to-Saturday cleaning checklist, shared by the whole custodian team (supervisor included).
@@ -37,7 +38,25 @@ export const todayWeekday = () => { const w = isoWeekday(new Date()); return w =
 const OPEN_KEY = 'bountiful.weekly.open';
 const loadOpen = () => { try { return JSON.parse(localStorage.getItem(OPEN_KEY) || '{}'); } catch { return {}; } };
 
+// Press and hold a room number (or right-click it) to open its notes; the tap that follows a long press must not tick the room
+function useRoomPress() {
+  const timer = useRef(null), start = useRef(null), fired = useRef(false);
+  const clear = () => { if (timer.current) { clearTimeout(timer.current); timer.current = null; } };
+  const press = (room) => ({
+    onPointerDown: (e) => {
+      if (e.button) return;
+      fired.current = false; start.current = [e.clientX, e.clientY]; clear();
+      timer.current = setTimeout(() => { fired.current = true; timer.current = null; try { navigator.vibrate && navigator.vibrate(12); } catch (_) { /* ignore */ } openRoomNotes(room); }, 450);
+    },
+    onPointerMove: (e) => { if (start.current && Math.hypot(e.clientX - start.current[0], e.clientY - start.current[1]) > 10) clear(); },
+    onPointerUp: clear, onPointerCancel: clear, onPointerLeave: clear,
+    onContextMenu: (e) => { e.preventDefault(); clear(); if (!fired.current) { fired.current = true; openRoomNotes(room); } },
+  });
+  return { press, wasLong: () => { const f = fired.current; fired.current = false; return f; } };
+}
+
 export function WeeklyList({ day, compact }) {
+  const pressing = useRoomPress();
   const s = useStore();
   const me = s.profile;
   const sup = isSupervisor(me);
@@ -45,7 +64,7 @@ export function WeeklyList({ day, compact }) {
   const lang = s.lang;
   const [open, setOpen] = useState(loadOpen);
   const dayYmd = ymd(addDays(parseYmd(wk), day - 1));
-  useEffect(() => { ensureWeekly(wk).catch(() => {}); ensureMonth(wk.slice(0, 7)).catch(() => {}); ensureMonth(dayYmd.slice(0, 7)).catch(() => {}); }, [wk]);
+  useEffect(() => { ensureRoomNotes().catch(() => {}); ensureWeekly(wk).catch(() => {}); ensureMonth(wk.slice(0, 7)).catch(() => {}); ensureMonth(dayYmd.slice(0, 7)).catch(() => {}); }, [wk]);
   const toggleOpen = (k, was) => setOpen((o) => { const n = { ...o, [k]: !was }; try { localStorage.setItem(OPEN_KEY, JSON.stringify(n)); } catch { /* private mode */ } return n; });
 
   const d = WEEKLY.find((x) => x.day === day);
@@ -126,8 +145,8 @@ export function WeeklyList({ day, compact }) {
     const u = !w && urgent[r.label], uTxt = u ? (typeof u === 'string' ? t('flow.' + u) + ' · ' : '') + t('weekly.urgentOne') : '';
     const wTxt = w ? first(p) + ' · ' + (w.status === 'done' ? t('status.done') : w.status === 'assigned' ? t('weekly.assigned') : t('weekly.doing')) : '';
     return html`<button type="button" key=${i} class=${'wk-room ' + (w ? w.status + (w.status === 'assigned' && urgent[r.label] ? ' urgent' : '') : u ? 'urgent' : '')} aria-pressed=${!!w && w.status === 'done'} title=${w ? wTxt : uTxt}
-      aria-label=${r.label + (w ? ', ' + wTxt : uTxt ? ', ' + uTxt : '')} onClick=${() => tap(i)}>
-      <b>${r.label}</b>${w ? html`<${Avatar} profile=${p} name=${p ? p.display_name : ''} size=${20} ring=${false} />` : null}
+      aria-label=${r.label + (w ? ', ' + wTxt : uTxt ? ', ' + uTxt : '')} onClick=${() => { if (!pressing.wasLong()) tap(i); }} ...${pressing.press(r.label)}>
+      <b>${r.label}</b>${roomNotesOf(r.label).length ? html`<span class="wk-note" aria-label=${t('rn.has')}><${Icon} name="message" size=${13} /></span>` : null}${w ? html`<${Avatar} profile=${p} name=${p ? p.display_name : ''} size=${20} ring=${false} />` : null}
     </button>`;
   };
 
@@ -149,6 +168,7 @@ export function WeeklyList({ day, compact }) {
           ${sec.info ? html`<ul class="weekly-info">${sec.items.map((txt, ii) => html`<li key=${ii}>${itemText(id(si, ii), txt, lang)}</li>`)}</ul>`
             : html`<div class="checklist">${sec.items.map((txt, ii) => row(id(si, ii), itemText(id(si, ii), txt, lang)))}</div>`}
           ${sec.carry ? html`<p class="field-hint">${carried.length ? t('weekly.carryHint') : t('weekly.carryNone')}</p>` : null}
+          ${sec.rooms ? html`<p class="field-hint">${t('rn.hint')}</p>` : null}
           ${sec.rooms && rooms.some(onDemand) ? html`<p class="field-hint">${t('weekly.onDemandNote')}</p>` : null}
           ${roomsOf(sec) && nUrgentOf(roomsOf(sec)) ? html`<p class="wk-urgent-note"><i></i>${t('weekly.urgent', { n: nUrgentOf(roomsOf(sec)) })}</p>` : null}
           ${roomsOf(sec) ? [1, 2, 3, 4, 5, 0].map((h) => {

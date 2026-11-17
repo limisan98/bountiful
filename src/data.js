@@ -13,7 +13,7 @@ const months = new Set();
 
 export function resetData() {
   months.clear();
-  set({ roles: {}, areas: [], tasks: {}, presets: {}, guestRooms: [], assignments: {}, reports: {}, messages: {}, chatOpen: null, person: null, comments: {}, shifts: {}, shiftPlan: {}, contracts: {}, logbook: {}, weekly: {}, digests: {}, invites: {}, meetings: {}, settings: {} });
+  set({ roles: {}, areas: [], tasks: {}, presets: {}, guestRooms: [], assignments: {}, reports: {}, messages: {}, chatOpen: null, person: null, comments: {}, shifts: {}, shiftPlan: {}, contracts: {}, logbook: {}, roomNotes: {}, weekly: {}, digests: {}, invites: {}, meetings: {}, settings: {} });
 }
 
 // ---- loading ----
@@ -385,6 +385,18 @@ export async function setWeeklyItem(week, item, status) {
   }
 }
 
+// ---- notes on guest rooms (long-press a room number in the checklist) ----
+export const roomNotesOf = (room) => Object.values(state.roomNotes).filter((n) => n.room === room).sort((a, b) => a.created_at.localeCompare(b.created_at));
+export async function ensureRoomNotes() {
+  const rows = await api.loadRoomNotes(ymd(addDays(new Date(), -14)));
+  set({ roomNotes: byId(rows) });
+}
+export async function addRoomNote(room, body) { const n = await api.addRoomNote({ room, day: ymd(new Date()), body }); set({ roomNotes: { ...state.roomNotes, [n.id]: n } }); }
+export async function removeRoomNote(id) {
+  await api.deleteRoomNote(id);
+  const roomNotes = { ...state.roomNotes }; delete roomNotes[id]; set({ roomNotes });
+}
+
 // ---- the handover logbook ----
 export const logbookOn = (day) => Object.values(state.logbook).filter((e) => e.day === day).sort((a, b) => a.created_at.localeCompare(b.created_at));
 export async function ensureLogbook(from, to) {
@@ -478,6 +490,10 @@ export function startLive() {
       const weekly = { ...state.weekly };
       if (del) delete weekly[weeklyKey(rec.week, rec.item)]; else weekly[weeklyKey(row.week, row.item)] = row;
       set({ weekly });
+    } else if (table === 'room_notes') {
+      const roomNotes = { ...state.roomNotes };
+      if (del) delete roomNotes[id]; else roomNotes[id] = row;
+      set({ roomNotes });
     } else if (table === 'logbook_entries') {
       const logbook = { ...state.logbook };
       if (del) delete logbook[id]; else logbook[id] = row;

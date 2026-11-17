@@ -185,12 +185,16 @@ const real = {
   async loadWeekly(week) { return ok(await sb.from('weekly_checks').select('*').eq('week', week)); },
   async assignWeekly(week, item, userId) { await rpc('assign_weekly_check', { p_week: week, p_item: item, p_user: userId || null }); },
   async setWeekly(week, item, status) { await rpc('set_weekly_check', { p_week: week, p_item: item, p_status: status }); },
+  // ---- notes on guest rooms ----
+  async loadRoomNotes(from) { return ok(await sb.from('room_notes').select('*').gte('day', from).order('created_at')); },
+  async addRoomNote(row) { return ok(await sb.from('room_notes').insert(row).select().single()); },
+  async deleteRoomNote(id) { ok(await sb.from('room_notes').delete().eq('id', id)); },
   async deleteLogEntry(id) { ok(await sb.from('logbook_entries').delete().eq('id', id)); },
 
   // ---- live updates: `handler(table, eventType, newRow, oldRow)` ----
   subscribe(handler) {
     const ch = sb.channel('bountiful-live');
-    ['profiles', 'roles', 'areas', 'tasks', 'assignments', 'assignment_reports', 'messages', 'assignment_comments', 'custodian_reports', 'task_invites', 'meeting_requests', 'shift_plan', 'staff_contracts', 'logbook_entries', 'weekly_checks'].forEach((table) => {
+    ['profiles', 'roles', 'areas', 'tasks', 'assignments', 'assignment_reports', 'messages', 'assignment_comments', 'custodian_reports', 'task_invites', 'meeting_requests', 'shift_plan', 'staff_contracts', 'logbook_entries', 'weekly_checks', 'room_notes'].forEach((table) => {
       ch.on('postgres_changes', { event: '*', schema: 'public', table }, (p) => handler(table, p.eventType, p.new, p.old));
     });
     ch.subscribe();
