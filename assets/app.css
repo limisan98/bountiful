@@ -1556,3 +1556,6 @@ select.input { appearance: auto; padding-right: 12px; }
 .rn-send { height: 48px; padding: 0 18px; border-radius: 99px; background: var(--mint); color: var(--ink); display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 15px; flex: none; }
 .rn-send:disabled { opacity: .45; }
 @media (min-width: 1024px) { .rn-panel { left: auto; right: 28px; bottom: 28px; margin: 0; width: 380px; } }
+
+.qa-floor { margin: 10px 0 6px; font-size: 13px; font-weight: 700; color: var(--ink-3); }
+.qa-rooms .chips { margin-bottom: 4px; }

@@ -35,6 +35,7 @@ export function QuickAssignSheet({ day, person: first, onClose }) {
   const [minutes, setMinutes] = useState(30);
   const [where, setWhere] = useState(null);
   const [lines, setLines] = useState('');
+  const [picked, setPicked] = useState([]); // rooms chosen inside a house area (none = the whole house)
   const [busy, setBusy] = useState(false);
   const [last, setLast] = useState(null);
   const today = todayYmd();
@@ -58,6 +59,13 @@ export function QuickAssignSheet({ day, person: first, onClose }) {
   const presetLabel = (p) => p.key ? routineName(p) : t('preset.level' + p.level);
   const area = s.areas.find((a) => a.id === areaId);
   const goal = custom ? minutes : preset ? preset.goal_minutes : 0;
+  // the four house areas let you pick the rooms to clean
+  const houseNo = area && /^house[1-4]$/.test(area.key) ? Number(area.key.slice(5)) : 0;
+  const houseRooms = houseNo ? [...s.guestRooms].filter((r) => r.house === houseNo).sort((a, b) => a.floor - b.floor || a.num - b.num) : [];
+  const pickedRooms = houseRooms.map((r) => r.label).filter((l) => picked.includes(l));
+  const togglePicked = (l) => setPicked((cur) => (cur.includes(l) ? cur.filter((x) => x !== l) : [...cur, l]));
+  // the assignment title holds 40 characters at most: the full list goes into the note
+  const roomsTitle = (() => { const j = pickedRooms.join(', '); return j.length <= 40 ? j : pickedRooms.join(' ').slice(0, 37) + '…'; })();
 
   // the shift rules, early warning (the database checks the same): working that day, and the day's goals still fit
   const fits = (uid) => {
@@ -83,9 +91,9 @@ export function QuickAssignSheet({ day, person: first, onClose }) {
           goal_minutes: minutes, kind: 'task', priority: 'medium', auto: false,
         });
       } else tk = await taskForPreset(preset);
-      await planAssignments([{ task_id: tk.id, assignee: who, day, start_time: null, end_time: null, note: '', kind: 'task', title: '' }]);
+      await planAssignments([{ task_id: tk.id, assignee: who, day, start_time: null, end_time: null, note: pickedRooms.length ? t('quick.roomsNote', { rooms: pickedRooms.join(', ') }) : '', kind: 'task', title: pickedRooms.length ? roomsTitle : '' }]);
       setLast({ who: person.display_name.split(' ')[0], task: tk.name });
-      setAreaId(null); setRoutineId(null); setLevel(1); setName(''); setLines(''); setWhere(null); setMinutes(30);
+      setAreaId(null); setPicked([]); setRoutineId(null); setLevel(1); setName(''); setLines(''); setWhere(null); setMinutes(30);
     } catch (ex) { toast(friendlyError(ex), 'bad'); }
     setBusy(false);
   }
@@ -129,7 +137,7 @@ export function QuickAssignSheet({ day, person: first, onClose }) {
           <${Segmented} label=${t('quick.step2')} value=${cad} onChange=${(v) => { setCad(v); setAreaId(null); }}
             options=${[{ value: 'daily', label: t('quick.daily') }, { value: 'weekly', label: t('quick.weekly') }, { value: 'monthly', label: t('quick.monthly') }]} />
           <div class="qa-areas">
-            ${areas.map((a) => html`<button type="button" key=${a.id} class=${'qa-area' + (areaId === a.id ? ' on' : '')} aria-pressed=${areaId === a.id} style=${colorStyle(a.color)} onClick=${() => { setAreaId(a.id); setRoutineId(null); setLevel(cad === 'monthly' && presetsOfArea(a.id).some((p) => p.level === 2) ? 2 : 1); }}>
+            ${areas.map((a) => html`<button type="button" key=${a.id} class=${'qa-area' + (areaId === a.id ? ' on' : '')} aria-pressed=${areaId === a.id} style=${colorStyle(a.color)} onClick=${() => { setAreaId(a.id); setPicked([]); setRoutineId(null); setLevel(cad === 'monthly' && presetsOfArea(a.id).some((p) => p.level === 2) ? 2 : 1); }}>
               <span class="qa-area-ic"><${Icon} name=${a.icon || 'home'} size=${22} /></span><span>${areaName(a)}</span></button>`)}
           </div>
         </section>
@@ -143,6 +151,18 @@ export function QuickAssignSheet({ day, person: first, onClose }) {
               <span class="qa-level-time"><${Icon} name="clock" size=${16} />${dur(p.goal_minutes)}</span>
             </button>`)}
           </div>
+          ${houseRooms.length ? html`<div class="qa-routines qa-rooms">
+            <h4 class="qa-sub"><${Icon} name="bed" size=${18} />${t('quick.rooms')}</h4>
+            <p class="field-hint">${t('quick.roomsHint')}</p>
+            <div class="chips">
+              <button type="button" class="pick" onClick=${() => setPicked(houseRooms.map((r) => r.label))}>${t('quick.allRooms')}</button>
+              <button type="button" class="pick" disabled=${!picked.length} onClick=${() => setPicked([])}>${t('quick.noRooms')}</button>
+            </div>
+            ${[...new Set(houseRooms.map((r) => r.floor))].map((f) => html`<div key=${f}>
+              <h5 class="qa-floor">${t('floor.n', { n: f })}</h5>
+              <div class="wk-rooms plan-rooms">${houseRooms.filter((r) => r.floor === f).map((r) => html`<button type="button" key=${r.label} class=${'wk-room' + (picked.includes(r.label) ? ' sel' : '')} aria-pressed=${picked.includes(r.label)} onClick=${() => togglePicked(r.label)}><b>${r.label}</b></button>`)}</div>
+            </div>`)}
+          </div>` : null}
           ${routines.length ? html`<div class="qa-routines">
             <h4 class="qa-sub"><${Icon} name="calendar-event" size=${18} />${t('quick.routines', { day: fmt(parseYmd(day), { weekday: 'long' }) })}</h4>
             <div class="qa-levels" role="radiogroup" aria-label=${t('quick.routines', { day: fmt(parseYmd(day), { weekday: 'long' }) })}>
@@ -183,7 +203,7 @@ export function QuickAssignSheet({ day, person: first, onClose }) {
       <div class="qa-foot">
         ${issue ? html`<p class="qa-warn" role="alert"><${Icon} name="alert-triangle" size=${18} />${problemText(issue)}</p>` : null}
         <div class="qa-sum">${stepHead(4, t('quick.step4'))}
-          <span>${person ? person.display_name : t('quick.pickWorker')}${goal && (custom ? name.trim() : preset) ? ' · ' + (custom ? name.trim() : area ? areaName(area) + ' · ' + presetLabel(preset) : '') + ' · ' + dur(goal) : ''}</span></div>
+          <span>${person ? person.display_name : t('quick.pickWorker')}${goal && (custom ? name.trim() : preset) ? ' · ' + (custom ? name.trim() : area ? areaName(area) + ' · ' + presetLabel(preset) : '') + ' · ' + dur(goal) + (pickedRooms.length ? ' · ' + pickedRooms.length + ' ' + t('quick.roomsShort') : '') : ''}</span></div>
         <button class="btn big-btn" type="button" disabled=${!ready} onClick=${assign}><${Icon} name="bolt" size=${22} />${t('quick.assignBtn')}</button>
         ${last ? html`<button class="btn soft" type="button" onClick=${() => ctl.close()}>${t('quick.finish')}</button>` : null}
       </div>
