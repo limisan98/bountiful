@@ -84,7 +84,7 @@ export function SupervisorHome() {
 
     <${WeeklyToday} />
 
-    <${MoreLinks} routes=${['weekly', 'tasks', 'calendar', 'shifts', 'logbook', 'reports', 'meetings', 'team']} />
+    <${MoreLinks} routes=${['tasks', 'weekly', 'calendar', 'shifts', 'logbook', 'reports', 'meetings', 'team']} />
 
     <${QuickFab} onOpen=${() => setQuick(true)} />
     ${roomImp ? html`<${RoomImportSheet} onClose=${() => setRoomImp(false)} />` : null}

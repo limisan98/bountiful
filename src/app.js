@@ -29,7 +29,7 @@ import { PersonSheet } from './views/person.js';
 const NAV = [
   { route: 'home', icon: 'home', label: 'nav.home', dock: true },
   { route: 'calendar', icon: 'calendar-event', label: 'nav.calendar', dock: true },
-  { route: 'tasks', icon: 'list-check', label: 'nav.tasks', dock: true },
+  { route: 'tasks', icon: 'list-check', label: 'nav.tasks', desk: true }, // not in the phone dock (the supervisor opens it from "More" on the home screen); still in the desktop sidebar
   { route: 'chat', icon: 'messages', label: 'nav.chat', dock: true, only: 'crew' }, // the custodian team only
   { route: 'team', icon: 'id', label: 'nav.team', dock: true },
   { route: 'meetings', icon: 'calendar-month', label: 'nav.meetings', desk: true }, // in the desktop sidebar; on phones reachable from Home
