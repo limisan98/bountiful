@@ -263,8 +263,6 @@ function ProgressDetail({ items }) {
     ${tasks.length ? html`<h4>${t('sup.progressTasks')} <span class="count">${tasks.filter((i) => i.state === 'done').length}/${tasks.length}</span></h4>
       ${table(tasks)}` : null}
     ${rooms.length ? html`<h4>${t('sup.progressRooms')} <span class="count">${rooms.filter((i) => i.state === 'done').length}/${rooms.length}</span></h4>
-      ${STATE_ORDER.map(([st, label]) => { const list = rooms.filter((i) => i.state === st); return list.length ? html`<div class="prog-rooms" key=${st}>
-        <span class=${'prog-state ' + st}>${t(label)} · ${list.length}</span>
-        <div class="rimp-chips">${list.map((i) => html`<span class=${'prog-chip ' + st} key=${i.label} title=${i.who ? first(i.who) : ''}>${i.label}</span>`)}</div></div>` : null; })}` : null}
+      ${table([...rooms].sort((x, y) => STATE_ORDER.findIndex(([k]) => k === x.state) - STATE_ORDER.findIndex(([k]) => k === y.state) || x.label.localeCompare(y.label)))}` : null}
   </div>`;
 }

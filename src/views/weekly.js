@@ -261,11 +261,11 @@ export function dayProgressItems(s, dayYmd) {
       });
       const reqSet = new Set(asg.filter((a) => a.kind === 'room').map((a) => a.title));
       const list = sec.rooms ? rooms.filter(showRoom) : sec.requested ? rooms.filter((r) => reqSet.has(r.label)) : sec.carry && isoWeekday(new Date()) >= 2 ? rooms.filter((r) => !reqSet.has(r.label) && !monDone(r.label) && showRoom(r)) : [];
-      list.forEach((r) => { const k = weeklyOf(wk, `${wd}.r.${r.label}`), a = roomAsg[r.label]; out.push({ kind: 'room', label: r.label, state: roomState(r.label, k), who: k ? k.user_id : (a && a.assignee) || '' }); });
+      list.forEach((r) => { const k = weeklyOf(wk, `${wd}.r.${r.label}`), a = roomAsg[r.label]; out.push({ kind: 'room', label: r.label, state: roomState(r.label, k), who: k ? k.user_id : (a && a.assignee) || '', at: k && k.status !== 'assigned' ? (k.status === 'done' && k.done_at) || k.updated_at || '' : (a && s.reports[a.id] && s.reports[a.id].completed_at) || '' }); });
     });
   }
   const known = new Set(s.guestRooms.map((r) => r.label));
-  Object.values(roomAsg).filter((a) => !known.has(a.title)).forEach((a) => out.push({ kind: 'room', label: a.title, state: stateOfAsg(a), who: a.assignee || '' })); // requested rooms that are not in the room list
+  Object.values(roomAsg).filter((a) => !known.has(a.title)).forEach((a) => out.push({ kind: 'room', label: a.title, state: stateOfAsg(a), who: a.assignee || '', at: (s.reports[a.id] && s.reports[a.id].completed_at) || '' })); // requested rooms that are not in the room list
   asg.filter((a) => a.kind !== 'room').forEach((a) => out.push({ kind: 'task', label: itemName(a), state: stateOfAsg(a), who: a.assignee || '', at: (s.reports[a.id] && s.reports[a.id].completed_at) || '' }));
   return out;
 }
