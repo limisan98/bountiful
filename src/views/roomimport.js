@@ -33,6 +33,11 @@ export function RoomImportSheet({ onClose }) {
   const [defDay, setDefDay] = useState(todayYmd());
   const [defFlow, setDefFlow] = useState('checkout');
   const [saving, setSaving] = useState(false);
+  const [mode, setMode] = useState('pick');   // 'pick' rooms by hand | 'file' upload / paste
+  const [pickDay, setPickDay] = useState(todayYmd());
+  const [pickFlow, setPickFlow] = useState('checkout');
+  const [picked, setPicked] = useState([]);
+  const [pickNote, setPickNote] = useState('');
   const known = new Set(s.guestRooms.map((r) => r.label));
   const dateOrder = s.lang === 'en' ? 'mdy' : 'dmy';
 
@@ -87,8 +92,42 @@ export function RoomImportSheet({ onClose }) {
     } catch (ex) { toast(friendlyError(ex), 'bad'); setSaving(false); }
   }
 
+  // by hand: the picked rooms become cleaning requests for that day and type
+  const roomsSorted = [...s.guestRooms].sort((a, b) => a.house - b.house || a.floor - b.floor || a.num - b.num || String(a.label).localeCompare(String(b.label)));
+  const toggle = (l) => setPicked((cur) => (cur.includes(l) ? cur.filter((x) => x !== l) : [...cur, l]));
+  async function savePicked() {
+    if (!picked.length || saving) return;
+    setSaving(true);
+    try {
+      const made = (await askRoomCleaning(pickDay, pickFlow, roomsSorted.map((r) => r.label).filter((l) => picked.includes(l)), pickNote.trim())).length;
+      toast(t('rimp.done', { n: made }) + (made < picked.length ? ' · ' + t('rimp.dupes', { n: picked.length - made }) : ''));
+      ctl.close();
+    } catch (ex) { toast(friendlyError(ex), 'bad'); setSaving(false); }
+  }
+  const pickView = html`<p class="muted">${t('rimp.pickHint')}</p>
+    <${Field} label=${t('rimp.pickDay')}><${DateField} value=${pickDay} label=${t('rimp.pickDay')} onChange=${setPickDay} /><//>
+    <${Segmented} label=${t('rimp.defFlow')} value=${pickFlow} onChange=${setPickFlow}
+      options=${[{ value: 'checkout', label: t('flow.checkout') }, { value: 'checkin', label: t('flow.checkin') }]} />
+    ${[1, 2, 3, 4, 5, 0].map((h) => {
+      const hr = roomsSorted.filter((r) => (r.house || 0) === h);
+      if (!hr.length) return null;
+      const n = hr.filter((r) => picked.includes(r.label)).length;
+      return html`<div class="wk-house" key=${h}>
+        <h5>${h === 5 ? t('weekly.villas') : h ? t('house.n', { n: h }) : t('rec.other')}<span class=${'weekly-count' + (n && n === hr.length ? ' all' : '')}>${n}/${hr.length}</span>
+          <button type="button" class="pick ghost" onClick=${() => setPicked((cur) => (n === hr.length ? cur.filter((l) => !hr.some((r) => r.label === l)) : [...new Set([...cur, ...hr.map((r) => r.label)])]))}>${n === hr.length ? t('quick.noRooms') : t('quick.allRooms')}</button></h5>
+        <div class="wk-rooms plan-rooms">${hr.map((r) => html`<button type="button" key=${r.label} class=${'wk-room' + (picked.includes(r.label) ? ' sel' : '')} aria-pressed=${picked.includes(r.label)} onClick=${() => toggle(r.label)}><b>${r.label}</b></button>`)}</div>
+      </div>`;
+    })}
+    <${Field} label=${t('rimp.pickNote')}><input class="input" maxlength="300" value=${pickNote} onInput=${(e) => setPickNote(e.target.value)} /><//>
+    <div class="imp-foot">
+      <button class="btn big-btn" disabled=${!picked.length || saving} onClick=${savePicked}><${Icon} name="circle-check" size=${24} />${t('rimp.create', { n: picked.length })}</button>
+    </div>`;
+
   return html`<${Sheet} title=${t('rimp.title')} onClose=${onClose} control=${ctl}>
-    ${!res ? html`<p class="muted">${t('rimp.sub')}</p>
+    ${!res ? html`<${Segmented} label=${t('rimp.title')} value=${mode} onChange=${setMode}
+      options=${[{ value: 'pick', label: t('rimp.modePick') }, { value: 'file', label: t('rimp.modeFile') }]} />` : null}
+    ${!res && mode === 'pick' ? pickView : null}
+    ${!res && mode === 'file' ? html`<p class="muted">${t('rimp.sub')}</p>
       <div class=${'drop-zone' + (over ? ' over' : '')} onDragOver=${(e) => { e.preventDefault(); setOver(true); }} onDragLeave=${() => setOver(false)} onDrop=${onDrop}>
         <span class="drop-ic"><${Icon} name=${busy ? 'hourglass' : 'arrow-badge-down'} size=${40} /></span>
         <b>${busy ? t('imp.working') : t('imp.drop')}</b>
@@ -102,9 +141,9 @@ export function RoomImportSheet({ onClose }) {
         <textarea class="input" rows="5" value=${paste} onInput=${(e) => setPaste(e.target.value)}></textarea>
       <//>
       <button type="button" class="btn soft" disabled=${!paste.trim()} onClick=${() => show(parseRoomText(paste, { dateOrder }), '')}><${Icon} name="search" size=${22} />${t('rimp.read')}</button>
-      ${error ? html`<div class="card slim waiting-card" role="alert"><${Icon} name="alert-triangle" size=${24} /><span>${error}</span></div>` : null}`
+      ${error ? html`<div class="card slim waiting-card" role="alert"><${Icon} name="alert-triangle" size=${24} /><span>${error}</span></div>` : null}` : null}
 
-    : html`
+    ${res ? html`
       <p class="muted small-text imp-file"><${Icon} name="clipboard-data" size=${16} /><b>${fileName || t('rimp.pasted')}</b> · ${t('rimp.found', { n: items.length })}
         <button type="button" class="pick ghost" onClick=${() => { setRes(null); setFileName(''); }}>${t('imp.again')}</button></p>
 
@@ -126,6 +165,6 @@ export function RoomImportSheet({ onClose }) {
 
       <div class="imp-foot">
         <button class="btn big-btn" disabled=${!chosen.length || saving} onClick=${save}><${Icon} name="circle-check" size=${24} />${t('rimp.create', { n: chosen.length })}</button>
-      </div>`}
+      </div>` : null}
   <//>`;
 }
