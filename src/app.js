@@ -94,7 +94,7 @@ function Shell() {
   const profile = html`${menu ? html`<${MenuSheet} routes=${MENU[kind]} onClose=${() => setMenu(false)} />` : null}${s.sheet === 'profile' ? html`<${ProfileSheet} onClose=${() => set({ sheet: null })} />` : null}${s.person ? html`<${PersonSheet} id=${s.person} onClose=${() => set({ person: null })} />` : null}`;
 
   if (active === 'chat') {
-    return html`<div class="shell chat-shell"><${ChatView} />${nav}${profile}</div>`;
+    return html`<div class=${'shell chat-shell' + (s.chatOpen ? ' convo-open' : '')}><${ChatView} />${nav}${profile}</div>`;
   }
 
   return html`<div class="shell">

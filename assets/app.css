@@ -637,7 +637,8 @@ a, img, svg { -webkit-touch-callout: none; -webkit-user-drag: none; }
 .notif-sections .small { font-size: 12px; }
 
 /* on a phone the chat has the whole screen to itself (the bottom bar would cover the message box) */
-@media (max-width: 1023px) { body:has(.chat-shell) .dock { display: none; } }
+/* the bottom bar stays on the chat list; it only hides inside an open conversation (the message box needs the room) */
+@media (max-width: 1023px) { body:has(.chat-shell.convo-open) .dock { display: none; } .chat-shell:not(.convo-open) .chat-side .chat-head .icon-btn:not(.solid) { display: none; } .chat-shell:not(.convo-open) .chat-rows { padding-bottom: 120px; } }
 
 /* ---------- rooms to clean ---------- */
 .rooms-day { display: flex; flex-direction: column; gap: 2px; min-width: 0; }

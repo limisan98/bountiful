@@ -89,7 +89,7 @@ Row Level Security on every table, column-level grants, SECURITY DEFINER functio
 - Always check: all 6 locales get new keys; demo API updated; mobile (390px) *and* desktop (≥1024px) look right; icons exist in `assets/icons.js`.
 
 ## Gotchas learned the hard way
-- Mobile dock shows `NAV` items with `dock:true`; `desk:true` items only appear in the desktop sidebar. Chat hides the dock under 1024px.
+- Mobile dock shows `NAV` items with `dock:true`; `desk:true` items only appear in the desktop sidebar. Chat hides the dock under 1024px only inside an open conversation (class `convo-open` on `.chat-shell`); the chat list keeps it.
 - Notifications only fire while the app is open or backgrounded; real push to a closed phone is covered by the push system (see "Phone push notifications").
 - `.pop` animation uses `transform`: don't combine with translate. A `<label>` can re-trigger button clicks: popovers call `stopPropagation` + `preventDefault`.
 - `colorStyle()` sets `--ink`, so don't put it on containers holding buttons.
