@@ -19,7 +19,10 @@ const FLAT = {}; // "day.section.index" -> position in the translated list
 { let n = 0; WEEKLY.forEach((d) => d.sections.forEach((sec, si) => sec.items.forEach((_, ii) => { FLAT[`${d.day}.${si}.${ii}`] = n++; }))); }
 const TITLES = ['Temple', 'Rooms', 'On Monday everything in the rooms must be cleaned', 'Morning', 'Afternoon', 'Rooms left from Monday', 'Rooms requested today'];
 // From Tuesday on every day also has a section with the rooms that were requested for it (the supervisor's list / import), listed on top
-const REQUESTED = { title: 'Rooms requested today', requested: true, items: [] };
+const REQUESTED = { title: 'Rooms', requested: true, items: [] };
+// Lines that were taken out of the lists ("Clean rooms if there are any": the Rooms section below now covers them). They stay in the data so the ids of the other lines
+// (and what people already ticked) don't shift; they are just not shown any more.
+const GONE = new Set(['3.0.0', '6.0.1']);
 const sectionsOf = (d) => [...d.sections, ...(d.day >= 2 ? [REQUESTED] : [])];
 const itemText = (id, en, lang) => { const tr = WEEKLY_TEXT[lang]; return (tr && tr.items[FLAT[id]]) || en; };
 const titleText = (en, lang) => { const tr = WEEKLY_TEXT[lang]; const i = TITLES.indexOf(en); return (tr && i >= 0 && tr.titles[i]) || en; };
@@ -94,7 +97,7 @@ export function WeeklyList({ day, compact }) {
   const carried = carryOn ? rooms.filter((r) => !reqLabels.has(r.label) && !monDone(r.label) && (!onDemand(r) || !!urgent[r.label] || !!weeklyOf(wk, `${day}.r.${r.label}`))) : [];
   const roomsOf = (sec) => (sec.rooms ? [...rooms.filter(shown), ...extraRooms] : sec.carry ? carried : sec.requested ? requestedRooms : null);
   // every checkable thing of a section: its lines (unless they are only instructions) and, for "Rooms", one tile per guest room
-  const idsOf = (sec, si) => [...(sec.info ? [] : sec.items.map((_, ii) => id(si, ii))), ...((roomsOf(sec) || []).map((r) => `${day}.r.${r.label}`))];
+  const idsOf = (sec, si) => [...(sec.info ? [] : sec.items.map((_, ii) => id(si, ii)).filter((x) => !GONE.has(x))), ...((roomsOf(sec) || []).map((r) => `${day}.r.${r.label}`))];
   const isDone = (i) => { const r = weeklyOf(wk, i); return !!r && r.status === 'done'; };
   const secs = sectionsOf(d);
   const all = secs.flatMap((sec, si) => idsOf(sec, si));
@@ -155,7 +158,6 @@ export function WeeklyList({ day, compact }) {
       <b>${t('weekly.progress', { done, total: all.length })}</b></div>
     ${secs.map((sec, si) => ({ sec, si })).sort((a, b) => (b.sec.requested ? 1 : 0) - (a.sec.requested ? 1 : 0)).map(({ sec, si }) => {
       if (sec.carry && !carryOn) return null;
-      if (sec.requested && !requestedRooms.length) return null;
       const ids = idsOf(sec, si), nDone = ids.filter(isDone).length, k = `${day}.${si}`;
       const folded = !!sec.title && !(sec.requested ? open[k] !== false : open[k]);
       return html`<section class=${'weekly-sec' + (sec.title ? ' foldable' : '')} key=${k}>
@@ -166,11 +168,12 @@ export function WeeklyList({ day, compact }) {
         ${folded ? null : html`
           ${sec.note ? html`<p class="field-hint">${titleText(sec.note, lang)}</p>` : null}
           ${sec.info ? html`<ul class="weekly-info">${sec.items.map((txt, ii) => html`<li key=${ii}>${itemText(id(si, ii), txt, lang)}</li>`)}</ul>`
-            : html`<div class="checklist">${sec.items.map((txt, ii) => row(id(si, ii), itemText(id(si, ii), txt, lang)))}</div>`}
+            : html`<div class="checklist">${sec.items.map((txt, ii) => (GONE.has(id(si, ii)) ? null : row(id(si, ii), itemText(id(si, ii), txt, lang))))}</div>`}
           ${sec.carry ? html`<p class="field-hint">${carried.length ? t('weekly.carryHint') : t('weekly.carryNone')}</p>` : null}
           ${sec.rooms ? html`<p class="field-hint">${t('rn.hint')}</p>` : null}
           ${sec.rooms && rooms.some(onDemand) ? html`<p class="field-hint">${t('weekly.onDemandNote')}</p>` : null}
-          ${roomsOf(sec) && nUrgentOf(roomsOf(sec)) ? html`<p class="wk-urgent-note"><i></i>${t('weekly.urgent', { n: nUrgentOf(roomsOf(sec)) })}</p>` : null}
+          ${sec.requested && !requestedRooms.length ? html`<p class="field-hint">${t('weekly.noRooms')}</p>` : null}
+          ${roomsOf(sec) && nUrgentOf(roomsOf(sec)) ? html`<p class="wk-urgent-note"><i></i>${t(sec.requested ? 'weekly.urgentReq' : 'weekly.urgent', { n: nUrgentOf(roomsOf(sec)) })}</p>` : null}
           ${roomsOf(sec) ? [1, 2, 3, 4, 5, 0].map((h) => {
             const hr = roomsOf(sec).filter((r) => r.house === h);
             if (!hr.length) return null;
@@ -253,6 +256,7 @@ export function dayProgressItems(s, dayYmd) {
     sectionsOf(d).forEach((sec, si) => {
       if (!sec.info && !sec.carry && !sec.requested) sec.items.forEach((txt, ii) => {
         const id = `${wd}.${si}.${ii}`, k = weeklyOf(wk, id);
+        if (GONE.has(id)) return;
         out.push({ kind: 'line', label: itemText(id, txt, lang), state: k && k.status === 'done' ? 'done' : k && k.status === 'doing' ? 'doing' : 'todo', who: k ? k.user_id : '', at: k && k.status !== 'assigned' ? k.updated_at : '' });
       });
       const reqSet = new Set(asg.filter((a) => a.kind === 'room').map((a) => a.title));
@@ -286,7 +290,7 @@ function PlanListSheet({ onClose }) {
   const regular = s.guestRooms.filter((r) => (r.kind || 'room') === 'room').sort((x, y) => x.house - y.house || x.floor - y.floor || x.num - y.num);
   const pool = wd === 1 ? regular.filter((r) => !reqAll.has(r.label)) : wd === 2 ? regular.filter((r) => !reqAll.has(r.label) && !monDoneLabel(r.label)) : [];
   const pickGroup = (list) => { const ids = list.map((r) => `${wd}.r.${r.label}`); setPicked((pk) => (ids.every((x) => pk.includes(x)) ? pk.filter((x) => !ids.includes(x)) : [...new Set([...pk, ...ids])])); };
-  const lines = wd === 7 ? [] : checklistLines(s.lang).filter((l) => l.day === wd);
+  const lines = wd === 7 ? [] : checklistLines(s.lang).filter((l) => l.day === wd && !GONE.has(l.id));
   const people = crewPeople();
   const planned = dayPlanned(date);
   const toggle = (id) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));

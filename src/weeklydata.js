@@ -51,7 +51,7 @@ export const WEEKLY = [
     'Remove trash from the guest cafeteria and bathrooms before going to the temple',
   ] }] },
   { day: 4, sections: [{ items: [
-    'Rooms, visitors’ center bathrooms, and annex bathrooms',
+    'Visitors’ center bathrooms and annex bathrooms',
     'Main doors',
     'Clean stairs of house 3 and house 4 and laundry in the house',
     'Lightly clean the missionaries’ kitchen',
