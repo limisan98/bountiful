@@ -1507,7 +1507,9 @@ select.input { appearance: auto; padding-right: 12px; }
 .plan-list .check-row.on .check-text b { text-decoration: none; }
 
 .wk-room.assigned { box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--lavender) 80%, #fff); }
-.wk-room.sel { box-shadow: inset 0 0 0 3px var(--mint); }
+.wk-room.sel { background: var(--mint); box-shadow: none; } /* picked in a room picker: solid green at once */
+.wk-room.sel b { color: var(--ink); }
+.pick.on.full { background: var(--mint); box-shadow: none; }
 .plan-rooms .wk-room { min-height: 48px; }
 
 .plan-houses { display: flex; flex-direction: column; gap: 10px; }

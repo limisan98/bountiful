@@ -114,7 +114,7 @@ export function RoomImportSheet({ onClose }) {
       const n = hr.filter((r) => picked.includes(r.label)).length;
       return html`<div class="wk-house" key=${h}>
         <h5>${h === 5 ? t('weekly.villas') : h ? t('house.n', { n: h }) : t('rec.other')}<span class=${'weekly-count' + (n && n === hr.length ? ' all' : '')}>${n}/${hr.length}</span>
-          <button type="button" class="pick ghost" onClick=${() => setPicked((cur) => (n === hr.length ? cur.filter((l) => !hr.some((r) => r.label === l)) : [...new Set([...cur, ...hr.map((r) => r.label)])]))}>${n === hr.length ? t('quick.noRooms') : t('quick.allRooms')}</button></h5>
+          <button type="button" class=${'pick ghost' + (n === hr.length ? ' on full' : '')} aria-pressed=${n === hr.length} onClick=${() => setPicked((cur) => (n === hr.length ? cur.filter((l) => !hr.some((r) => r.label === l)) : [...new Set([...cur, ...hr.map((r) => r.label)])]))}>${n === hr.length ? t('quick.noRooms') : t('quick.allRooms')}</button></h5>
         <div class="wk-rooms plan-rooms">${hr.map((r) => html`<button type="button" key=${r.label} class=${'wk-room' + (picked.includes(r.label) ? ' sel' : '')} aria-pressed=${picked.includes(r.label)} onClick=${() => toggle(r.label)}><b>${r.label}</b></button>`)}</div>
       </div>`;
     })}

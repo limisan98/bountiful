@@ -155,7 +155,7 @@ export function QuickAssignSheet({ day, person: first, onClose }) {
             <h4 class="qa-sub"><${Icon} name="bed" size=${18} />${t('quick.rooms')}</h4>
             <p class="field-hint">${t('quick.roomsHint')}</p>
             <div class="chips">
-              <button type="button" class="pick" onClick=${() => setPicked(houseRooms.map((r) => r.label))}>${t('quick.allRooms')}</button>
+              <button type="button" class=${'pick' + (picked.length === houseRooms.length ? ' on full' : '')} aria-pressed=${picked.length === houseRooms.length} onClick=${() => setPicked(houseRooms.map((r) => r.label))}>${t('quick.allRooms')}</button>
               <button type="button" class="pick" disabled=${!picked.length} onClick=${() => setPicked([])}>${t('quick.noRooms')}</button>
             </div>
             ${[...new Set(houseRooms.map((r) => r.floor))].map((f) => html`<div key=${f}>
