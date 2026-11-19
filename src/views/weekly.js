@@ -99,6 +99,9 @@ export function WeeklyList({ day, compact }) {
   // every checkable thing of a section: its lines (unless they are only instructions) and, for "Rooms", one tile per guest room
   const idsOf = (sec, si) => [...(sec.info ? [] : sec.items.map((_, ii) => id(si, ii)).filter((x) => !GONE.has(x))), ...((roomsOf(sec) || []).map((r) => `${day}.r.${r.label}`))];
   const isDone = (i) => { const r = weeklyOf(wk, i); return !!r && r.status === 'done'; };
+  const isDoing = (i) => { const r = weeklyOf(wk, i); return !!r && r.status === 'doing'; };
+  // the little counter next to a section / house: green when everything is done, yellow when it is under way (something in progress or part of it done)
+  const countCls = (list) => { const n = list.filter(isDone).length; return 'weekly-count' + (list.length && n === list.length ? ' all' : n || list.some(isDoing) ? ' doing' : ''); };
   const secs = sectionsOf(d);
   const all = secs.flatMap((sec, si) => idsOf(sec, si));
   const done = all.filter(isDone).length;
@@ -162,7 +165,7 @@ export function WeeklyList({ day, compact }) {
       const folded = !!sec.title && !(sec.requested ? open[k] !== false : open[k]);
       return html`<section class=${'weekly-sec' + (sec.title ? ' foldable' : '')} key=${k}>
         ${sec.title ? html`<button type="button" class="weekly-fold" aria-expanded=${!folded} onClick=${() => toggleOpen(k, !folded)}>
-          <b>${titleText(sec.title, lang)}</b>${ids.length ? html`<span class=${'weekly-count' + (nDone === ids.length ? ' all' : '')}>${nDone}/${ids.length}</span>` : null}
+          <b>${titleText(sec.title, lang)}</b>${ids.length ? html`<span class=${countCls(ids)}>${nDone}/${ids.length}</span>` : null}
           <${Icon} name=${folded ? 'caret-down' : 'caret-up'} size=${20} />
         </button>` : null}
         ${folded ? null : html`
@@ -179,7 +182,7 @@ export function WeeklyList({ day, compact }) {
             if (!hr.length) return null;
             const hd = hr.filter((r) => isDone(`${day}.r.${r.label}`)).length;
             return html`<div class="wk-house" key=${h}>
-              <h5>${h === 5 ? t('weekly.villas') : h ? t('house.n', { n: h }) : t('rec.other')}<span class=${'weekly-count' + (hd === hr.length ? ' all' : '')}>${hd}/${hr.length}</span></h5>
+              <h5>${h === 5 ? t('weekly.villas') : h ? t('house.n', { n: h }) : t('rec.other')}<span class=${countCls(hr.map((r) => `${day}.r.${r.label}`))}>${hd}/${hr.length}</span></h5>
               <div class="wk-rooms">${hr.map(tile)}</div>
             </div>`;
           }) : null}`}

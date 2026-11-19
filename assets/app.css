@@ -1439,6 +1439,7 @@ select.input { appearance: auto; padding-right: 12px; }
 .weekly-count { font-size: 13px; font-weight: 800; padding: 3px 10px; border-radius: 99px; background: var(--track); color: var(--ink-2); margin-left: 8px; }
 .weekly-fold .weekly-count { margin-left: 0; }
 .weekly-count.all { background: var(--st-done, #D0E6A5); color: var(--st-done-ink, var(--ink)); }
+.weekly-count.doing { background: var(--st-doing, #FFDD94); color: var(--st-doing-ink, var(--ink)); }
 .weekly-info { margin: 0; padding: 0 8px 0 28px; color: var(--ink-2); font-size: 15px; display: flex; flex-direction: column; gap: 4px; }
 .wk-house h5 { margin: 6px 4px 8px; font-size: 15px; font-weight: 800; display: flex; align-items: center; }
 .wk-rooms { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; }
