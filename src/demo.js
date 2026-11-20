@@ -4,6 +4,7 @@ import { state, set } from './store.js';
 import { useDemoApi } from './api.js';
 import { loadCore, startLive } from './data.js';
 import { ROLE_DEFAULTS } from './config.js';
+import { combineStats, weeklyDay } from './mystats.js';
 import { DEMO_AREAS, DEMO_PRESETS } from './demo-presets.js';
 import { DEMO_ROUTINES } from './demo-routines.js';
 import { startOfWeek, ymd, addDays, isoWeekday, toMin, fromMin, todayYmd, taskGoal } from './time.js';
@@ -465,7 +466,9 @@ const demoApi = {
   async deleteLogEntry(id) { const i = logbook.findIndex((x) => x.id === id); if (i >= 0) logbook.splice(i, 1); },
   async loadMyStats(since) {
     const mine = Object.fromEntries(assignments.filter((a) => a.assignee === state.profile.id && a.day >= since).map((a) => [a.id, a]));
-    return reports.filter((r) => mine[r.assignment_id]).map((r) => ({ day: mine[r.assignment_id].day, minutes: r.minutes_spent }));
+    const reps = reports.filter((r) => mine[r.assignment_id]).map((r) => ({ day: mine[r.assignment_id].day, minutes: r.minutes_spent, room: mine[r.assignment_id].kind === 'room' ? mine[r.assignment_id].title : '' }));
+    const ticks = weeklyRows.filter((r) => r.user_id === state.profile.id && r.status === 'done').filter((r) => weeklyDay(r.week, r.item) >= since);
+    return combineStats(reps, ticks);
   },
   async loadMessages(channel, before, limit = 60) {
     return clone(messages.filter((m) => m.channel === channel && (!before || m.created_at < before))

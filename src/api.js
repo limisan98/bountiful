@@ -1,5 +1,6 @@
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 import { state } from './store.js';
+import { combineStats, weeklyDay } from './mystats.js';
 
 // The connection to Supabase (the database). `supabase` comes from assets/vendor/supabase.js
 export const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -95,9 +96,13 @@ const real = {
   },
   async reopenAssignment(id) { await rpc('reopen_assignment', { p_id: id }); return fresh(id); },
   async loadMyStats(since) {
-    const rows = ok(await sb.from('assignment_reports').select('minutes_spent, assignments!inner(day, assignee)')
-      .eq('assignments.assignee', state.session.user.id).gte('assignments.day', since));
-    return rows.map((r) => ({ day: r.assignments.day, minutes: r.minutes_spent }));
+    const me = state.session.user.id;
+    const rows = ok(await sb.from('assignment_reports').select('minutes_spent, assignments!inner(day, assignee, kind, title)')
+      .eq('assignments.assignee', me).gte('assignments.day', since));
+    const from = new Date(since + 'T00:00:00'); from.setDate(from.getDate() - 7); // a week starts on Monday, before the first day
+    const wkFrom = `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, '0')}-${String(from.getDate()).padStart(2, '0')}`;
+    const ticks = ok(await sb.from('weekly_checks').select('week, item, started_at, done_at').eq('user_id', me).eq('status', 'done').gte('week', wkFrom));
+    return combineStats(rows.map((r) => ({ day: r.assignments.day, minutes: r.minutes_spent, room: r.assignments.kind === 'room' ? r.assignments.title : '' })), ticks.filter((r) => weeklyDay(r.week, r.item) >= since));
   },
 
   // ---- chat ----
