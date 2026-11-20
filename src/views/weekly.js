@@ -7,7 +7,7 @@ import { DateField } from '../pickers.js';
 import { WEEKLY } from '../weeklydata.js';
 import { WEEKLY_TEXT } from '../weeklytext.js';
 import { todayYmd, parseYmd, startOfWeek, addDays, ymd, isoWeekday, fmt } from '../time.js';
-import { ensureWeekly, ensureRoomNotes, roomNotesOf, weeklyOf, setWeeklyItem, assignWeeklyItem, assignmentsOn, ensureMonth, itemName, finishAssignment, reopenAssignment } from '../data.js';
+import { ensureWeekly, ensureRoomNotes, roomNotesOf, roomVacantOf, weeklyOf, setWeeklyItem, assignWeeklyItem, assignmentsOn, ensureMonth, itemName, finishAssignment, reopenAssignment } from '../data.js';
 import { openRoomNotes } from './roomnotes.js';
 import { goalOf, crewPeople, shiftOf, dayPlanned } from '../shifts.js';
 
@@ -42,24 +42,25 @@ const OPEN_KEY = 'bountiful.weekly.open';
 const loadOpen = () => { try { return JSON.parse(localStorage.getItem(OPEN_KEY) || '{}'); } catch { return {}; } };
 
 // Press and hold a room number (or right-click it) to open its notes; the tap that follows a long press must not tick the room
-function useRoomPress() {
+function useRoomPress(day) {
   const timer = useRef(null), start = useRef(null), fired = useRef(false);
   const clear = () => { if (timer.current) { clearTimeout(timer.current); timer.current = null; } };
   const press = (room, title) => ({
     onPointerDown: (e) => {
       if (e.button) return;
       fired.current = false; start.current = [e.clientX, e.clientY]; clear();
-      timer.current = setTimeout(() => { fired.current = true; timer.current = null; try { navigator.vibrate && navigator.vibrate(12); } catch (_) { /* ignore */ } openRoomNotes(room, title); }, 450);
+      timer.current = setTimeout(() => { fired.current = true; timer.current = null; try { navigator.vibrate && navigator.vibrate(12); } catch (_) { /* ignore */ } openRoomNotes(room, title, day); }, 450);
     },
     onPointerMove: (e) => { if (start.current && Math.hypot(e.clientX - start.current[0], e.clientY - start.current[1]) > 10) clear(); },
     onPointerUp: clear, onPointerCancel: clear, onPointerLeave: clear,
-    onContextMenu: (e) => { e.preventDefault(); clear(); if (!fired.current) { fired.current = true; openRoomNotes(room, title); } },
+    onContextMenu: (e) => { e.preventDefault(); clear(); if (!fired.current) { fired.current = true; openRoomNotes(room, title, day); } },
   });
   return { press, wasLong: () => { const f = fired.current; fired.current = false; return f; } };
 }
 
 export function WeeklyList({ day, compact }) {
-  const pressing = useRoomPress();
+  const dayYmd0 = ymd(addDays(parseYmd(weekStart()), day - 1));
+  const pressing = useRoomPress(dayYmd0);
   const s = useStore();
   const me = s.profile;
   const sup = isSupervisor(me);
@@ -150,7 +151,8 @@ export function WeeklyList({ day, compact }) {
     const i = `${day}.r.${r.label}`, w = weeklyOf(wk, i), p = w ? s.profiles[w.user_id] : null;
     const u = !w && urgent[r.label], uTxt = u ? (typeof u === 'string' ? t('flow.' + u) + ' · ' : '') + t('weekly.urgentOne') : '';
     const wTxt = w ? first(p) + ' · ' + (w.status === 'done' ? t('status.done') : w.status === 'assigned' ? t('weekly.assigned') : t('weekly.doing')) : '';
-    return html`<button type="button" key=${i} class=${'wk-room ' + (w ? w.status + (w.status === 'assigned' && urgent[r.label] ? ' urgent' : '') : u ? 'urgent' : '')} aria-pressed=${!!w && w.status === 'done'} title=${w ? wTxt : uTxt}
+    const vac = !!roomVacantOf(r.label, dayYmd);
+    return html`<button type="button" key=${i} class=${'wk-room ' + (w ? w.status + (w.status === 'assigned' && urgent[r.label] ? ' urgent' : '') : u ? 'urgent' : '') + (vac ? ' vacant' : '')} aria-pressed=${!!w && w.status === 'done'} title=${(vac ? t('rn.vacantShort') + (w || uTxt ? ' · ' : '') : '') + (w ? wTxt : uTxt)}
       aria-label=${r.label + (w ? ', ' + wTxt : uTxt ? ', ' + uTxt : '')} onClick=${() => { if (!pressing.wasLong()) tap(i); }} ...${pressing.press(r.label)}>
       <b>${r.label}</b>${roomNotesOf(r.label).length ? html`<span class="wk-note" aria-label=${t('rn.has')}><${Icon} name="message" size=${13} /></span>` : null}${w ? html`<${Avatar} profile=${p} name=${p ? p.display_name : ''} size=${20} ring=${false} />` : null}
     </button>`;

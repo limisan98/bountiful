@@ -389,8 +389,15 @@ export async function setWeeklyItem(week, item, status) {
 // notes on a checklist line use the key "line:<item id>" and only show on the day they were written (the list repeats every week)
 export const roomNotesOf = (room) => {
   const day = room.startsWith('line:') ? ymd(new Date()) : null;
-  return Object.values(state.roomNotes).filter((n) => n.room === room && (!day || n.day === day)).sort((a, b) => a.created_at.localeCompare(b.created_at));
+  return Object.values(state.roomNotes).filter((n) => n.kind !== 'vacant' && n.room === room && (!day || n.day === day)).sort((a, b) => a.created_at.localeCompare(b.created_at));
 };
+// a room marked "vacant" for a day (the guest left before check-out time): the row of the mark, or null
+export const roomVacantOf = (room, day) => Object.values(state.roomNotes).find((n) => n.kind === 'vacant' && n.room === room && n.day === day) || null;
+export async function setRoomVacant(room, day, on) {
+  const cur = roomVacantOf(room, day);
+  if (on && !cur) { const n = await api.addRoomNote({ room, day, body: 'vacant', kind: 'vacant' }); set({ roomNotes: { ...state.roomNotes, [n.id]: n } }); }
+  if (!on && cur) await removeRoomNote(cur.id);
+}
 export async function ensureRoomNotes() {
   const rows = await api.loadRoomNotes(ymd(addDays(new Date(), -14)));
   set({ roomNotes: byId(rows) });

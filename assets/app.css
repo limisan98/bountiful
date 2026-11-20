@@ -1566,3 +1566,12 @@ select.input { appearance: auto; padding-right: 12px; }
 
 .weekly-row { position: relative; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .weekly-row .wk-note { top: 8px; right: 10px; }
+
+/* a room marked vacant (the guest already left): lavender, until somebody starts or finishes it */
+.wk-room.vacant:not(.doing):not(.done) { background: color-mix(in srgb, var(--lavender) 65%, #fff); font-weight: 800; }
+.wk-room.vacant .wk-note { background: #fff; }
+.rn-vacant { display: flex; align-items: center; gap: 12px; text-align: left; padding: 12px 14px; border-radius: 22px; background: var(--bg, #F6FAF8); color: var(--ink); }
+.rn-vacant span { display: flex; flex-direction: column; gap: 2px; }
+.rn-vacant small { font-size: 12px; color: var(--ink-3); font-weight: 600; }
+.rn-vacant.on { background: color-mix(in srgb, var(--lavender) 65%, #fff); }
+.rn-vacant.on small { color: var(--ink-2); }

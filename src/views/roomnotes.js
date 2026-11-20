@@ -5,24 +5,24 @@ import { Icon, Avatar } from '../ui.js';
 import { isSupervisor } from '../roles.js';
 import { fmt, parseYmd } from '../time.js';
 import { trFor } from '../translate.js';
-import { roomNotesOf, addRoomNote, removeRoomNote } from '../data.js';
+import { roomNotesOf, addRoomNote, removeRoomNote, roomVacantOf, setRoomVacant } from '../data.js';
 
 // Notes on a guest room. A small floating card over the page (no dark backdrop, the list stays visible and usable behind it).
 // It is drawn into its own element on <body>, so it floats the same way wherever the room tile is.
 let host = null;
-export function openRoomNotes(room, title) {
+export function openRoomNotes(room, title, day) {
   closeRoomNotes();
   host = document.createElement('div');
   host.className = 'rn-host';
   document.body.appendChild(host);
-  render(html`<${RoomNotes} room=${room} title=${title} key=${room} />`, host);
+  render(html`<${RoomNotes} room=${room} title=${title} day=${day} key=${room} />`, host);
 }
 export function closeRoomNotes() {
   if (!host) return;
   render(null, host); host.remove(); host = null;
 }
 
-function RoomNotes({ room, title }) {
+function RoomNotes({ room, title, day }) {
   const heading = title || t('rn.title', { room });
   const s = useStore();
   const me = s.profile;
@@ -51,6 +51,9 @@ function RoomNotes({ room, title }) {
       <b>${heading}</b>
       <button type="button" class="pick" aria-label=${t('common.close')} onClick=${closeRoomNotes}><${Icon} name="x" size=${16} /></button>
     </header>
+    ${day && !room.startsWith('line:') ? html`<button type="button" class=${'rn-vacant' + (roomVacantOf(room, day) ? ' on' : '')} aria-pressed=${!!roomVacantOf(room, day)}
+      onClick=${() => setRoomVacant(room, day, !roomVacantOf(room, day)).catch((ex) => toast(friendlyError(ex), 'bad'))}>
+      <${Icon} name=${roomVacantOf(room, day) ? 'circle-check' : 'key'} size=${20} /><span><b>${roomVacantOf(room, day) ? t('rn.vacantOn') : t('rn.vacant')}</b><small>${t('rn.vacantHint')}</small></span></button>` : null}
     <div class="rn-list" ref=${list}>
       ${notes.length ? notes.map((n) => {
         const p = s.profiles[n.author];
