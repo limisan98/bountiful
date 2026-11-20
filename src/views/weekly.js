@@ -7,9 +7,8 @@ import { DateField } from '../pickers.js';
 import { WEEKLY } from '../weeklydata.js';
 import { WEEKLY_TEXT } from '../weeklytext.js';
 import { todayYmd, parseYmd, startOfWeek, addDays, ymd, isoWeekday, fmt } from '../time.js';
-import { ensureWeekly, ensureRoomNotes, roomNotesOf, roomVacantOf, weeklyOf, setWeeklyItem, assignWeeklyItem, assignmentsOn, ensureMonth, itemName, finishAssignment, reopenAssignment } from '../data.js';
+import { ensureWeekly, ensureRoomNotes, roomNotesOf, roomVacantOf, weeklyOf, setWeeklyItem, assignWeeklyItem, assignmentsOn, cycleTask, ensureMonth, itemName, finishAssignment, reopenAssignment } from '../data.js';
 import { openRoomNotes } from './roomnotes.js';
-import { AssignmentSheet } from './assign.js';
 import { goalOf, crewPeople, shiftOf, dayPlanned } from '../shifts.js';
 
 // The Monday-to-Saturday cleaning checklist, shared by the whole custodian team (supervisor included).
@@ -72,7 +71,6 @@ export function WeeklyList({ day, compact }) {
   const wk = weekStart();
   const lang = s.lang;
   const [open, setOpen] = useState(loadOpen);
-  const [openTask, setOpenTask] = useState(null);
   const dayYmd = ymd(addDays(parseYmd(wk), day - 1));
   useEffect(() => { ensureRoomNotes().catch(() => {}); ensureWeekly(wk).catch(() => {}); ensureMonth(wk.slice(0, 7)).catch(() => {}); ensureMonth(dayYmd.slice(0, 7)).catch(() => {}); }, [wk]);
   const toggleOpen = (k, was) => setOpen((o) => { const n = { ...o, [k]: !was }; try { localStorage.setItem(OPEN_KEY, JSON.stringify(n)); } catch { /* private mode */ } return n; });
@@ -167,6 +165,13 @@ export function WeeklyList({ day, compact }) {
     </button>`;
   };
 
+  // a task row works like a checklist line: tap = in progress -> done -> back. Only the person it is given to can change it.
+  async function tapTask(a) {
+    if (!a.assignee) { toast(t('task.waiting'), 'bad'); return; }
+    if (a.assignee !== me.id) { const p = s.profiles[a.assignee]; toast(t('weekly.taken', { name: p ? p.display_name.split(' ')[0] : '' }), 'bad'); return; }
+    const mins = a.started_at ? Math.min(Math.max(1, Math.round((Date.now() - Date.parse(a.started_at)) / 60000)), 1440) : goalOf(a);
+    try { await cycleTask(a.id, mins); } catch (ex) { toast(friendlyError(ex), 'bad'); }
+  }
   // the supervisor also sees the tasks given for this day (custom / quick-assigned ones, not rooms) in the same list, same row format
   const dayTasks = sup ? assignmentsOn(dayYmd).filter((a) => a.kind !== 'room' && s.tasks[a.task_id]) : [];
   const TORDER = { doing: 0, todo: 1, done: 2 };
@@ -181,7 +186,7 @@ export function WeeklyList({ day, compact }) {
       const who = s.profiles[a.assignee], waiting = !a.assignee && a.status !== 'done';
       const st = waiting ? 'assigned' : a.status === 'todo' ? '' : a.status;
       const state = waiting ? t('task.waiting') : a.status === 'done' ? t('status.done') : a.status === 'doing' ? t('weekly.doing') : t('status.todo');
-      return html`<button type="button" key=${a.id} class=${'check-row weekly-row ' + st + (a.status === 'done' ? ' on' : '')} onClick=${() => setOpenTask(a.id)}>
+      return html`<button type="button" key=${a.id} class=${'check-row weekly-row ' + st + (a.status === 'done' ? ' on' : '')} onClick=${() => tapTask(a)}>
         <span class="check-box">${st === 'doing' ? html`<${Icon} name="hourglass" size=${16} />` : st === 'assigned' ? html`<${Icon} name="user" size=${16} />` : html`<${Icon} name="check" size=${18} />`}</span>
         <span class="check-text"><b>${itemName(a)}</b>
           <span class="weekly-who">${who ? html`<${Avatar} profile=${who} name=${who.display_name} size=${22} ring=${false} />` : null}${who ? who.display_name.split(' ')[0] + ' · ' : ''}${state}</span>
@@ -222,7 +227,6 @@ export function WeeklyList({ day, compact }) {
       </section>`;
     })}
     ${taskSection}
-    ${openTask ? html`<${AssignmentSheet} id=${openTask} onClose=${() => setOpenTask(null)} />` : null}
   </div>`;
 }
 

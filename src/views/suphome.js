@@ -9,7 +9,6 @@ import { todayYmd, addDays, ymd, parseYmd, fmt, dur, hhmm, toMin, monthKey } fro
 import { dayPlanned, shiftOf, capacityOf, loadOf, goalOf, crewPeople, problem } from '../shifts.js';
 import { AssignmentSheet, AssignmentRow, GiveSheet } from './assign.js';
 import { QuickAssignSheet } from './quick.js';
-import { TimeGoals } from './tasks.js';
 import { MoreLinks } from './more.js';
 import { WeeklyToday, dayProgressItems, weekStart } from './weekly.js';
 import { RoomImportSheet } from './roomimport.js';
@@ -26,7 +25,6 @@ export function SupervisorHome() {
   const [quick, setQuick] = useState(false);
   const [roomImp, setRoomImp] = useState(false);
   const [customTask, setCustomTask] = useState(false);
-  const [goals, setGoals] = useState(false);
   const [open, setOpen] = useState(null);
   useEffect(() => { const i = setInterval(() => setNow(new Date()), 30000); return () => clearInterval(i); }, []);
   useEffect(() => { ensureMonth(monthKey(new Date())).catch(() => {}); ensureWeekly(weekStart()).catch(() => {}); }, []);
@@ -88,7 +86,6 @@ export function SupervisorHome() {
     <${WeeklyToday} />
     <div class="chips">
       <button type="button" class="btn soft small" onClick=${() => setCustomTask(true)}><${Icon} name="plus" size=${18} />${t('sup.addTask')}</button>
-      <button type="button" class="pick ghost" onClick=${() => setGoals(true)}><${Icon} name="alarm" size=${16} />${t('goals.title')}</button>
     </div>
 
     <${MoreLinks} routes=${['weekly', 'calendar', 'shifts', 'logbook', 'reports', 'meetings', 'team']} />
@@ -97,7 +94,6 @@ export function SupervisorHome() {
     ${roomImp ? html`<${RoomImportSheet} onClose=${() => setRoomImp(false)} />` : null}
     ${quick ? html`<${QuickAssignSheet} day=${today} onClose=${() => setQuick(false)} />` : null}
     ${customTask ? html`<${QuickAssignSheet} day=${today} startCustom=${true} onClose=${() => setCustomTask(false)} />` : null}
-    ${goals ? html`<${TimeGoals} onClose=${() => setGoals(false)} />` : null}
     ${open ? html`<${AssignmentSheet} id=${open} onClose=${() => setOpen(null)} />` : null}
   </div>`;
 }

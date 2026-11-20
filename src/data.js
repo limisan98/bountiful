@@ -94,6 +94,19 @@ export async function saveSteps(id, steps) {
 }
 export async function finishAssignment(id, minutes, comment, delay) { putFresh(id, await api.completeAssignment(id, minutes, comment, delay)); }
 export async function reopenAssignment(id) { putFresh(id, await api.reopenAssignment(id)); }
+// One tap on a task row of the day's list, like a checklist line: not started -> in progress -> done -> back to not started.
+// The colour changes at once; saving happens behind (and is undone if it fails). `minutesIfDone` = time to report when finishing.
+export async function cycleTask(id, minutesIfDone) {
+  const a = state.assignments[id];
+  if (!a) return;
+  const next = a.status === 'todo' ? 'doing' : a.status === 'doing' ? 'done' : 'todo';
+  putAssignment({ ...a, status: next });
+  try {
+    if (next === 'doing') await startAssignment(id);
+    else if (next === 'done') await finishAssignment(id, Math.max(1, minutesIfDone || 1), '', '');
+    else await reopenAssignment(id);
+  } catch (e) { putAssignment(a); throw e; }
+}
 
 export async function saveTask(t) {
   const row = await api.saveTask(t);
