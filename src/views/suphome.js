@@ -81,7 +81,16 @@ export function SupervisorHome() {
 
     <section class="rise" aria-label=${t('sup.todayTasks')}>
       <h3 class="section-title">${t('sup.todayTasks')}${todayTasks.length ? html`<span class="count">${todayTasks.length}</span>` : null}</h3>
-      ${todayTasks.length ? html`<div class="list tight">${todayTasks.map((a) => html`<${AssignmentRow} key=${a.id} a=${a} onOpen=${(id) => setOpen(id)} showPerson=${true} />`)}</div>` : html`<p class="field-hint">${t('sup.todayEmpty')}</p>`}
+      ${todayTasks.length ? html`<div class="checklist">${todayTasks.map((a) => {
+        // same look as the lines of the day's checklist: circle, name, who + state
+        const who = s.profiles[a.assignee], st = !a.assignee && a.status !== 'done' ? 'assigned' : a.status === 'todo' ? '' : a.status;
+        const state = !a.assignee && a.status !== 'done' ? t('task.waiting') : a.status === 'done' ? t('status.done') : a.status === 'doing' ? t('weekly.doing') : t('status.todo');
+        return html`<button type="button" key=${a.id} class=${'check-row weekly-row ' + st + (a.status === 'done' ? ' on' : '')} onClick=${() => setOpen(a.id)}>
+          <span class="check-box">${st === 'doing' ? html`<${Icon} name="hourglass" size=${16} />` : st === 'assigned' ? html`<${Icon} name="user" size=${16} />` : html`<${Icon} name="check" size=${18} />`}</span>
+          <span class="check-text"><b>${itemName(a)}</b>
+            <span class="weekly-who">${who ? html`<${Avatar} profile=${who} name=${who.display_name} size=${22} ring=${false} />` : null}${who ? who.display_name.split(' ')[0] + ' · ' : ''}${state}</span>
+          </span>
+        </button>`; })}</div>` : html`<p class="field-hint">${t('sup.todayEmpty')}</p>`}
       <div class="chips">
         <button type="button" class="btn soft small" onClick=${() => setCustomTask(true)}><${Icon} name="plus" size=${18} />${t('sup.addTask')}</button>
         <button type="button" class="pick ghost" onClick=${() => setGoals(true)}><${Icon} name="alarm" size=${16} />${t('goals.title')}</button>
