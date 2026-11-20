@@ -29,7 +29,7 @@ import { PersonSheet } from './views/person.js';
 const NAV = [
   { route: 'home', icon: 'home', label: 'nav.home', dock: true },
   { route: 'calendar', icon: 'calendar-event', label: 'nav.calendar', dock: true },
-  { route: 'tasks', icon: 'list-check', label: 'nav.tasks', desk: true }, // not in the phone dock (the supervisor opens it from "More" on the home screen); still in the desktop sidebar
+  { route: 'tasks', icon: 'list-check', label: 'nav.tasks' }, // no longer in any menu: the tasks of the day live on the home screen (the route still works for old links and for Reception)
   { route: 'chat', icon: 'messages', label: 'nav.chat', dock: true, only: 'crew' }, // the custodian team only
   { route: 'team', icon: 'id', label: 'nav.team', dock: true },
   { route: 'meetings', icon: 'calendar-month', label: 'nav.meetings', desk: true }, // in the desktop sidebar; on phones reachable from Home
@@ -65,7 +65,7 @@ function Shell() {
   // Each kind of person gets only the few screens they need; everything else is one tap away under "More" on their home screen.
   const kind = sup ? 'sup' : inCrew(me) ? 'crew' : 'rec';
   const LITE = { crew: ['home', 'chat'], rec: ['home', 'tasks'] };
-  const MENU = { crew: ['weekly', 'tasks', 'calendar', 'meetings', 'team'], rec: ['calendar', 'meetings', 'team'] };
+  const MENU = { crew: ['weekly', 'calendar', 'meetings', 'team'], rec: ['calendar', 'meetings', 'team'] };
   const dock = kind === 'sup' ? NAV.filter((n) => (n.dock || n.desk) && allowed(n))
     : LITE[kind].map((r) => NAV.find((n) => n.route === r)).filter((n) => n && allowed(n))
       .map((n) => (n.route === 'home' ? { ...n, icon: kind === 'crew' ? 'home' : 'bed', label: kind === 'crew' ? 'nav.myTasks' : 'nav.rooms', desk: false } : { ...n, desk: false }));

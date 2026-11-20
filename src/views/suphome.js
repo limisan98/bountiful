@@ -9,6 +9,7 @@ import { todayYmd, addDays, ymd, parseYmd, fmt, dur, hhmm, toMin, monthKey } fro
 import { dayPlanned, shiftOf, capacityOf, loadOf, goalOf, crewPeople, problem } from '../shifts.js';
 import { AssignmentSheet, AssignmentRow, GiveSheet } from './assign.js';
 import { QuickAssignSheet } from './quick.js';
+import { TimeGoals } from './tasks.js';
 import { MoreLinks } from './more.js';
 import { WeeklyToday, dayProgressItems, weekStart } from './weekly.js';
 import { RoomImportSheet } from './roomimport.js';
@@ -24,6 +25,8 @@ export function SupervisorHome() {
   const [now, setNow] = useState(new Date());
   const [quick, setQuick] = useState(false);
   const [roomImp, setRoomImp] = useState(false);
+  const [customTask, setCustomTask] = useState(false);
+  const [goals, setGoals] = useState(false);
   const [open, setOpen] = useState(null);
   useEffect(() => { const i = setInterval(() => setNow(new Date()), 30000); return () => clearInterval(i); }, []);
   useEffect(() => { ensureMonth(monthKey(new Date())).catch(() => {}); ensureWeekly(weekStart()).catch(() => {}); }, []);
@@ -37,6 +40,10 @@ export function SupervisorHome() {
   const total = items.length;
   const pct = total ? Math.round((stat.done / total) * 100) : 0;
 
+  // the tasks given for today that are not rooms (custom tasks, quick-assigned ones...): waiting ones first, finished last
+  const ORDER = { todo: 1, doing: 0, done: 2 };
+  const todayTasks = assignmentsOn(today).filter((a) => a.kind !== 'room' && s.tasks[a.task_id])
+    .sort((x, y) => (x.assignee ? 1 : 0) - (y.assignee ? 1 : 0) || (ORDER[x.status] ?? 1) - (ORDER[y.status] ?? 1));
   const since = ymd(addDays(new Date(), -3));
   const updates = Object.values(s.reports).map((r) => ({ r, a: s.assignments[r.assignment_id] }))
     .filter((x) => x.a && x.a.day >= since && s.tasks[x.a.task_id]).sort((x, y) => y.r.completed_at.localeCompare(x.r.completed_at)).slice(0, 4);
@@ -72,6 +79,15 @@ export function SupervisorHome() {
       ${openProg && total ? html`<${ProgressDetail} items=${items} />` : null}
     </section>
 
+    <section class="rise" aria-label=${t('sup.todayTasks')}>
+      <h3 class="section-title">${t('sup.todayTasks')}${todayTasks.length ? html`<span class="count">${todayTasks.length}</span>` : null}</h3>
+      ${todayTasks.length ? html`<div class="list tight">${todayTasks.map((a) => html`<${AssignmentRow} key=${a.id} a=${a} onOpen=${(id) => setOpen(id)} showPerson=${true} />`)}</div>` : html`<p class="field-hint">${t('sup.todayEmpty')}</p>`}
+      <div class="chips">
+        <button type="button" class="btn soft small" onClick=${() => setCustomTask(true)}><${Icon} name="plus" size=${18} />${t('sup.addTask')}</button>
+        <button type="button" class="pick ghost" onClick=${() => setGoals(true)}><${Icon} name="alarm" size=${16} />${t('goals.title')}</button>
+      </div>
+    </section>
+
     ${updates.length ? html`<section class="rise">
       <h3 class="section-title">${t('home.updates')}</h3>
       <div class="list tight">${updates.map(({ r, a }) => {
@@ -84,11 +100,13 @@ export function SupervisorHome() {
 
     <${WeeklyToday} />
 
-    <${MoreLinks} routes=${['tasks', 'weekly', 'calendar', 'shifts', 'logbook', 'reports', 'meetings', 'team']} />
+    <${MoreLinks} routes=${['weekly', 'calendar', 'shifts', 'logbook', 'reports', 'meetings', 'team']} />
 
     <${QuickFab} onOpen=${() => setQuick(true)} />
     ${roomImp ? html`<${RoomImportSheet} onClose=${() => setRoomImp(false)} />` : null}
     ${quick ? html`<${QuickAssignSheet} day=${today} onClose=${() => setQuick(false)} />` : null}
+    ${customTask ? html`<${QuickAssignSheet} day=${today} startCustom=${true} onClose=${() => setCustomTask(false)} />` : null}
+    ${goals ? html`<${TimeGoals} onClose=${() => setGoals(false)} />` : null}
     ${open ? html`<${AssignmentSheet} id=${open} onClose=${() => setOpen(null)} />` : null}
   </div>`;
 }

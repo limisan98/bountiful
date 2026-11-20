@@ -22,11 +22,11 @@ const MINUTES = [15, 30, 45, 60, 90, 120];
 
 // Quick assign: who -> where -> how deep -> assign. The checklist and the time estimate come with the preset.
 // "+ Create custom task" is for the unexpected: type a task from scratch.
-export function QuickAssignSheet({ day, person: first, onClose }) {
+export function QuickAssignSheet({ day, person: first, startCustom, onClose }) {
   const s = useStore();
   const ctl = useSheetControl();
   const [who, setWho] = useState(first || null);
-  const [custom, setCustom] = useState(false);
+  const [custom, setCustom] = useState(!!startCustom);
   const [areaId, setAreaId] = useState(null);
   const [cad, setCad] = useState('daily');
   const [level, setLevel] = useState(1);
