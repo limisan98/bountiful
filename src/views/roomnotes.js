@@ -24,7 +24,6 @@ export function closeRoomNotes() {
 
 function RoomNotes({ room, title, day }) {
   const heading = title || t('rn.title', { room });
-  const isTask = room.startsWith('task:'); // a task of the day's list: "available" instead of "vacant"
   const s = useStore();
   const me = s.profile;
   const notes = roomNotesOf(room);
@@ -52,9 +51,9 @@ function RoomNotes({ room, title, day }) {
       <b>${heading}</b>
       <button type="button" class="pick" aria-label=${t('common.close')} onClick=${closeRoomNotes}><${Icon} name="x" size=${16} /></button>
     </header>
-    ${day && !room.startsWith('line:') ? html`<button type="button" class=${'rn-vacant' + (roomVacantOf(room, day) ? ' on' : '')} aria-pressed=${!!roomVacantOf(room, day)}
+    ${day && !room.startsWith('line:') && !room.startsWith('task:') ? html`<button type="button" class=${'rn-vacant' + (roomVacantOf(room, day) ? ' on' : '')} aria-pressed=${!!roomVacantOf(room, day)}
       onClick=${() => setRoomVacant(room, day, !roomVacantOf(room, day)).catch((ex) => toast(friendlyError(ex), 'bad'))}>
-      <${Icon} name=${roomVacantOf(room, day) ? 'circle-check' : 'key'} size=${20} /><span><b>${roomVacantOf(room, day) ? t(isTask ? 'rn.availableOn' : 'rn.vacantOn') : t(isTask ? 'rn.available' : 'rn.vacant')}</b><small>${t(isTask ? 'rn.availableHint' : 'rn.vacantHint')}</small></span></button>` : null}
+      <${Icon} name=${roomVacantOf(room, day) ? 'circle-check' : 'key'} size=${20} /><span><b>${roomVacantOf(room, day) ? t('rn.vacantOn') : t('rn.vacant')}</b><small>${t('rn.vacantHint')}</small></span></button>` : null}
     <div class="rn-list" ref=${list}>
       ${notes.length ? notes.map((n) => {
         const p = s.profiles[n.author];

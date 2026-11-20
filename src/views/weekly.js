@@ -187,7 +187,7 @@ export function WeeklyList({ day, compact }) {
       const st = waiting ? 'assigned' : a.status === 'todo' ? '' : a.status;
       const state = waiting ? t('task.waiting') : a.status === 'done' ? t('status.done') : a.status === 'doing' ? t('weekly.doing') : t('status.todo');
       const key = 'task:' + a.id;
-      return html`<button type="button" key=${a.id} class=${'check-row weekly-row ' + st + (a.status === 'done' ? ' on' : '') + (roomVacantOf(key, a.day) ? ' vacant' : '')} onClick=${() => { if (!pressing.wasLong()) tapTask(a); }} ...${pressing.press(key, itemName(a))}>
+      return html`<button type="button" key=${a.id} class=${'check-row weekly-row ' + st + (a.status === 'done' ? ' on' : '')} onClick=${() => { if (!pressing.wasLong()) tapTask(a); }} ...${pressing.press(key, itemName(a))}>
         ${roomNotesOf(key).length ? html`<span class="wk-note" aria-label=${t('rn.has')}><${Icon} name="message" size=${13} /></span>` : null}
         <span class="check-box">${st === 'doing' ? html`<${Icon} name="hourglass" size=${16} />` : st === 'assigned' ? html`<${Icon} name="user" size=${16} />` : html`<${Icon} name="check" size=${18} />`}</span>
         <span class="check-text"><b>${itemName(a)}</b>

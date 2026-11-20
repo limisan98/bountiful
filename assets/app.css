@@ -1577,5 +1577,3 @@ select.input { appearance: auto; padding-right: 12px; }
 .rn-vacant.on { background: color-mix(in srgb, var(--lavender) 65%, #fff); }
 .rn-vacant.on small { color: var(--ink-2); }
 
-.weekly-row.vacant:not(.doing):not(.done) { background: color-mix(in srgb, var(--lavender) 65%, #fff); }
-.weekly-row.vacant .wk-note { background: #fff; }
