@@ -169,7 +169,7 @@ export function notifyLive(table, type, row) {
 
   // a colleague marked a room as vacant: everybody on shift now hears about it (a day with no shift plan: the whole team)
   if (table === 'room_notes') {
-    if (type !== 'INSERT' || row.kind !== 'vacant' || row.author === me.id || !p.vacant || departmentOf(me) !== 'custodian') return;
+    if (type !== 'INSERT' || row.kind !== 'vacant' || String(row.room).startsWith('task:') || row.author === me.id || !p.vacant || departmentOf(me) !== 'custodian') return;
     const day = todayYmd();
     if (dayPlanned(day)) {
       const sh = shiftOf(me.id, day), now = new Date(), m = now.getHours() * 60 + now.getMinutes();
