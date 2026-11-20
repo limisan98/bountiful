@@ -114,7 +114,8 @@ export function WeeklyList({ day, compact }) {
 
   async function tap(i, target) {
     const r = weeklyOf(wk, i);
-    if (r && r.user_id !== me.id && !sup) {
+    // only the person who is on an item (marked it in progress / done, or was given it) can change it - not even the supervisor (the database enforces it too)
+    if (r && r.user_id !== me.id) {
       const p = s.profiles[r.user_id];
       toast(t('weekly.taken', { name: p ? p.display_name.split(' ')[0] : '' }), 'bad');
       return;
