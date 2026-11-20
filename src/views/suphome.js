@@ -40,10 +40,6 @@ export function SupervisorHome() {
   const total = items.length;
   const pct = total ? Math.round((stat.done / total) * 100) : 0;
 
-  // the tasks given for today that are not rooms (custom tasks, quick-assigned ones...): waiting ones first, finished last
-  const ORDER = { todo: 1, doing: 0, done: 2 };
-  const todayTasks = assignmentsOn(today).filter((a) => a.kind !== 'room' && s.tasks[a.task_id])
-    .sort((x, y) => (x.assignee ? 1 : 0) - (y.assignee ? 1 : 0) || (ORDER[x.status] ?? 1) - (ORDER[y.status] ?? 1));
   const since = ymd(addDays(new Date(), -3));
   const updates = Object.values(s.reports).map((r) => ({ r, a: s.assignments[r.assignment_id] }))
     .filter((x) => x.a && x.a.day >= since && s.tasks[x.a.task_id]).sort((x, y) => y.r.completed_at.localeCompare(x.r.completed_at)).slice(0, 4);
@@ -79,24 +75,6 @@ export function SupervisorHome() {
       ${openProg && total ? html`<${ProgressDetail} items=${items} />` : null}
     </section>
 
-    <section class="rise" aria-label=${t('sup.todayTasks')}>
-      <h3 class="section-title">${t('sup.todayTasks')}${todayTasks.length ? html`<span class="count">${todayTasks.length}</span>` : null}</h3>
-      ${todayTasks.length ? html`<div class="checklist">${todayTasks.map((a) => {
-        // same look as the lines of the day's checklist: circle, name, who + state
-        const who = s.profiles[a.assignee], st = !a.assignee && a.status !== 'done' ? 'assigned' : a.status === 'todo' ? '' : a.status;
-        const state = !a.assignee && a.status !== 'done' ? t('task.waiting') : a.status === 'done' ? t('status.done') : a.status === 'doing' ? t('weekly.doing') : t('status.todo');
-        return html`<button type="button" key=${a.id} class=${'check-row weekly-row ' + st + (a.status === 'done' ? ' on' : '')} onClick=${() => setOpen(a.id)}>
-          <span class="check-box">${st === 'doing' ? html`<${Icon} name="hourglass" size=${16} />` : st === 'assigned' ? html`<${Icon} name="user" size=${16} />` : html`<${Icon} name="check" size=${18} />`}</span>
-          <span class="check-text"><b>${itemName(a)}</b>
-            <span class="weekly-who">${who ? html`<${Avatar} profile=${who} name=${who.display_name} size=${22} ring=${false} />` : null}${who ? who.display_name.split(' ')[0] + ' · ' : ''}${state}</span>
-          </span>
-        </button>`; })}</div>` : html`<p class="field-hint">${t('sup.todayEmpty')}</p>`}
-      <div class="chips">
-        <button type="button" class="btn soft small" onClick=${() => setCustomTask(true)}><${Icon} name="plus" size=${18} />${t('sup.addTask')}</button>
-        <button type="button" class="pick ghost" onClick=${() => setGoals(true)}><${Icon} name="alarm" size=${16} />${t('goals.title')}</button>
-      </div>
-    </section>
-
     ${updates.length ? html`<section class="rise">
       <h3 class="section-title">${t('home.updates')}</h3>
       <div class="list tight">${updates.map(({ r, a }) => {
@@ -108,6 +86,10 @@ export function SupervisorHome() {
       })}</div></section>` : null}
 
     <${WeeklyToday} />
+    <div class="chips">
+      <button type="button" class="btn soft small" onClick=${() => setCustomTask(true)}><${Icon} name="plus" size=${18} />${t('sup.addTask')}</button>
+      <button type="button" class="pick ghost" onClick=${() => setGoals(true)}><${Icon} name="alarm" size=${16} />${t('goals.title')}</button>
+    </div>
 
     <${MoreLinks} routes=${['weekly', 'calendar', 'shifts', 'logbook', 'reports', 'meetings', 'team']} />
 

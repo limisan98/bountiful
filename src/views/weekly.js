@@ -9,6 +9,7 @@ import { WEEKLY_TEXT } from '../weeklytext.js';
 import { todayYmd, parseYmd, startOfWeek, addDays, ymd, isoWeekday, fmt } from '../time.js';
 import { ensureWeekly, ensureRoomNotes, roomNotesOf, roomVacantOf, weeklyOf, setWeeklyItem, assignWeeklyItem, assignmentsOn, ensureMonth, itemName, finishAssignment, reopenAssignment } from '../data.js';
 import { openRoomNotes } from './roomnotes.js';
+import { AssignmentSheet } from './assign.js';
 import { goalOf, crewPeople, shiftOf, dayPlanned } from '../shifts.js';
 
 // The Monday-to-Saturday cleaning checklist, shared by the whole custodian team (supervisor included).
@@ -71,6 +72,7 @@ export function WeeklyList({ day, compact }) {
   const wk = weekStart();
   const lang = s.lang;
   const [open, setOpen] = useState(loadOpen);
+  const [openTask, setOpenTask] = useState(null);
   const dayYmd = ymd(addDays(parseYmd(wk), day - 1));
   useEffect(() => { ensureRoomNotes().catch(() => {}); ensureWeekly(wk).catch(() => {}); ensureMonth(wk.slice(0, 7)).catch(() => {}); ensureMonth(dayYmd.slice(0, 7)).catch(() => {}); }, [wk]);
   const toggleOpen = (k, was) => setOpen((o) => { const n = { ...o, [k]: !was }; try { localStorage.setItem(OPEN_KEY, JSON.stringify(n)); } catch { /* private mode */ } return n; });
@@ -165,6 +167,28 @@ export function WeeklyList({ day, compact }) {
     </button>`;
   };
 
+  // the supervisor also sees the tasks given for this day (custom / quick-assigned ones, not rooms) in the same list, same row format
+  const dayTasks = sup ? assignmentsOn(dayYmd).filter((a) => a.kind !== 'room' && s.tasks[a.task_id]) : [];
+  const TORDER = { doing: 0, todo: 1, done: 2 };
+  dayTasks.sort((x, y) => (x.assignee ? 1 : 0) - (y.assignee ? 1 : 0) || (TORDER[x.status] ?? 1) - (TORDER[y.status] ?? 1));
+  const tk = `${day}.tasks`, tFolded = !(open[tk] !== false);
+  const taskSection = dayTasks.length ? html`<section class="weekly-sec foldable" key=${tk}>
+    <button type="button" class="weekly-fold" aria-expanded=${!tFolded} onClick=${() => toggleOpen(tk, !tFolded)}>
+      <b>${t('sup.todayTasks')}</b><span class=${'weekly-count' + (dayTasks.every((a) => a.status === 'done') ? ' all' : dayTasks.some((a) => a.status !== 'todo') ? ' doing' : '')}>${dayTasks.filter((a) => a.status === 'done').length}/${dayTasks.length}</span>
+      <${Icon} name=${tFolded ? 'caret-down' : 'caret-up'} size=${20} />
+    </button>
+    ${tFolded ? null : html`<div class="checklist">${dayTasks.map((a) => {
+      const who = s.profiles[a.assignee], waiting = !a.assignee && a.status !== 'done';
+      const st = waiting ? 'assigned' : a.status === 'todo' ? '' : a.status;
+      const state = waiting ? t('task.waiting') : a.status === 'done' ? t('status.done') : a.status === 'doing' ? t('weekly.doing') : t('status.todo');
+      return html`<button type="button" key=${a.id} class=${'check-row weekly-row ' + st + (a.status === 'done' ? ' on' : '')} onClick=${() => setOpenTask(a.id)}>
+        <span class="check-box">${st === 'doing' ? html`<${Icon} name="hourglass" size=${16} />` : st === 'assigned' ? html`<${Icon} name="user" size=${16} />` : html`<${Icon} name="check" size=${18} />`}</span>
+        <span class="check-text"><b>${itemName(a)}</b>
+          <span class="weekly-who">${who ? html`<${Avatar} profile=${who} name=${who.display_name} size=${22} ring=${false} />` : null}${who ? who.display_name.split(' ')[0] + ' · ' : ''}${state}</span>
+        </span>
+      </button>`; })}</div>`}
+  </section>` : null;
+
   return html`<div class=${'weekly-list' + (compact ? ' compact' : '')}>
     <div class="weekly-prog"><div class="weekly-bar" role="progressbar" aria-valuenow=${pct} aria-valuemin="0" aria-valuemax="100"><span style=${`width:${pct}%`}></span></div>
       <b>${t('weekly.progress', { done, total: all.length })}</b></div>
@@ -197,6 +221,8 @@ export function WeeklyList({ day, compact }) {
           }) : null}`}
       </section>`;
     })}
+    ${taskSection}
+    ${openTask ? html`<${AssignmentSheet} id=${openTask} onClose=${() => setOpenTask(null)} />` : null}
   </div>`;
 }
 
