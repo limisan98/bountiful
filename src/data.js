@@ -431,6 +431,7 @@ export async function refresh() {
     if (inCrew(state.profile)) {
       const logs = await api.loadLogbook(ymd(addDays(new Date(), -7)), ymd(addDays(new Date(), 1)));
       patch.logbook = { ...state.logbook, ...byId(logs) };
+      try { patch.roomNotes = byId(await api.loadRoomNotes(ymd(addDays(new Date(), -14)))); } catch (_) { /* ignore */ }
       try { const wk = ymd(startOfWeek(new Date())); const rows = await api.loadWeekly(wk); patch.weekly = Object.fromEntries([...Object.entries(state.weekly).filter(([, r]) => r.week !== wk), ...rows.map((r) => [weeklyKey(r.week, r.item), r])]); } catch (_) { /* ignore */ }
     }
     set(patch);
