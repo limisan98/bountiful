@@ -22,6 +22,7 @@ const TITLES = ['Temple', 'Rooms', 'On Monday everything in the rooms must be cl
 const REQUESTED = { title: 'Rooms', requested: true, items: [] };
 // Lines that were taken out of the lists ("Clean rooms if there are any": the Rooms section below now covers them). They stay in the data so the ids of the other lines
 // (and what people already ticked) don't shift; they are just not shown any more.
+export const CHECKOUT_MIN = 10 * 60 + 30; // 10:30
 const GONE = new Set(['3.0.0', '6.0.1']);
 const sectionsOf = (d) => [...d.sections, ...(d.day >= 2 ? [REQUESTED] : [])];
 const itemText = (id, en, lang) => { const tr = WEEKLY_TEXT[lang]; return (tr && tr.items[FLAT[id]]) || en; };
@@ -61,6 +62,9 @@ function useRoomPress(day) {
 export function WeeklyList({ day, compact }) {
   const dayYmd0 = ymd(addDays(parseYmd(weekStart()), day - 1));
   const pressing = useRoomPress(dayYmd0);
+  // check-out time (10:30): from then on every room of the day's check-out list turns purple; the list repaints itself
+  const [, setTick] = useState(0);
+  useEffect(() => { const id = setInterval(() => setTick((n) => n + 1), 30000); return () => clearInterval(id); }, []);
   const s = useStore();
   const me = s.profile;
   const sup = isSupervisor(me);
@@ -151,8 +155,10 @@ export function WeeklyList({ day, compact }) {
     const i = `${day}.r.${r.label}`, w = weeklyOf(wk, i), p = w ? s.profiles[w.user_id] : null;
     const u = !w && urgent[r.label], uTxt = u ? (typeof u === 'string' ? t('flow.' + u) + ' · ' : '') + t('weekly.urgentOne') : '';
     const wTxt = w ? first(p) + ' · ' + (w.status === 'done' ? t('status.done') : w.status === 'assigned' ? t('weekly.assigned') : t('weekly.doing')) : '';
-    const vac = !!roomVacantOf(r.label, dayYmd);
-    return html`<button type="button" key=${i} class=${'wk-room ' + (w ? w.status + (w.status === 'assigned' && urgent[r.label] ? ' urgent' : '') : u ? 'urgent' : '') + (vac ? ' vacant' : '')} aria-pressed=${!!w && w.status === 'done'} title=${(vac ? t('rn.vacantShort') + (w || uTxt ? ' · ' : '') : '') + (w ? wTxt : uTxt)}
+    const nowD = new Date();
+    const checkoutNow = dayYmd === todayYmd() && nowD.getHours() * 60 + nowD.getMinutes() >= CHECKOUT_MIN && !!urgent[r.label] && urgent[r.label] !== 'checkin';
+    const vac = !!roomVacantOf(r.label, dayYmd) || checkoutNow;
+    return html`<button type="button" key=${i} class=${'wk-room ' + (w ? w.status + (w.status === 'assigned' && urgent[r.label] ? ' urgent' : '') : u ? 'urgent' : '') + (vac ? ' vacant' : '')} aria-pressed=${!!w && w.status === 'done'} title=${(vac ? (checkoutNow && !roomVacantOf(r.label, dayYmd) ? t('flow.checkout') : t('rn.vacantShort')) + (w || uTxt ? ' · ' : '') : '') + (w ? wTxt : uTxt)}
       aria-label=${r.label + (w ? ', ' + wTxt : uTxt ? ', ' + uTxt : '')} onClick=${() => { if (!pressing.wasLong()) tap(i); }} ...${pressing.press(r.label)}>
       <b>${r.label}</b>${roomNotesOf(r.label).length ? html`<span class="wk-note" aria-label=${t('rn.has')}><${Icon} name="message" size=${13} /></span>` : null}${w ? html`<${Avatar} profile=${p} name=${p ? p.display_name : ''} size=${20} ring=${false} />` : null}
     </button>`;

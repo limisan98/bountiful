@@ -9,7 +9,8 @@ import { t } from './i18n.js';
 import { isSupervisor, departmentOf } from './roles.js';
 import { mentionsMe } from './mentions.js';
 import { areaOf, areaName, itemName } from './data.js';
-import { parseYmd, fmt, hhmm, hasTime } from './time.js';
+import { parseYmd, fmt, hhmm, hasTime, todayYmd, toMin } from './time.js';
+import { dayPlanned, shiftOf } from './shifts.js';
 
 export const KEY = 'bountiful.notif';
 
@@ -30,6 +31,7 @@ export const TYPES = [
   { key: 'started', icon: 'player-play', def: false, only: 'sup' },
   { key: 'delay', icon: 'clock', def: true, only: 'sup' },
   { key: 'comment', icon: 'message-report', def: true },
+  { key: 'vacant', icon: 'key', def: true, only: 'crew' },
   { key: 'joined', icon: 'circle-plus', def: true, only: 'sup' },
   { key: 'daily', icon: 'report-analytics', def: false, only: 'sup' },
 ];
@@ -162,6 +164,18 @@ export function notifyLive(table, type, row) {
         if (room && row.requested_by === me.id && !sup && p.roomsDone) show(t('notify.roomDone', { name: who }), text, '#/tasks', 'rooms-done');
       } else if (row.status === 'doing' && sup && p.started) show(t('notify.started', { name: who }), name, '#/tasks', 'started-' + row.id);
     }
+    return;
+  }
+
+  // a colleague marked a room as vacant: everybody on shift now hears about it (a day with no shift plan: the whole team)
+  if (table === 'room_notes') {
+    if (type !== 'INSERT' || row.kind !== 'vacant' || row.author === me.id || !p.vacant || departmentOf(me) !== 'custodian') return;
+    const day = todayYmd();
+    if (dayPlanned(day)) {
+      const sh = shiftOf(me.id, day), now = new Date(), m = now.getHours() * 60 + now.getMinutes();
+      if (!sh || m < toMin(sh.start_time) || m >= toMin(sh.end_time)) return;
+    }
+    show(t('notify.roomVacant', { room: row.room }), t('notify.roomVacantBody'), '#/home', 'vacant-' + row.room);
     return;
   }
 
