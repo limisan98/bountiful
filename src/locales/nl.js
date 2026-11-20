@@ -859,5 +859,5 @@ Vloer dweilen`,
   "rn.placeholder": `Schrijf een notitie…`,
   "rn.send": `Opslaan`,
   "rn.has": `Heeft notities`,
-  "rn.hint": `Houd een kamernummer ingedrukt om een notitie achter te laten.`,
+  "rn.hint": `Houd een kamer of taak in de lijst ingedrukt om een notitie achter te laten.`,
 };

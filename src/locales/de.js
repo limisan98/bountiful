@@ -859,5 +859,5 @@ Boden wischen`,
   "rn.placeholder": `Notiz schreiben…`,
   "rn.send": `Speichern`,
   "rn.has": `Hat Notizen`,
-  "rn.hint": `Zimmernummer gedrückt halten, um eine Notiz zu hinterlassen.`,
+  "rn.hint": `Zimmer oder Aufgabe in der Liste gedrückt halten, um eine Notiz zu hinterlassen.`,
 };

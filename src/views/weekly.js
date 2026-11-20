@@ -45,15 +45,15 @@ const loadOpen = () => { try { return JSON.parse(localStorage.getItem(OPEN_KEY) 
 function useRoomPress() {
   const timer = useRef(null), start = useRef(null), fired = useRef(false);
   const clear = () => { if (timer.current) { clearTimeout(timer.current); timer.current = null; } };
-  const press = (room) => ({
+  const press = (room, title) => ({
     onPointerDown: (e) => {
       if (e.button) return;
       fired.current = false; start.current = [e.clientX, e.clientY]; clear();
-      timer.current = setTimeout(() => { fired.current = true; timer.current = null; try { navigator.vibrate && navigator.vibrate(12); } catch (_) { /* ignore */ } openRoomNotes(room); }, 450);
+      timer.current = setTimeout(() => { fired.current = true; timer.current = null; try { navigator.vibrate && navigator.vibrate(12); } catch (_) { /* ignore */ } openRoomNotes(room, title); }, 450);
     },
     onPointerMove: (e) => { if (start.current && Math.hypot(e.clientX - start.current[0], e.clientY - start.current[1]) > 10) clear(); },
     onPointerUp: clear, onPointerCancel: clear, onPointerLeave: clear,
-    onContextMenu: (e) => { e.preventDefault(); clear(); if (!fired.current) { fired.current = true; openRoomNotes(room); } },
+    onContextMenu: (e) => { e.preventDefault(); clear(); if (!fired.current) { fired.current = true; openRoomNotes(room, title); } },
   });
   return { press, wasLong: () => { const f = fired.current; fired.current = false; return f; } };
 }
@@ -137,7 +137,8 @@ export function WeeklyList({ day, compact }) {
     const r = weeklyOf(wk, i);
     const p = r ? s.profiles[r.user_id] : null;
     const st = r ? r.status : '';
-    return html`<button type="button" key=${i} class=${'check-row weekly-row ' + st + (st === 'done' ? ' on' : '')} aria-pressed=${st === 'done'} onClick=${() => tap(i)}>
+    return html`<button type="button" key=${i} class=${'check-row weekly-row ' + st + (st === 'done' ? ' on' : '')} aria-pressed=${st === 'done'} onClick=${() => { if (!pressing.wasLong()) tap(i); }} ...${pressing.press('line:' + i, txt)}>
+      ${roomNotesOf('line:' + i).length ? html`<span class="wk-note" aria-label=${t('rn.has')}><${Icon} name="message" size=${13} /></span>` : null}
       <span class="check-box">${st === 'doing' ? html`<${Icon} name="hourglass" size=${16} />` : st === 'assigned' ? html`<${Icon} name="user" size=${16} />` : html`<${Icon} name="check" size=${18} />`}</span>
       <span class="check-text"><b>${txt}</b>
         ${r ? html`<span class="weekly-who"><${Avatar} profile=${p} name=${p ? p.display_name : ''} size=${22} ring=${false} />${r.status === 'assigned' && r.user_id === me.id ? t('weekly.forYou') : first(p) + ' · ' + (r.status === 'done' ? t('status.done') : r.status === 'assigned' ? t('weekly.assigned') : t('weekly.doing'))}</span>` : null}
@@ -158,6 +159,7 @@ export function WeeklyList({ day, compact }) {
   return html`<div class=${'weekly-list' + (compact ? ' compact' : '')}>
     <div class="weekly-prog"><div class="weekly-bar" role="progressbar" aria-valuenow=${pct} aria-valuemin="0" aria-valuemax="100"><span style=${`width:${pct}%`}></span></div>
       <b>${t('weekly.progress', { done, total: all.length })}</b></div>
+    <p class="field-hint wk-hold-hint">${t('rn.hint')}</p>
     ${secs.map((sec, si) => ({ sec, si })).sort((a, b) => (b.sec.requested ? 1 : 0) - (a.sec.requested ? 1 : 0)).map(({ sec, si }) => {
       if (sec.carry && !carryOn) return null;
       const ids = idsOf(sec, si), nDone = ids.filter(isDone).length, k = `${day}.${si}`;
@@ -172,7 +174,6 @@ export function WeeklyList({ day, compact }) {
           ${sec.info ? html`<ul class="weekly-info">${sec.items.map((txt, ii) => html`<li key=${ii}>${itemText(id(si, ii), txt, lang)}</li>`)}</ul>`
             : html`<div class="checklist">${sec.items.map((txt, ii) => (GONE.has(id(si, ii)) ? null : row(id(si, ii), itemText(id(si, ii), txt, lang))))}</div>`}
           ${sec.carry ? html`<p class="field-hint">${carried.length ? t('weekly.carryHint') : t('weekly.carryNone')}</p>` : null}
-          ${sec.rooms ? html`<p class="field-hint">${t('rn.hint')}</p>` : null}
           ${sec.rooms && rooms.some(onDemand) ? html`<p class="field-hint">${t('weekly.onDemandNote')}</p>` : null}
           ${sec.requested && !requestedRooms.length ? html`<p class="field-hint">${t('weekly.noRooms')}</p>` : null}
           ${roomsOf(sec) && nUrgentOf(roomsOf(sec)) ? html`<p class="wk-urgent-note"><i></i>${t(sec.requested ? 'weekly.urgentReq' : 'weekly.urgent', { n: nUrgentOf(roomsOf(sec)) })}</p>` : null}

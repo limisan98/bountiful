@@ -386,7 +386,11 @@ export async function setWeeklyItem(week, item, status) {
 }
 
 // ---- notes on guest rooms (long-press a room number in the checklist) ----
-export const roomNotesOf = (room) => Object.values(state.roomNotes).filter((n) => n.room === room).sort((a, b) => a.created_at.localeCompare(b.created_at));
+// notes on a checklist line use the key "line:<item id>" and only show on the day they were written (the list repeats every week)
+export const roomNotesOf = (room) => {
+  const day = room.startsWith('line:') ? ymd(new Date()) : null;
+  return Object.values(state.roomNotes).filter((n) => n.room === room && (!day || n.day === day)).sort((a, b) => a.created_at.localeCompare(b.created_at));
+};
 export async function ensureRoomNotes() {
   const rows = await api.loadRoomNotes(ymd(addDays(new Date(), -14)));
   set({ roomNotes: byId(rows) });

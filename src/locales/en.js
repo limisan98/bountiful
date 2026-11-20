@@ -859,5 +859,5 @@ Wipe the floor`,
   "rn.placeholder": `Write a note…`,
   "rn.send": `Save`,
   "rn.has": `Has notes`,
-  "rn.hint": `Press and hold a room number to leave a note.`,
+  "rn.hint": `Press and hold a room or a task in the list to leave a note.`,
 };

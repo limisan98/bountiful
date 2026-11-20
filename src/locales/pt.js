@@ -859,5 +859,5 @@ Limpar o chão`,
   "rn.placeholder": `Escreva uma nota…`,
   "rn.send": `Guardar`,
   "rn.has": `Tem notas`,
-  "rn.hint": `Mantenha o número de um quarto pressionado para deixar uma nota.`,
+  "rn.hint": `Mantenha pressionado um quarto ou uma tarefa da lista para deixar uma nota.`,
 };

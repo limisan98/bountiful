@@ -10,19 +10,20 @@ import { roomNotesOf, addRoomNote, removeRoomNote } from '../data.js';
 // Notes on a guest room. A small floating card over the page (no dark backdrop, the list stays visible and usable behind it).
 // It is drawn into its own element on <body>, so it floats the same way wherever the room tile is.
 let host = null;
-export function openRoomNotes(room) {
+export function openRoomNotes(room, title) {
   closeRoomNotes();
   host = document.createElement('div');
   host.className = 'rn-host';
   document.body.appendChild(host);
-  render(html`<${RoomNotes} room=${room} key=${room} />`, host);
+  render(html`<${RoomNotes} room=${room} title=${title} key=${room} />`, host);
 }
 export function closeRoomNotes() {
   if (!host) return;
   render(null, host); host.remove(); host = null;
 }
 
-function RoomNotes({ room }) {
+function RoomNotes({ room, title }) {
+  const heading = title || t('rn.title', { room });
   const s = useStore();
   const me = s.profile;
   const notes = roomNotesOf(room);
@@ -44,10 +45,10 @@ function RoomNotes({ room }) {
     setBusy(false);
   }
   const when = (n) => fmt(parseYmd(n.day), { weekday: 'short', day: 'numeric', month: 'short' });
-  return html`<section class="rn-panel" role="dialog" aria-label=${t('rn.title', { room })}>
+  return html`<section class="rn-panel" role="dialog" aria-label=${heading}>
     <header class="rn-head">
       <span class="rn-ic"><${Icon} name="message" size=${20} /></span>
-      <b>${t('rn.title', { room })}</b>
+      <b>${heading}</b>
       <button type="button" class="pick" aria-label=${t('common.close')} onClick=${closeRoomNotes}><${Icon} name="x" size=${16} /></button>
     </header>
     <div class="rn-list" ref=${list}>

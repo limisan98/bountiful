@@ -859,5 +859,5 @@ Torka golvet`,
   "rn.placeholder": `Skriv en anteckning…`,
   "rn.send": `Spara`,
   "rn.has": `Har anteckningar`,
-  "rn.hint": `Håll nere ett rumsnummer för att lämna en anteckning.`,
+  "rn.hint": `Håll nere ett rum eller en uppgift i listan för att lämna en anteckning.`,
 };

@@ -859,5 +859,5 @@ Fregar el suelo`,
   "rn.placeholder": `Escribe una nota…`,
   "rn.send": `Guardar`,
   "rn.has": `Tiene notas`,
-  "rn.hint": `Mantén presionado el número de una habitación para dejar una nota.`,
+  "rn.hint": `Mantén presionada una habitación o una tarea de la lista para dejar una nota.`,
 };
