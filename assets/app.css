@@ -1568,7 +1568,10 @@ select.input { appearance: auto; padding-right: 12px; }
 .weekly-row .wk-note { top: 8px; right: 10px; }
 
 /* a room marked vacant (the guest already left): lavender, until somebody starts or finishes it */
-.wk-room.vacant:not(.doing):not(.done) { background: color-mix(in srgb, var(--lavender) 65%, #fff); font-weight: 800; }
+/* vacant always changes the colour: lavender, also when somebody already started it (then a yellow ring says "in progress"); done stays green with a lavender ring */
+.wk-room.vacant:not(.done) { background: color-mix(in srgb, var(--lavender) 65%, #fff); font-weight: 800; }
+.wk-room.vacant.doing { box-shadow: inset 0 0 0 4px var(--yellow); }
+.wk-room.vacant.done { box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--lavender) 80%, #fff); }
 .wk-room.vacant .wk-note { background: #fff; }
 .rn-vacant { display: flex; align-items: center; gap: 12px; text-align: left; padding: 12px 14px; border-radius: 22px; background: var(--bg, #F6FAF8); color: var(--ink); }
 .rn-vacant span { display: flex; flex-direction: column; gap: 2px; }
