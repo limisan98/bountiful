@@ -399,9 +399,9 @@ export async function setWeeklyItem(week, item, status) {
 }
 
 // ---- notes on guest rooms (long-press a room number in the checklist) ----
-// notes on a checklist line use the key "line:<item id>" and only show on the day they were written (the list repeats every week)
+// notes on a room or a checklist line (key "line:<item id>") only show on the day they were written; notes on a task of the day ("task:<id>") stay with that task
 export const roomNotesOf = (room) => {
-  const day = room.startsWith('line:') ? ymd(new Date()) : null;
+  const day = room.startsWith('task:') ? null : ymd(new Date()); // room and line notes only show on the day they were written
   return Object.values(state.roomNotes).filter((n) => n.kind !== 'vacant' && n.room === room && (!day || n.day === day)).sort((a, b) => a.created_at.localeCompare(b.created_at));
 };
 // a room marked "vacant" for a day (the guest left before check-out time): the row of the mark, or null
