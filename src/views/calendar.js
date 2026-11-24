@@ -5,7 +5,8 @@ import { Icon, Avatar, Segmented, Sheet, Empty } from '../ui.js';
 import { canAssign } from '../roles.js';
 import { colorStyle } from '../color.js';
 import { STATUS_ICON_COLOR, badgeStatus } from '../ui.js';
-import { ensureMonth, itemName, areaOf, areaName } from '../data.js';
+import { ensureMonth, ensureWeekly, itemName, areaOf, areaName, inCrew } from '../data.js';
+import { dayProgressItems } from './weekly.js';
 import { ymd, parseYmd, addDays, addMonths, monthKey, monthGrid, startOfWeek, weekdayNames, fmt, todayYmd, toMin, hhmm, dur, taskGoal, hasTime, timeKey, pad } from '../time.js';
 import { AssignmentRow, AssignmentSheet, AssignSheet } from './assign.js';
 
@@ -160,9 +161,35 @@ export function DaySheet({ day: startDay, who: initialWho, onClose, onOpen, onAs
         <small>${dur(v.min)} · ${v.done}/${v.n}</small></span></span>`)}
     </div>` : null}
 
+    ${inCrew(me) && day <= todayYmd() ? html`<${DayDone} day=${day} />` : null}
+
     ${list.length ? html`<${Schedule} list=${list} day=${day} onOpen=${onOpen} />` : null}
     ${!list.length ? html`<${Empty} icon="calendar-event" text=${t('cal.emptyDay')} />` : null}
   <//>`;
+}
+
+// What was done (or is in progress) on a day, and by whom: checklist lines, rooms and the other tasks
+function DayDone({ day }) {
+  const s = useStore();
+  const wk = ymd(startOfWeek(parseYmd(day)));
+  useEffect(() => { ensureWeekly(wk).catch(() => {}); }, [wk]);
+  const first = (id) => ((s.profiles[id] || {}).display_name || '').split(' ')[0];
+  const hh = (iso) => (iso ? new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '');
+  const items = dayProgressItems(s, day).filter((i) => i.state === 'done' || i.state === 'doing');
+  if (!items.length) return null;
+  const lines = items.filter((i) => i.kind !== 'room').sort((a, b) => (a.at || '').localeCompare(b.at || ''));
+  const rooms = items.filter((i) => i.kind === 'room').sort((a, b) => a.label.localeCompare(b.label));
+  const row = (i, k) => html`<div key=${k} class=${'check-row weekly-row ' + i.state + (i.state === 'done' ? ' on' : '')}>
+    <span class="check-box"><${Icon} name=${i.state === 'doing' ? 'hourglass' : 'check'} size=${i.state === 'doing' ? 16 : 18} /></span>
+    <span class="check-text"><b>${i.label}</b>
+      <span class="weekly-who">${i.who ? html`<${Avatar} profile=${s.profiles[i.who]} size=${22} ring=${false} />` : null}${i.who ? first(i.who) + ' · ' : ''}${i.state === 'done' ? t('status.done') : t('weekly.doing')}${i.at ? ' · ' + hh(i.at) : ''}</span>
+    </span></div>`;
+  return html`<section class="day-done" aria-label=${t('cal.doneDay')}>
+    <h3 class="section-title">${t('cal.doneDay')}<span class="count">${items.filter((i) => i.state === 'done').length}</span></h3>
+    ${lines.length ? html`<div class="checklist">${lines.map(row)}</div>` : null}
+    ${rooms.length ? html`<h4 class="qa-sub">${t('sup.progressRooms')}</h4>
+      <div class="wk-rooms">${rooms.map((i) => html`<span key=${i.label} class=${'wk-room ' + i.state} title=${first(i.who)}><b>${i.label}</b>${i.who ? html`<${Avatar} profile=${s.profiles[i.who]} size=${20} ring=${false} />` : null}</span>`)}</div>` : null}
+  </section>`;
 }
 
 // ---- Vertical timeline: one card per task, stacked in start-time order (never side by side) ----

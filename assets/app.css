@@ -1584,3 +1584,6 @@ select.input { appearance: auto; padding-right: 12px; }
 
 /* the "More" links are always open (no fold, no title) */
 .more-grid.static { padding: 14px 12px; }
+
+.day-done { display: flex; flex-direction: column; gap: 10px; margin: 6px 0 14px; }
+.day-done .check-row { cursor: default; }
