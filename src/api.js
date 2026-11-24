@@ -191,7 +191,7 @@ const real = {
   async assignWeekly(week, item, userId) { await rpc('assign_weekly_check', { p_week: week, p_item: item, p_user: userId || null }); },
   async setWeekly(week, item, status) { await rpc('set_weekly_check', { p_week: week, p_item: item, p_status: status }); },
   // ---- notes on guest rooms ----
-  async loadRoomNotes(from) { return ok(await sb.from('room_notes').select('*').gte('day', from).order('created_at')); },
+  async loadRoomNotes(from, to) { let q = sb.from('room_notes').select('*').gte('day', from).order('created_at'); if (to) q = q.lte('day', to); return ok(await q); },
   async addRoomNote(row) { return ok(await sb.from('room_notes').insert(row).select().single()); },
   async deleteRoomNote(id) { ok(await sb.from('room_notes').delete().eq('id', id)); },
   async deleteLogEntry(id) { ok(await sb.from('logbook_entries').delete().eq('id', id)); },

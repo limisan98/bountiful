@@ -73,7 +73,7 @@ export function WeeklyList({ day, compact, weekOf }) {
   const lang = s.lang;
   const [open, setOpen] = useState(loadOpen);
   const dayYmd = ymd(addDays(parseYmd(wk), day - 1));
-  useEffect(() => { ensureRoomNotes().catch(() => {}); ensureWeekly(wk).catch(() => {}); ensureMonth(wk.slice(0, 7)).catch(() => {}); ensureMonth(dayYmd.slice(0, 7)).catch(() => {}); }, [wk]);
+  useEffect(() => { (wk < weekStart() ? ensureRoomNotes(wk, ymd(addDays(parseYmd(wk), 6))) : ensureRoomNotes()).catch(() => {}); ensureWeekly(wk).catch(() => {}); ensureMonth(wk.slice(0, 7)).catch(() => {}); ensureMonth(dayYmd.slice(0, 7)).catch(() => {}); }, [wk]);
   const toggleOpen = (k, was) => setOpen((o) => { const n = { ...o, [k]: !was }; try { localStorage.setItem(OPEN_KEY, JSON.stringify(n)); } catch { /* private mode */ } return n; });
 
   const d = WEEKLY.find((x) => x.day === day);
@@ -146,7 +146,7 @@ export function WeeklyList({ day, compact, weekOf }) {
     const p = r ? s.profiles[r.user_id] : null;
     const st = r ? r.status : '';
     return html`<button type="button" key=${i} class=${'check-row weekly-row ' + st + (st === 'done' ? ' on' : '')} aria-pressed=${st === 'done'} onClick=${() => { if (!pressing.wasLong()) tap(i); }} ...${pressing.press('line:' + i, txt)}>
-      ${roomNotesOf('line:' + i).length ? html`<span class="wk-note" aria-label=${t('rn.has')}><${Icon} name="message" size=${13} /></span>` : null}
+      ${roomNotesOf('line:' + i, dayYmd).length ? html`<span class="wk-note" aria-label=${t('rn.has')}><${Icon} name="message" size=${13} /></span>` : null}
       <span class="check-box">${st === 'doing' ? html`<${Icon} name="hourglass" size=${16} />` : st === 'assigned' ? html`<${Icon} name="user" size=${16} />` : html`<${Icon} name="check" size=${18} />`}</span>
       <span class="check-text"><b>${txt}</b>
         ${r ? html`<span class="weekly-who"><${Avatar} profile=${p} name=${p ? p.display_name : ''} size=${22} ring=${false} />${r.status === 'assigned' && r.user_id === me.id ? t('weekly.forYou') : first(p) + ' · ' + (r.status === 'done' ? t('status.done') : r.status === 'assigned' ? t('weekly.assigned') : t('weekly.doing'))}</span>` : null}
@@ -163,7 +163,7 @@ export function WeeklyList({ day, compact, weekOf }) {
     const vac = !!roomVacantOf(r.label, dayYmd) || checkoutNow;
     return html`<button type="button" key=${i} class=${'wk-room ' + (w ? w.status + (w.status === 'assigned' && urgent[r.label] ? ' urgent' : '') : u ? 'urgent' : '') + (vac ? ' vacant' : '')} aria-pressed=${!!w && w.status === 'done'} title=${(vac ? (checkoutNow && !roomVacantOf(r.label, dayYmd) ? t('flow.checkout') : t('rn.vacantShort')) + (w || uTxt ? ' · ' : '') : '') + (w ? wTxt : uTxt)}
       aria-label=${r.label + (w ? ', ' + wTxt : uTxt ? ', ' + uTxt : '')} onClick=${() => { if (!pressing.wasLong()) tap(i); }} ...${pressing.press(r.label)}>
-      <b>${r.label}</b>${roomNotesOf(r.label).length ? html`<span class="wk-note" aria-label=${t('rn.has')}><${Icon} name="message" size=${13} /></span>` : null}${w ? html`<${Avatar} profile=${p} name=${p ? p.display_name : ''} size=${20} ring=${false} />` : null}
+      <b>${r.label}</b>${roomNotesOf(r.label, dayYmd).length ? html`<span class="wk-note" aria-label=${t('rn.has')}><${Icon} name="message" size=${13} /></span>` : null}${w ? html`<${Avatar} profile=${p} name=${p ? p.display_name : ''} size=${20} ring=${false} />` : null}
     </button>`;
   };
 

@@ -3,7 +3,7 @@ import { useStore, toast } from '../store.js';
 import { t, friendlyError } from '../i18n.js';
 import { Icon, Avatar } from '../ui.js';
 import { isSupervisor } from '../roles.js';
-import { fmt, parseYmd } from '../time.js';
+import { fmt, parseYmd, todayYmd } from '../time.js';
 import { trFor } from '../translate.js';
 import { roomNotesOf, addRoomNote, removeRoomNote, roomVacantOf, setRoomVacant } from '../data.js';
 
@@ -26,7 +26,8 @@ function RoomNotes({ room, title, day }) {
   const heading = title || t('rn.title', { room });
   const s = useStore();
   const me = s.profile;
-  const notes = roomNotesOf(room);
+  const notes = roomNotesOf(room, day);
+  const past = !!day && day < todayYmd(); // a past day: notes can be read, not written
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const list = useRef(null);
@@ -51,7 +52,7 @@ function RoomNotes({ room, title, day }) {
       <b>${heading}</b>
       <button type="button" class="pick" aria-label=${t('common.close')} onClick=${closeRoomNotes}><${Icon} name="x" size=${16} /></button>
     </header>
-    ${day && !room.startsWith('line:') && !room.startsWith('task:') ? html`<button type="button" class=${'rn-vacant' + (roomVacantOf(room, day) ? ' on' : '')} aria-pressed=${!!roomVacantOf(room, day)}
+    ${day && !past && !room.startsWith('line:') && !room.startsWith('task:') ? html`<button type="button" class=${'rn-vacant' + (roomVacantOf(room, day) ? ' on' : '')} aria-pressed=${!!roomVacantOf(room, day)}
       onClick=${() => setRoomVacant(room, day, !roomVacantOf(room, day)).catch((ex) => toast(friendlyError(ex), 'bad'))}>
       <${Icon} name=${roomVacantOf(room, day) ? 'circle-check' : 'key'} size=${20} /><span><b>${roomVacantOf(room, day) ? t('rn.vacantOn') : t('rn.vacant')}</b><small>${t('rn.vacantHint')}</small></span></button>` : null}
     <div class="rn-list" ref=${list}>
@@ -65,9 +66,9 @@ function RoomNotes({ room, title, day }) {
         </div>`;
       }) : html`<p class="field-hint">${t('rn.empty')}</p>`}
     </div>
-    <form class="rn-form" onSubmit=${send}>
+    ${past ? null : html`<form class="rn-form" onSubmit=${send}>
       <input type="text" value=${text} maxlength="1000" placeholder=${t('rn.placeholder')} aria-label=${t('rn.placeholder')} onInput=${(e) => setText(e.target.value)} />
       <button type="submit" class="rn-send" disabled=${!text.trim() || busy}><${Icon} name="check" size=${20} />${t('rn.send')}</button>
-    </form>
+    </form>`}
   </section>`;
 }

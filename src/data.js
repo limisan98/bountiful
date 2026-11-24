@@ -400,8 +400,8 @@ export async function setWeeklyItem(week, item, status) {
 
 // ---- notes on guest rooms (long-press a room number in the checklist) ----
 // notes on a room or a checklist line (key "line:<item id>") only show on the day they were written; notes on a task of the day ("task:<id>") stay with that task
-export const roomNotesOf = (room) => {
-  const day = room.startsWith('task:') ? null : ymd(new Date()); // room and line notes only show on the day they were written
+export const roomNotesOf = (room, onDay) => {
+  const day = room.startsWith('task:') ? null : (onDay || ymd(new Date())); // room and line notes only show on the day they were written (today unless a day is given)
   return Object.values(state.roomNotes).filter((n) => n.kind !== 'vacant' && n.room === room && (!day || n.day === day)).sort((a, b) => a.created_at.localeCompare(b.created_at));
 };
 // a room marked "vacant" for a day (the guest left before check-out time): the row of the mark, or null
@@ -411,7 +411,9 @@ export async function setRoomVacant(room, day, on) {
   if (on && !cur) { const n = await api.addRoomNote({ room, day, body: 'vacant', kind: 'vacant' }); set({ roomNotes: { ...state.roomNotes, [n.id]: n } }); }
   if (!on && cur) await removeRoomNote(cur.id);
 }
-export async function ensureRoomNotes() {
+// default: the last 14 days (replaces what is loaded); with a range (a past week of the checklist): that range is added to what is loaded
+export async function ensureRoomNotes(from, to) {
+  if (from) { const rows = await api.loadRoomNotes(from, to); set({ roomNotes: { ...state.roomNotes, ...byId(rows) } }); return; }
   const rows = await api.loadRoomNotes(ymd(addDays(new Date(), -14)));
   set({ roomNotes: byId(rows) });
 }
