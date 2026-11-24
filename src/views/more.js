@@ -20,10 +20,9 @@ const tint = (r) => { const v = colorVars(META[r].color); return `--c:${v.c};--s
 
 // The "other screens" of the app, tucked away so the home screen stays calm
 export function MoreLinks({ routes }) {
-  return html`<details class="more-links">
-    <summary><${Icon} name="dots" size=${22} />${t('more.title')}</summary>
-    <div class="more-grid">${routes.map((r) => html`<a key=${r} class="more-link" style=${tint(r)} href=${'#/' + r}><span class="more-ic"><${Icon} name=${META[r].icon} size=${22} /></span>${t(META[r].label)}</a>`)}</div>
-  </details>`;
+  return html`<nav class="more-links" aria-label=${t('more.title')}>
+    <div class="more-grid static">${routes.map((r) => html`<a key=${r} class="more-link" style=${tint(r)} href=${'#/' + r}><span class="more-ic"><${Icon} name=${META[r].icon} size=${22} /></span>${t(META[r].label)}</a>`)}</div>
+  </nav>`;
 }
 
 // The burger tab in the bottom menu: a sheet with the other screens

@@ -1581,3 +1581,6 @@ select.input { appearance: auto; padding-right: 12px; }
 .week-nav b { display: flex; flex-direction: column; align-items: center; font-size: 17px; }
 .week-nav b small { font-size: 12px; font-weight: 600; color: var(--ink-3); }
 .week-nav .icon-btn:disabled { opacity: .35; }
+
+/* the "More" links are always open (no fold, no title) */
+.more-grid.static { padding: 14px 12px; }
