@@ -261,7 +261,7 @@ export function WeeklyView() {
       <h3 class="cal-title">${dayName(day, 'long')}${off === 0 && day === wd ? html` <span class="log-now">${t('chat.today')}</span>` : null}</h3>
     </div></div>
     ${off < 0 ? html`<p class="field-hint">${t('weekly.pastView')}</p>` : null}
-    <${WeeklyList} day=${day} weekOf=${ymd(monday)} key=${off} />
+    <section class="weekly-card"><${WeeklyList} day=${day} weekOf=${ymd(monday)} key=${off} compact=${true} /></section>
   </div>`;
 }
 
