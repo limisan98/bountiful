@@ -24,7 +24,7 @@ const REQUESTED = { title: 'Rooms', requested: true, items: [] };
 // (and what people already ticked) don't shift; they are just not shown any more.
 export const CHECKOUT_MIN = 10 * 60 + 30; // 10:30
 const GONE = new Set(['3.0.0', '6.0.1']);
-const sectionsOf = (d) => [...d.sections, ...(d.day >= 2 ? [REQUESTED] : [])];
+const sectionsOf = (d) => [...d.sections, ...(d.day >= 3 ? [REQUESTED] : [])];
 const itemText = (id, en, lang) => { const tr = WEEKLY_TEXT[lang]; return (tr && tr.items[FLAT[id]]) || en; };
 const titleText = (en, lang) => { const tr = WEEKLY_TEXT[lang]; const i = TITLES.indexOf(en); return (tr && i >= 0 && tr.titles[i]) || en; };
 
@@ -97,11 +97,12 @@ export function WeeklyList({ day, compact, weekOf }) {
   const reqLabels = new Set(assignmentsOn(dayYmd).filter((a) => a.kind === 'room').map((a) => a.title)); // every room requested for this day (open or done)
   // a requested code that is not in the room list ("231-B" = a part of room 231) still gets a tile, placed in the house of its number
   const roomOf = (label) => rooms.find((r) => r.label === label) || (() => { const b = rooms.find((r) => r.label === label.replace(/-[A-Z]$/, '')); return { label, house: b ? b.house : Number(label[0]) || 0, floor: b ? b.floor : Number(label[1]) || 0, num: b ? b.num : 0, kind: b ? b.kind : 'room' }; })();
-  const requestedRooms = day >= 2 ? [...reqLabels].sort().map(roomOf) : [];
+  const requestedRooms = day >= 3 ? [...reqLabels].sort().map(roomOf) : [];
   const extraRooms = [...reqLabels].filter((l) => !rooms.some((r) => r.label === l)).sort().map(roomOf);
   const carryOn = pastWeek || isoWeekday(new Date()) >= 2;
-  const carried = carryOn ? rooms.filter((r) => !reqLabels.has(r.label) && !monDone(r.label) && (!onDemand(r) || !!urgent[r.label] || !!weeklyOf(wk, `${day}.r.${r.label}`))) : [];
-  const roomsOf = (sec) => (sec.rooms ? [...rooms.filter(shown), ...extraRooms] : sec.carry ? carried : sec.requested ? requestedRooms : null);
+  // Tuesday has no separate "Rooms" section: the rooms requested for Tuesday are listed together with the ones left from Monday
+  const carried = carryOn ? rooms.filter((r) => (day === 2 && reqLabels.has(r.label)) || (!reqLabels.has(r.label) && !monDone(r.label) && (!onDemand(r) || !!urgent[r.label] || !!weeklyOf(wk, `${day}.r.${r.label}`)))) : [];
+  const roomsOf = (sec) => (sec.rooms ? [...rooms.filter(shown), ...extraRooms] : sec.carry ? (day === 2 ? [...carried, ...extraRooms] : carried) : sec.requested ? requestedRooms : null);
   // every checkable thing of a section: its lines (unless they are only instructions) and, for "Rooms", one tile per guest room
   const idsOf = (sec, si) => [...(sec.info ? [] : sec.items.map((_, ii) => id(si, ii)).filter((x) => !GONE.has(x))), ...((roomsOf(sec) || []).map((r) => `${day}.r.${r.label}`))];
   const isDone = (i) => { const r = weeklyOf(wk, i); return !!r && r.status === 'done'; };
@@ -315,7 +316,7 @@ export function dayProgressItems(s, dayYmd) {
         out.push({ kind: 'line', label: itemText(id, txt, lang), state: k && k.status === 'done' ? 'done' : k && k.status === 'doing' ? 'doing' : 'todo', who: k ? k.user_id : '', at: k && k.status !== 'assigned' ? k.updated_at : '' });
       });
       const reqSet = new Set(asg.filter((a) => a.kind === 'room').map((a) => a.title));
-      const list = sec.rooms ? rooms.filter(showRoom) : sec.requested ? rooms.filter((r) => reqSet.has(r.label)) : sec.carry && isoWeekday(new Date()) >= 2 ? rooms.filter((r) => !reqSet.has(r.label) && !monDone(r.label) && showRoom(r)) : [];
+      const list = sec.rooms ? rooms.filter(showRoom) : sec.requested ? rooms.filter((r) => reqSet.has(r.label)) : sec.carry && isoWeekday(new Date()) >= 2 ? rooms.filter((r) => (wd === 2 && reqSet.has(r.label)) || (!reqSet.has(r.label) && !monDone(r.label) && showRoom(r))) : [];
       list.forEach((r) => { const k = weeklyOf(wk, `${wd}.r.${r.label}`), a = roomAsg[r.label]; out.push({ kind: 'room', label: r.label, state: roomState(r.label, k), who: k ? k.user_id : (a && a.assignee) || '', at: k && k.status !== 'assigned' ? (k.status === 'done' && k.done_at) || k.updated_at || '' : (a && s.reports[a.id] && s.reports[a.id].completed_at) || '' }); });
     });
   }
