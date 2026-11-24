@@ -59,8 +59,8 @@ function useRoomPress(day) {
   return { press, wasLong: () => { const f = fired.current; fired.current = false; return f; } };
 }
 
-export function WeeklyList({ day, compact }) {
-  const dayYmd0 = ymd(addDays(parseYmd(weekStart()), day - 1));
+export function WeeklyList({ day, compact, weekOf }) {
+  const dayYmd0 = ymd(addDays(parseYmd(weekOf || weekStart()), day - 1));
   const pressing = useRoomPress(dayYmd0);
   // check-out time (10:30): from then on every room of the day's check-out list turns purple; the list repaints itself
   const [, setTick] = useState(0);
@@ -68,7 +68,8 @@ export function WeeklyList({ day, compact }) {
   const s = useStore();
   const me = s.profile;
   const sup = isSupervisor(me);
-  const wk = weekStart();
+  const wk = weekOf || weekStart();
+  const pastWeek = wk < weekStart(); // a past week can only be looked at
   const lang = s.lang;
   const [open, setOpen] = useState(loadOpen);
   const dayYmd = ymd(addDays(parseYmd(wk), day - 1));
@@ -98,7 +99,7 @@ export function WeeklyList({ day, compact }) {
   const roomOf = (label) => rooms.find((r) => r.label === label) || (() => { const b = rooms.find((r) => r.label === label.replace(/-[A-Z]$/, '')); return { label, house: b ? b.house : Number(label[0]) || 0, floor: b ? b.floor : Number(label[1]) || 0, num: b ? b.num : 0, kind: b ? b.kind : 'room' }; })();
   const requestedRooms = day >= 2 ? [...reqLabels].sort().map(roomOf) : [];
   const extraRooms = [...reqLabels].filter((l) => !rooms.some((r) => r.label === l)).sort().map(roomOf);
-  const carryOn = isoWeekday(new Date()) >= 2;
+  const carryOn = pastWeek || isoWeekday(new Date()) >= 2;
   const carried = carryOn ? rooms.filter((r) => !reqLabels.has(r.label) && !monDone(r.label) && (!onDemand(r) || !!urgent[r.label] || !!weeklyOf(wk, `${day}.r.${r.label}`))) : [];
   const roomsOf = (sec) => (sec.rooms ? [...rooms.filter(shown), ...extraRooms] : sec.carry ? carried : sec.requested ? requestedRooms : null);
   // every checkable thing of a section: its lines (unless they are only instructions) and, for "Rooms", one tile per guest room
@@ -113,6 +114,7 @@ export function WeeklyList({ day, compact }) {
   const pct = all.length ? Math.round((done / all.length) * 100) : 0;
 
   async function tap(i, target) {
+    if (pastWeek) { toast(t('weekly.pastView')); return; }
     const r = weeklyOf(wk, i);
     // only the person who is on an item (marked it in progress / done, or was given it) can change it - not even the supervisor (the database enforces it too)
     if (r && r.user_id !== me.id) {
@@ -167,6 +169,7 @@ export function WeeklyList({ day, compact }) {
 
   // a task row works like a checklist line: tap = in progress -> done -> back. Only the person it is given to can change it.
   async function tapTask(a) {
+    if (pastWeek) { toast(t('weekly.pastView')); return; }
     if (!a.assignee) { toast(t('task.waiting'), 'bad'); return; }
     if (a.assignee !== me.id) { const p = s.profiles[a.assignee]; toast(t('weekly.taken', { name: p ? p.display_name.split(' ')[0] : '' }), 'bad'); return; }
     const mins = a.started_at ? Math.min(Math.max(1, Math.round((Date.now() - Date.parse(a.started_at)) / 60000)), 1440) : goalOf(a);
@@ -234,22 +237,30 @@ export function WeeklyList({ day, compact }) {
 
 // The full screen: day tabs + the list
 export function WeeklyView() {
-  const monday = parseYmd(weekStart());
+  const [off, setOff] = useState(0); // 0 = this week, -1 = last week ...
+  const monday = addDays(parseYmd(weekStart()), off * 7);
   const wd = todayWeekday();
   const [day, setDay] = useState(wd || 1);
   const dayName = (n, style) => fmt(addDays(monday, n - 1), { weekday: style });
   const me = useStore().profile;
   const [plan, setPlan] = useState(false);
+  const label = off === 0 ? t('weekly.thisWeek') : off === -1 ? t('weekly.lastWeek') : t('weekly.weekOf', { date: fmt(monday, { day: 'numeric', month: 'short' }) });
   return html`<div class="stack weekly-page">
     <div class="page-head"><div><h2 class="page-title">${t('nav.weekly')}</h2><p class="page-sub">${t('weekly.sub')}</p></div></div>
-    ${canAssign(me) ? html`<button type="button" class="btn soft" onClick=${() => setPlan(true)}><${Icon} name="user" size=${22} />${t('weekly.plan')}</button>` : null}
+    <div class="week-nav">
+      <button type="button" class="icon-btn" aria-label=${t('shift.prevWeek')} onClick=${() => setOff(off - 1)}><${Icon} name="caret-left" size=${22} /></button>
+      <b>${label}<small>${fmt(monday, { day: 'numeric', month: 'short' })} – ${fmt(addDays(monday, 5), { day: 'numeric', month: 'short' })}</small></b>
+      <button type="button" class="icon-btn" aria-label=${t('shift.nextWeek')} disabled=${off >= 0} onClick=${() => setOff(Math.min(0, off + 1))}><${Icon} name="caret-right" size=${22} /></button>
+    </div>
+    ${off === 0 && canAssign(me) ? html`<button type="button" class="btn soft" onClick=${() => setPlan(true)}><${Icon} name="user" size=${22} />${t('weekly.plan')}</button>` : null}
     ${plan ? html`<${PlanListSheet} onClose=${() => setPlan(false)} />` : null}
     <${Segmented} label=${t('nav.weekly')} value=${day} onChange=${setDay}
       options=${WEEKLY.map((x) => ({ value: x.day, label: dayName(x.day, 'short') }))} />
-    <div class="cal-head"><div class="rooms-day" key=${day}>
-      <h3 class="cal-title">${dayName(day, 'long')}${day === wd ? html` <span class="log-now">${t('chat.today')}</span>` : null}</h3>
+    <div class="cal-head"><div class="rooms-day" key=${day + '-' + off}>
+      <h3 class="cal-title">${dayName(day, 'long')}${off === 0 && day === wd ? html` <span class="log-now">${t('chat.today')}</span>` : null}</h3>
     </div></div>
-    <${WeeklyList} day=${day} />
+    ${off < 0 ? html`<p class="field-hint">${t('weekly.pastView')}</p>` : null}
+    <${WeeklyList} day=${day} weekOf=${ymd(monday)} key=${off} />
   </div>`;
 }
 

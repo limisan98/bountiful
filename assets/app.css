@@ -1577,3 +1577,8 @@ select.input { appearance: auto; padding-right: 12px; }
 .rn-vacant.on { background: color-mix(in srgb, var(--lavender) 65%, #fff); }
 .rn-vacant.on small { color: var(--ink-2); }
 
+
+.week-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.week-nav b { display: flex; flex-direction: column; align-items: center; font-size: 17px; }
+.week-nav b small { font-size: 12px; font-weight: 600; color: var(--ink-3); }
+.week-nav .icon-btn:disabled { opacity: .35; }
