@@ -924,7 +924,7 @@ a, img, svg { -webkit-touch-callout: none; -webkit-user-drag: none; }
   --prio-high: #FA897B; --prio-high-bg: #FFE0DB; --prio-high-ink: #9B2C1E;
   --prio-medium: #CCABD8; --prio-medium-bg: #EEE2F3; --prio-medium-ink: #5E3A74;
   --prio-low: #D0E6A5; --prio-low-bg: #E6F2CF; --prio-low-ink: #476019;
-  --b0700: #86E3CE; --b0800: #D0E6A5; --b1400: #FFDD94; --b1830: #CCABD8;
+  --b0700: #86E3CE; --b0800: #D0E6A5; --b1400: #FFDD94; --b1830: #FFDD94; /* afternoon and evening shifts are both yellow */
 }
 
 /* ---- priority ---- */
