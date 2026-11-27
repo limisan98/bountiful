@@ -2,7 +2,7 @@ import { html, useState, useEffect, useRef } from '../../assets/vendor/htm-preac
 import { useStore, toast } from '../store.js';
 import { t, friendlyError } from '../i18n.js';
 import { Icon, Avatar, Segmented, Sheet, Field, useSheetControl } from '../ui.js';
-import { isSupervisor, canAssign } from '../roles.js';
+import { isSupervisor, canAssign, isGhost } from '../roles.js';
 import { DateField } from '../pickers.js';
 import { WEEKLY } from '../weeklydata.js';
 import { WEEKLY_TEXT } from '../weeklytext.js';
@@ -118,7 +118,7 @@ export function WeeklyList({ day, compact, weekOf }) {
     if (pastWeek) { toast(t('weekly.pastView')); return; }
     const r = weeklyOf(wk, i);
     // only the person who is on an item (marked it in progress / done, or was given it) can change it - not even the supervisor (the database enforces it too)
-    if (r && r.user_id !== me.id) {
+    if (r && r.user_id !== me.id && !(sup && isGhost(s.profiles[r.user_id]))) { // (a supervisor can mark for a placeholder colleague)
       const p = s.profiles[r.user_id];
       toast(t('weekly.taken', { name: p ? p.display_name.split(' ')[0] : '' }), 'bad');
       return;
@@ -172,7 +172,7 @@ export function WeeklyList({ day, compact, weekOf }) {
   async function tapTask(a) {
     if (pastWeek) { toast(t('weekly.pastView')); return; }
     if (!a.assignee) { toast(t('task.waiting'), 'bad'); return; }
-    if (a.assignee !== me.id) { const p = s.profiles[a.assignee]; toast(t('weekly.taken', { name: p ? p.display_name.split(' ')[0] : '' }), 'bad'); return; }
+    if (a.assignee !== me.id && !(sup && isGhost(s.profiles[a.assignee]))) { const p = s.profiles[a.assignee]; toast(t('weekly.taken', { name: p ? p.display_name.split(' ')[0] : '' }), 'bad'); return; }
     const mins = a.started_at ? Math.min(Math.max(1, Math.round((Date.now() - Date.parse(a.started_at)) / 60000)), 1440) : goalOf(a);
     try { await cycleTask(a.id, mins); } catch (ex) { toast(friendlyError(ex), 'bad'); }
   }

@@ -27,3 +27,5 @@ export const departmentOf = (p) => (p ? roleInfo(p.role).department : null);
 // Who may hand out tasks: the supervisor, or a custodian the supervisor has made a delegate (while they are away), until the end date if there is one
 export const isDelegate = (p) => !!p && !!p.can_assign && (!p.assign_until || p.assign_until >= todayYmd());
 export const canAssign = (p) => isSupervisor(p) || isDelegate(p);
+// a placeholder colleague who is not in the app yet (nobody can log in as them): only a supervisor marks their items / tasks
+export const isGhost = (p) => !!p && !!p.is_ghost;

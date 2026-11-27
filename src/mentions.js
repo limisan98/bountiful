@@ -13,7 +13,7 @@ export function mentionable(channel) {
   const me = state.profile;
   if (channel !== 'general') return [];
   return activePeople()
-    .filter((p) => (!me || p.id !== me.id) && departmentOf(p) === 'custodian')
+    .filter((p) => (!me || p.id !== me.id) && departmentOf(p) === 'custodian' && !p.is_ghost)
     .sort((a, b) => a.display_name.localeCompare(b.display_name));
 }
 

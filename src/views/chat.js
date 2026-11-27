@@ -77,7 +77,7 @@ function ChatList({ open }) {
 function NewChat({ onClose }) {
   const s = useStore();
   const ctl = useSheetControl();
-  const people = activePeople().filter((p) => p.id !== s.profile.id && inCrew(p)).sort((a, b) => a.display_name.localeCompare(b.display_name));
+  const people = activePeople().filter((p) => p.id !== s.profile.id && inCrew(p) && !p.is_ghost).sort((a, b) => a.display_name.localeCompare(b.display_name));
   return html`<${Sheet} title=${t('chat.new')} onClose=${onClose} control=${ctl}>
     <p class="field-hint">${t('chat.newHint')}</p>
     <div class="list tight">

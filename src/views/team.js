@@ -85,6 +85,7 @@ export function TeamView() {
               ${p.id === me.id ? html`<span class="you">${t('team.you')}</span>` : null}
               ${p.active === false ? html`<span class="chip small status paused">${t('team.paused')}</span>` : null}
               ${isDelegate(p) ? html`<span class="chip small status pending">${t('team.delegate')}</span>` : null}
+              ${p.is_ghost ? html`<span class="chip small status pending">${t('team.ghost')}</span>` : null}
               ${sup && p.id !== me.id ? html`<${Icon} name="caret-right" size=${18} class="chev" />` : null}</span>`} />`;
             return sup && p.id !== me.id
               ? html`<button class="person" key=${p.id} onClick=${() => openPerson(p)}>${body}</button>`
