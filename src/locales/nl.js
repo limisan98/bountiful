@@ -439,6 +439,8 @@ export default {
   "shift.afternoon_full": `Middagdienst (volledig)`,
   "shift.afternoon_full_fri": `Middagdienst op vrijdag`,
   "shift.evening_part": `Avonddienst (deeltijd)`,
+  "shift.saturday_short": `Korte zaterdagdienst`,
+  "shift.evening_part_fri": `Vrijdagavond deeltijddienst`,
   "shift.problem.noshift": `Niet in dienst`,
   "shift.problem.window": `Buiten de diensttijd`,
   "shift.problem.capacity": `Dag is vol`,

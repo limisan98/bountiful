@@ -215,9 +215,11 @@ const shifts = [
   ['morning_full', 'full', '07:00', '07:00', '15:30', [1, 2, 3, 4, 5, 6, 7], 480],
   ['morning_part_a', 'part', '08:00', '08:00', '12:00', [1, 2, 3, 4, 5, 6, 7], 240],
   ['morning_part_b', 'part', '08:00', '09:00', '13:00', [1, 2, 3, 4, 5, 6, 7], 240],
-  ['afternoon_full', 'full', '14:00', '14:00', '22:30', [1, 2, 3, 4, 6, 7], 480],
-  ['afternoon_full_fri', 'full', '14:00', '14:30', '23:00', [5], 480],
+  ['afternoon_full', 'full', '14:00', '14:30', '22:30', [1, 2, 3, 4, 6, 7], 480],
+  ['afternoon_full_fri', 'full', '14:00', '15:00', '23:00', [5], 480],
   ['evening_part', 'part', '18:30', '18:30', '22:30', [1, 2, 3, 4, 5, 6, 7], 240],
+  ['saturday_short', 'full', '08:00', '11:00', '15:00', [6], 240],
+  ['evening_part_fri', 'part', '18:30', '19:00', '23:00', [5], 240],
 ].map(([key, kind, block, s, e, weekdays, cap], i) => ({ id: 'sh-' + key, key, kind, block, start_time: s + ':00', end_time: e + ':00', weekdays, capacity_minutes: cap, sort: i + 1 }));
 const contracts = [{ user_id: 'd1', minutes: 480 }, { user_id: 'd2', minutes: 480 }, { user_id: 'd3', minutes: 480 }, { user_id: 'd4', minutes: 240 }];
 const shiftPlan = [];

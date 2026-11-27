@@ -439,6 +439,8 @@ export default {
   "shift.afternoon_full": `Turno da tarde completo`,
   "shift.afternoon_full_fri": `Turno da tarde de sexta-feira`,
   "shift.evening_part": `Turno parcial da noite`,
+  "shift.saturday_short": `Turno curto de sábado`,
+  "shift.evening_part_fri": `Turno parcial de sexta à noite`,
   "shift.problem.noshift": `Sem turno`,
   "shift.problem.window": `Fora do horário do turno`,
   "shift.problem.capacity": `Dia cheio`,

@@ -439,6 +439,8 @@ export default {
   "shift.afternoon_full": `Afternoon full shift`,
   "shift.afternoon_full_fri": `Friday afternoon shift`,
   "shift.evening_part": `Evening part shift`,
+  "shift.saturday_short": `Saturday short shift`,
+  "shift.evening_part_fri": `Friday evening part shift`,
   "shift.problem.noshift": `Not on shift`,
   "shift.problem.window": `Outside shift time`,
   "shift.problem.capacity": `Day is full`,

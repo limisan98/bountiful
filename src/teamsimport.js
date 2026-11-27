@@ -317,6 +317,14 @@ export function autoMatchName(raw, people) {
     return tokens.every((x) => t.some((y) => y === x || (x.length === 1 && y.startsWith(x)) || (x.length >= 3 && y.startsWith(x) && tokens.length === 1)));
   });
   if (part.length === 1) return { person: part[0], how: 'partial' };
+  // our short name inside the long Teams name ("Henk" for "Henk Hooijenga", "David Galan" for "David Galán Cortés"); double letters don't matter ("Giovanna" / "Giovana")
+  const sq = (w) => w.replace(/(.)\1+/g, '$1');
+  const tk = tokens.map(sq);
+  const inside = people.filter((p) => { const t = nameKey(p.display_name).split(' ').map(sq); return t.length && t.length <= tk.length && t.every((x) => tk.includes(x)); });
+  if (inside.length === 1) return { person: inside[0], how: 'partial' };
+  // same first name and nobody else has it ("Lidia Michel Sandoval Inestroza" for "Lidia Test Supervisor")
+  const firsts = people.filter((p) => sq(nameKey(p.display_name).split(' ')[0] || '') === tk[0]);
+  if (tk.length > 1 && firsts.length === 1) return { person: firsts[0], how: 'partial' };
   return null;
 }
 

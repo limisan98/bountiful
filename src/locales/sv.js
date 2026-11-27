@@ -439,6 +439,8 @@ export default {
   "shift.afternoon_full": `Eftermiddagspass (heltid)`,
   "shift.afternoon_full_fri": `Eftermiddagspass på fredag`,
   "shift.evening_part": `Kvällspass (deltid)`,
+  "shift.saturday_short": `Kort lördagspass`,
+  "shift.evening_part_fri": `Deltidspass fredagskväll`,
   "shift.problem.noshift": `Inte i tjänst`,
   "shift.problem.window": `Utanför passets tid`,
   "shift.problem.capacity": `Dagen är full`,

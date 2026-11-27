@@ -439,6 +439,8 @@ export default {
   "shift.afternoon_full": `Spätschicht (voll)`,
   "shift.afternoon_full_fri": `Spätschicht am Freitag`,
   "shift.evening_part": `Abendschicht (teil)`,
+  "shift.saturday_short": `Kurze Samstagsschicht`,
+  "shift.evening_part_fri": `Freitag-Abendschicht (Teilzeit)`,
   "shift.problem.noshift": `Nicht im Dienst`,
   "shift.problem.window": `Außerhalb der Schichtzeit`,
   "shift.problem.capacity": `Tag ist voll`,
