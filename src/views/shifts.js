@@ -188,7 +188,7 @@ function WeekPlan({ sup }) {
       <p class="field-hint">${t('shift.tapHint')}</p>` : null}
 
     <section class="shift-legend" aria-label=${t('shift.legend')}>
-      ${shiftList().map((x) => html`<span class=${'legend-item b' + x.block.replace(':', '')} key=${x.id}><i></i>${shiftName(x)} <b>${range(x)}</b>${x.weekdays.length < 7 ? html`<em>${x.weekdays.map((d) => names[d - 1]).join(' ')}</em>` : null}</span>`)}
+      ${shiftList().map((x) => html`<span class=${'legend-item b' + x.block.replace(':', '')} key=${x.id} title=${shiftName(x)}><i></i><b>${range(x)}</b></span>`)}
     </section>
 
     <div class="list">

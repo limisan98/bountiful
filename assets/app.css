@@ -1015,8 +1015,8 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; gap:
 .contract-chip.tap { min-height: 44px; padding: 4px 16px; background: #fff; box-shadow: var(--shadow-s); font-size: 15px; }
 
 /* ---- shifts: week plan ---- */
-.shift-legend { display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; color: var(--ink-2); }
-.legend-item { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.shift-legend { display: flex; flex-wrap: wrap; gap: 8px; font-size: 13.5px; color: var(--ink-2); }
+.legend-item { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 99px; background: #fff; box-shadow: var(--shadow-s); }
 .legend-item b { color: var(--ink); white-space: nowrap; }
 .legend-item em { font-style: normal; font-size: 12.5px; color: var(--ink-3); }
 .legend-item i { width: 14px; height: 14px; border-radius: 50%; background: var(--bc, var(--track)); flex: none; }
