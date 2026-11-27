@@ -88,7 +88,7 @@ export function SupervisorHome() {
       <button type="button" class="btn soft small" onClick=${() => setCustomTask(true)}><${Icon} name="plus" size=${18} />${t('sup.addTask')}</button>
     </div>
 
-    <${MoreLinks} routes=${['weekly', 'calendar', 'shifts', 'logbook', 'reports', 'meetings', 'team']} />
+    <${MoreLinks} routes=${['weekly', 'calendar', 'shifts', 'reports', 'meetings', 'team']} />
 
     <${QuickFab} onOpen=${() => setQuick(true)} />
     ${roomImp ? html`<${RoomImportSheet} onClose=${() => setRoomImp(false)} />` : null}

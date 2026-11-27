@@ -36,7 +36,7 @@ const NAV = [
   { route: 'reports', icon: 'clipboard-data', label: 'nav.reports', only: 'sup', desk: true }, // in the desktop sidebar; on phones reachable from Home
   { route: 'weekly', icon: 'clipboard-check', label: 'nav.weekly', only: 'crew', desk: true }, // Mon–Sat cleaning checklist (custodians + supervisor)
   { route: 'shifts', icon: 'clock', label: 'nav.shifts', only: 'sup', desk: true }, // who is on duty + week plan (supervisor only)
-  { route: 'logbook', icon: 'book', label: 'nav.logbook', only: 'sup', desk: true }, // shared handover book (supervisor reads it; the crew writes notes from their home screen)
+  { route: 'logbook', icon: 'book', label: 'nav.logbook', only: 'sup' }, // shared handover book (supervisor reads it; the crew writes notes from their home screen)
 ];
 
 function currentRoute() {
