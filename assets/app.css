@@ -1587,3 +1587,17 @@ select.input { appearance: auto; padding-right: 12px; }
 
 .day-done { display: flex; flex-direction: column; gap: 10px; margin: 6px 0 14px; }
 .day-done .check-row { cursor: default; }
+
+/* ---------- side menu (supervisor) ---------- */
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+@media (min-width: 1024px) { .side-btn { display: none; } }
+.side-root { position: fixed; inset: 0; z-index: 60; background: rgba(30, 42, 40, .32); animation: fade-in .2s var(--ease); }
+.side-root.out { animation: fade-out .2s var(--ease) forwards; }
+.side-panel { position: absolute; top: 0; bottom: 0; left: 0; width: min(320px, 84vw); background: var(--bg, #F6FAF8); border-radius: 0 32px 32px 0; padding: calc(24px + env(safe-area-inset-top)) 18px 24px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 0 60px rgba(30, 42, 40, .25); animation: side-in .24s var(--ease); }
+.side-root.out .side-panel { animation: side-out .2s var(--ease) forwards; }
+@keyframes side-in { from { transform: translateX(-100%); } }
+@keyframes side-out { to { transform: translateX(-100%); } }
+.side-head { display: flex; align-items: center; justify-content: space-between; font-size: 20px; padding: 0 6px; }
+.side-links { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+.side-links .more-link { min-height: 64px; font-size: 16px; }
+@keyframes fade-in { from { opacity: 0; } }

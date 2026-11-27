@@ -6,7 +6,7 @@ import { state, set, useStore } from './store.js';
 import { initLang, setLang, t } from './i18n.js';
 import { Icon, Avatar, Toast } from './ui.js';
 import { LogoMark } from './logo.js';
-import { MenuSheet } from './views/more.js';
+import { MenuSheet, SideMenu } from './views/more.js';
 import { isSupervisor, roleInfo } from './roles.js';
 import { loadCore, startLive, stopLive, resetData, inCrew, refresh } from './data.js';
 import { AuthScreen } from './views/auth.js';
@@ -45,18 +45,32 @@ function currentRoute() {
   return NAV.some((n) => n.route === r) ? r : 'home';
 }
 
+const SIDE_ROUTES = ['weekly', 'calendar', 'shifts', 'reports', 'meetings', 'team'];
+
 function Shell() {
   const s = useStore();
   const me = s.profile;
   const sup = isSupervisor(me);
   const [route, setRoute] = useState(currentRoute());
   const [menu, setMenu] = useState(false);
+  const [side, setSide] = useState(false); // the supervisor's side menu
 
   useEffect(() => {
     const onHash = () => { setRoute(currentRoute()); window.scrollTo(0, 0); };
     addEventListener('hashchange', onHash);
     return () => removeEventListener('hashchange', onHash);
   }, []);
+
+  // swipe from the very left edge of the screen to open the side menu (supervisor, phones)
+  useEffect(() => {
+    if (!sup) return undefined;
+    let x0 = null, y0 = 0;
+    const start = (e) => { const t0 = e.touches[0]; x0 = t0.clientX < 22 ? t0.clientX : null; y0 = t0.clientY; };
+    const move = (e) => { if (x0 === null) return; const t0 = e.touches[0]; if (t0.clientX - x0 > 60 && Math.abs(t0.clientY - y0) < 50) { x0 = null; setSide(true); } };
+    addEventListener('touchstart', start, { passive: true });
+    addEventListener('touchmove', move, { passive: true });
+    return () => { removeEventListener('touchstart', start); removeEventListener('touchmove', move); };
+  }, [sup]);
 
   const allowed = (n) => !n.only || (n.only === 'crew' ? inCrew(me) : sup);
   const active = NAV.some((n) => n.route === route && allowed(n)) ? route : 'home';
@@ -105,11 +119,14 @@ function Shell() {
         </button>
         <div class="hello"><p>${t(greet)},</p><h1>${me.display_name}</h1></div>
       </div>
-      ${kind === 'sup' ? html`<${SupBell} />` : null}
+      ${kind === 'sup' ? html`<div class="topbar-right">
+        <button type="button" class="icon-btn side-btn" aria-label=${t('nav.menu')} aria-haspopup="dialog" onClick=${() => setSide(true)}><${Icon} name="menu-2" size=${24} /></button>
+        <${SupBell} /></div>` : null}
     </header>
     <main class="screen" key=${active}>${view}</main>
     ${nav}
     ${profile}
+    ${side ? html`<${SideMenu} routes=${SIDE_ROUTES} onClose=${() => setSide(false)} />` : null}
   </div>`;
 }
 
